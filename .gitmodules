@@ -1,0 +1,9 @@
+[submodule "web"]
+	path = web
+	url = https://github.com/thlstsul/memos-web.git
+[submodule "proto"]
+	path = proto
+	url = https://github.com/thlstsul/memos-proto.git
+[submodule "googleapis"]
+	path = googleapis
+	url = https://github.com/googleapis/googleapis.git
