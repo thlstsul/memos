@@ -1,0 +1,24 @@
+[package]
+name = "memos"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-files = "0.6.2"
+actix-identity = "0.6.0"
+actix-protobuf = "0.10.0"
+actix-session = { version = "0.8.0", features = ["cookie-session"] }
+actix-web = "4.3.1"
+hex = "0.4.3"
+prost = "0.12.2"
+prost-types = "0.12.2"
+serde = "1.0.192"
+shuttle-actix-web = "0.33.0"
+shuttle-runtime = "0.33.0"
+sm3 = "0.4.2"
+tokio = "1.26.0"
+
+[build-dependencies]
+prost-build = "0.12.2"
+protoc-bin-vendored = "3.0.0"
+proto-builder-trait = { path = "../proto-builder-trait", default-features = false, features = ["prost"] }
