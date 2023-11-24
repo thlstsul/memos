@@ -13,16 +13,63 @@ fn main() {
         .out_dir("src/pb")
         .with_serde(
             &[
-                //TODO other\ rename\ serde
-                // "memos.api.v2.User",
-                "memos.api.v2.SystemInfo",
+                "memos.api.v2.User",
+                "memos.api.v2.Memo",
+                "memos.api.v2.Resource",
                 "memos.api.v2.Tag",
+                "memos.api.v2.Activity",
+                "memos.api.v2.ActivityPayload",
+                "memos.api.v2.ActivityMemoCommentPayload",
+                "memos.api.v2.ActivityVersionUpdatePayload",
+                "memos.api.v2.Inbox",
             ],
             true,
             true,
             None,
         )
-        .with_field_attributes(&[], &[r#"#[serde(with="crate::pb")]"#])
+        .with_field_attributes(
+            &[
+                "memos.api.v2.Activity.create_time",
+                "memos.api.v2.Inbox.create_time",
+            ],
+            &[r#"#[serde(with = "crate::pb::time_serde", rename = "create_ts")]"#],
+        )
+        .with_field_attributes(
+            &[
+                "memos.api.v2.Resource.r#type",
+                "memos.api.v2.Activity.r#type",
+            ],
+            &[r#"#[serde(rename = "type")]"#],
+        )
+        .field_attribute(
+            "memos.api.v2.Memo.row_status",
+            r#"#[serde(with = "crate::pb::status_serde")]"#,
+        )
+        .field_attribute(
+            "memos.api.v2.Resource.created_ts",
+            r#"#[serde(with = "crate::pb::time_serde")]"#,
+        )
+        .field_attribute("memos.api.v2.User.name", r#"#[serde(rename = "username")]"#)
+        .field_attribute(
+            "memos.api.v2.User.row_status",
+            r#"#[serde(with = "crate::pb::status_serde", rename(serialize = "rowStatus"))]"#,
+        )
+        .field_attribute(
+            "memos.api.v2.User.role",
+            r#"#[serde(with = "crate::pb::role_serde")]"#,
+        )
+        .field_attribute(
+            "memos.api.v2.User.create_time", 
+            r#"#[serde(with = "crate::pb::time_serde", rename(serialize = "createdTs", deserialize = "create_ts"))]"#
+        )
+        .field_attribute(
+            "memos.api.v2.User.update_time",
+            r#"#[serde(with = "crate::pb::time_serde", rename(serialize = "updatedTs", deserialize = "update_ts"))]"#,
+        )
+        .field_attribute(
+            "memos.api.v2.User.avatar_url",
+            r#"#[serde(rename(serialize = "avatarUrl"))]"#,
+        )
         .compile_protos(
             &[
                 "proto/api/v2/user_service.proto",

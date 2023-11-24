@@ -1,19 +1,19 @@
 use actix_files::NamedFile;
-use actix_identity::IdentityMiddleware;
-use actix_session::{config::PersistentSession, storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{
-    body::MessageBody,
-    cookie::{time::Duration, Key},
-    dev::{ServiceFactory, ServiceRequest, ServiceResponse},
-    get, post,
-    web::{self, ServiceConfig},
-    HttpRequest, HttpResponse, Responder, Scope,
+    cookie::Key,
+    get,
+    web::{self, Data, ServiceConfig},
+    HttpResponse, Responder,
 };
+use ctrl::{v1_scope, v1_scope_auth};
+use libsql_client::client::Client;
 use shuttle_actix_web::ShuttleActixWeb;
+use shuttle_secrets::SecretStore;
 
+mod ctrl;
+mod dao;
 mod pb;
-
-const ONE_MONTH: Duration = Duration::days(30);
+mod svc;
 
 #[get(r"/{filename:.*\..*}")]
 async fn static_file(filename: web::Path<String>) -> impl Responder {
@@ -21,56 +21,23 @@ async fn static_file(filename: web::Path<String>) -> impl Responder {
     NamedFile::open_async(path).await
 }
 
-#[post("/auth/signin")]
-async fn sign_in() -> impl Responder {
-    todo!()
-}
-
+/// TODO turso
 #[shuttle_runtime::main]
-async fn main() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
-    let secret_key = Key::generate();
-
+async fn actix_web(
+    #[shuttle_turso::Turso(addr = "{secrets.TURSO_URL}", token = "{secrets.TURSO_TOKEN}")]
+    client: Client,
+    // use secrets if you are not hardcoding your token/addr
+    #[shuttle_secrets::Secrets] secrets: SecretStore,
+) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+    let key = Key::generate();
+    let client = Data::new(client);
     let config = move |cfg: &mut ServiceConfig| {
-        cfg.service(
-            web::scope("/api/v1")
-                .wrap(IdentityMiddleware::default())
-                .wrap(
-                    SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone())
-                        .cookie_name("memos.access-token".to_owned())
-                        .cookie_secure(false)
-                        .session_lifecycle(PersistentSession::default().session_ttl(ONE_MONTH))
-                        .build(),
-                ),
-        )
-        .service(static_file)
-        .default_service(web::to(HttpResponse::NotFound));
+        cfg.app_data(client.clone())
+            .service(v1_scope_auth())
+            .service(v1_scope(key))
+            .service(static_file)
+            .default_service(web::to(HttpResponse::NotFound));
     };
 
     Ok(config.into())
-}
-
-fn v1_scope() -> Scope {
-    web::scope("/api/v1").service(sign_in)
-}
-
-fn auth_v1_scope(
-    key: Key,
-) -> Scope<
-    impl ServiceFactory<
-        ServiceRequest,
-        Config = (),
-        Response = ServiceResponse,
-        Error = actix_web::Error,
-        InitError = (),
-    >,
-> {
-    web::scope("/api/v1")
-        .wrap(IdentityMiddleware::default())
-        .wrap(
-            SessionMiddleware::builder(CookieSessionStore::default(), key)
-                .cookie_name("memos.access-token".to_owned())
-                .cookie_secure(false)
-                .session_lifecycle(PersistentSession::default().session_ttl(ONE_MONTH))
-                .build(),
-        )
 }

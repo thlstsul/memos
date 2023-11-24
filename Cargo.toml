@@ -9,16 +9,21 @@ actix-identity = "0.6.0"
 actix-protobuf = "0.10.0"
 actix-session = { version = "0.8.0", features = ["cookie-session"] }
 actix-web = "4.3.1"
+anyhow = "1.0.75"
 hex = "0.4.3"
-prost = "0.12.2"
-prost-types = "0.12.2"
-serde = "1.0.192"
-shuttle-actix-web = "0.33.0"
-shuttle-runtime = "0.33.0"
+libsql-client = "0.31.0"
+prost = "0.12.3"
+prost-types = "0.12.3"
+serde = "1.0.193"
+shuttle-actix-web = "0.34.0"
+shuttle-runtime = "0.34.0"
+shuttle-secrets = "0.34.0"
+shuttle-turso = "0.34.0"
 sm3 = "0.4.2"
+snafu = "0.7.5"
 tokio = "1.26.0"
 
 [build-dependencies]
 prost-build = "0.12.2"
 protoc-bin-vendored = "3.0.0"
-proto-builder-trait = { path = "../proto-builder-trait", default-features = false, features = ["prost"] }
+proto-builder-trait = { git = "https://github.com/thlstsul/proto-builder-trait.git", branch = "thlstsul-patch-1", default-features = false, features = ["prost"] }

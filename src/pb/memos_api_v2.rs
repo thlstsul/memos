@@ -27,30 +27,43 @@ impl RowStatus {
         }
     }
 }
+#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct User {
     /// The name of the user.
     /// Format: users/{username}
     #[prost(string, tag = "1")]
+    #[serde(rename = "username")]
     pub name: ::prost::alloc::string::String,
     #[prost(int32, tag = "2")]
     pub id: i32,
     #[prost(enumeration = "user::Role", tag = "3")]
+    #[serde(with = "crate::pb::role_serde")]
     pub role: i32,
     #[prost(string, tag = "4")]
     pub email: ::prost::alloc::string::String,
     #[prost(string, tag = "5")]
     pub nickname: ::prost::alloc::string::String,
     #[prost(string, tag = "6")]
+    #[serde(rename(serialize = "avatarUrl"))]
     pub avatar_url: ::prost::alloc::string::String,
     #[prost(string, tag = "7")]
     pub password: ::prost::alloc::string::String,
     #[prost(enumeration = "RowStatus", tag = "8")]
+    #[serde(with = "crate::pb::status_serde", rename(serialize = "rowStatus"))]
     pub row_status: i32,
     #[prost(message, optional, tag = "9")]
+    #[serde(
+        with = "crate::pb::time_serde",
+        rename(serialize = "createdTs", deserialize = "create_ts")
+    )]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "10")]
+    #[serde(
+        with = "crate::pb::time_serde",
+        rename(serialize = "updatedTs", deserialize = "update_ts")
+    )]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// Nested message and enum types in `User`.
@@ -186,7 +199,6 @@ pub struct DeleteUserAccessTokenRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteUserAccessTokenResponse {}
-#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SystemInfo {
@@ -229,12 +241,14 @@ pub struct UpdateSystemInfoResponse {
     #[prost(message, optional, tag = "1")]
     pub system_info: ::core::option::Option<SystemInfo>,
 }
+#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Memo {
     #[prost(int32, tag = "1")]
     pub id: i32,
     #[prost(enumeration = "RowStatus", tag = "2")]
+    #[serde(with = "crate::pb::status_serde")]
     pub row_status: i32,
     #[prost(int32, tag = "3")]
     pub creator_id: i32,
@@ -353,12 +367,14 @@ impl Visibility {
         }
     }
 }
+#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Resource {
     #[prost(int32, tag = "1")]
     pub id: i32,
     #[prost(message, optional, tag = "2")]
+    #[serde(with = "crate::pb::time_serde")]
     pub created_ts: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(string, tag = "3")]
     pub filename: ::prost::alloc::string::String,
@@ -467,6 +483,7 @@ pub struct DeleteTagRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteTagResponse {}
+#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Activity {
@@ -479,10 +496,12 @@ pub struct Activity {
     #[prost(string, tag = "4")]
     pub level: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "5")]
+    #[serde(with = "crate::pb::time_serde", rename = "create_ts")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "6")]
     pub payload: ::core::option::Option<ActivityPayload>,
 }
+#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActivityMemoCommentPayload {
@@ -491,12 +510,14 @@ pub struct ActivityMemoCommentPayload {
     #[prost(int32, tag = "2")]
     pub related_memo_id: i32,
 }
+#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActivityVersionUpdatePayload {
     #[prost(string, tag = "1")]
     pub version: ::prost::alloc::string::String,
 }
+#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActivityPayload {
@@ -517,6 +538,7 @@ pub struct GetActivityResponse {
     #[prost(message, optional, tag = "1")]
     pub activity: ::core::option::Option<Activity>,
 }
+#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Inbox {
@@ -533,6 +555,7 @@ pub struct Inbox {
     #[prost(enumeration = "inbox::Status", tag = "4")]
     pub status: i32,
     #[prost(message, optional, tag = "5")]
+    #[serde(with = "crate::pb::time_serde", rename = "create_ts")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(enumeration = "inbox::Type", tag = "6")]
     pub r#type: i32,
