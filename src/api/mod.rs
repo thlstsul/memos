@@ -88,3 +88,30 @@ mod role_serde {
         Ok(role.into())
     }
 }
+
+/// enmu SystemSettingKey
+mod system_setting {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    use super::memos_api_v1::system::SystemSettingKey;
+
+    pub fn serialize<S>(role: &i32, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let role = Role::try_from(*role);
+        let role = role.unwrap_or(Role::Unspecified);
+
+        serializer.serialize_str(role.as_str_name())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<i32, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let role = String::deserialize(deserializer)?;
+        let role = Role::from_str_name(&role);
+        let role = role.unwrap_or(Role::Unspecified);
+        Ok(role.into())
+    }
+}

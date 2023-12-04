@@ -1,0 +1,1 @@
+web/src/store/reducer/global.ts change mode to 'prod'

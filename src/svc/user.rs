@@ -34,6 +34,15 @@ impl UserService {
         }
     }
 
+    pub async fn host_user(&self) -> Result<User, Error> {
+        let rs = self.user_dao.host_user().await;
+        if let Err(DaoErr::Inexistent) = rs {
+            rs.context(UserNotFound { id: -1 })
+        } else {
+            rs.context(QueryUserFailed)
+        }
+    }
+
     pub async fn find_setting(&self, user_id: i32) -> Result<Vec<UserSetting>, Error> {
         self.setting_dao
             .find_setting(user_id)

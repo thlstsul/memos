@@ -6,7 +6,7 @@ use actix_web::{
 };
 use libsql_client::Client;
 
-use crate::{api::memos_api_v1::user::UserResponse, svc::user::UserService};
+use crate::{api::memos_api_v1::user::UserInfo, svc::user::UserService};
 
 #[get("/user/{id}")]
 pub async fn user_detail(
@@ -25,5 +25,5 @@ pub async fn me(client: Data<Client>, ident: Identity) -> Result<impl Responder>
     let id = ident.id()?.parse().unwrap_or_default();
     let user = svc.petch_user(id).await?;
     let settings = svc.find_setting(id).await?;
-    Ok(Json(UserResponse { user, settings }))
+    Ok(Json(UserInfo { user, settings }))
 }

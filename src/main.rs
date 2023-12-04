@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 use actix_files::NamedFile;
 use actix_web::{
     cookie::Key,
