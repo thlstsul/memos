@@ -1,29 +1,40 @@
 use std::sync::Arc;
 
-use libsql_client::{de, Client, Statement};
+use libsql_client::{Client, Statement};
 use snafu::{ResultExt, Snafu};
 
-use crate::pb::memos_api_v2::User;
+use crate::api::memos_api_v2::User;
 
+use super::Dao;
+
+#[derive(Debug)]
 pub struct UserDao {
     pub client: Arc<Client>,
 }
 
+impl Dao for UserDao {
+    fn get_client(&self) -> Arc<Client> {
+        Arc::clone(&self.client)
+    }
+}
+
 impl UserDao {
-    pub async fn get_user(&self, name: String, password_hash: String) -> Result<User, Error> {
-        let users = self
-            .client
-            .execute(Statement::with_args(
-                "select * from user where name = ? and password_hash = ?",
-                &[name, password_hash],
-            ))
-            .await
-            .context(Database)?
-            .rows
-            .iter()
-            .map(de::from_row)
-            .collect::<Result<Vec<User>, _>>()
-            .context(Deserialize)?;
+    pub async fn find_user(&self, name: String, password_hash: String) -> Result<User, Error> {
+        let stmt = Statement::with_args(
+            "select * from user where username = ? and password_hash = ?",
+            &[name, password_hash],
+        );
+        let users: Vec<User> = self.execute(stmt).await.context(Database)?;
+        if let Some(user) = users.first() {
+            Ok(user.clone())
+        } else {
+            Err(Error::Inexistent)
+        }
+    }
+
+    pub async fn petch_user(&self, id: i32) -> Result<User, Error> {
+        let stmt = Statement::with_args("select * from user where id = ?", &[id]);
+        let users: Vec<User> = self.execute(stmt).await.context(Database)?;
         if let Some(user) = users.first() {
             Ok(user.clone())
         } else {
@@ -36,8 +47,6 @@ impl UserDao {
 pub enum Error {
     #[snafu(display("Execute fail"), context(suffix(false)))]
     Database { source: anyhow::Error },
-    #[snafu(display("Deserialize fail"), context(suffix(false)))]
-    Deserialize { source: anyhow::Error },
     #[snafu(display("Data does not exsit"), context(suffix(false)))]
     Inexistent,
 }

@@ -1,3 +1,5 @@
 /target
 .shuttle-storage
 Secrets*.toml
+dumpfile.sql
+memos.db

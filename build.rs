@@ -10,7 +10,7 @@ fn main() {
     std::env::set_var("PROTOC", protoc_bin_vendored::protoc_bin_path().unwrap());
 
     Config::new()
-        .out_dir("src/pb")
+        .out_dir("src/api")
         .with_serde(
             &[
                 "memos.api.v2.User",
@@ -32,7 +32,7 @@ fn main() {
                 "memos.api.v2.Activity.create_time",
                 "memos.api.v2.Inbox.create_time",
             ],
-            &[r#"#[serde(with = "crate::pb::time_serde", rename = "create_ts")]"#],
+            &[r#"#[serde(with = "crate::api::time_serde", rename = "created_ts")]"#],
         )
         .with_field_attributes(
             &[
@@ -43,32 +43,36 @@ fn main() {
         )
         .field_attribute(
             "memos.api.v2.Memo.row_status",
-            r#"#[serde(with = "crate::pb::status_serde")]"#,
+            r#"#[serde(with = "crate::api::status_serde")]"#,
         )
         .field_attribute(
             "memos.api.v2.Resource.created_ts",
-            r#"#[serde(with = "crate::pb::time_serde")]"#,
+            r#"#[serde(with = "crate::api::time_serde")]"#,
         )
         .field_attribute("memos.api.v2.User.name", r#"#[serde(rename = "username")]"#)
         .field_attribute(
             "memos.api.v2.User.row_status",
-            r#"#[serde(with = "crate::pb::status_serde", rename(serialize = "rowStatus"))]"#,
+            r#"#[serde(with = "crate::api::status_serde", rename(serialize = "rowStatus"))]"#,
         )
         .field_attribute(
             "memos.api.v2.User.role",
-            r#"#[serde(with = "crate::pb::role_serde")]"#,
+            r#"#[serde(with = "crate::api::role_serde")]"#,
         )
         .field_attribute(
             "memos.api.v2.User.create_time", 
-            r#"#[serde(with = "crate::pb::time_serde", rename(serialize = "createdTs", deserialize = "create_ts"))]"#
+            r#"#[serde(with = "crate::api::time_serde", rename(serialize = "createdTs", deserialize = "created_ts"))]"#
         )
         .field_attribute(
             "memos.api.v2.User.update_time",
-            r#"#[serde(with = "crate::pb::time_serde", rename(serialize = "updatedTs", deserialize = "update_ts"))]"#,
+            r#"#[serde(with = "crate::api::time_serde", rename(serialize = "updatedTs", deserialize = "updated_ts"))]"#,
         )
         .field_attribute(
             "memos.api.v2.User.avatar_url",
             r#"#[serde(rename(serialize = "avatarUrl"))]"#,
+        )
+        .field_attribute(
+            "memos.api.v2.User.password",
+            r#"#[serde(skip)]"#,
         )
         .compile_protos(
             &[
@@ -85,8 +89,8 @@ fn main() {
         )
         .unwrap();
 
-    fs::remove_file("src/pb/google.api.rs").unwrap();
-    fs::rename("src/pb/memos.api.v2.rs", "src/pb/memos_api_v2.rs").unwrap();
+    fs::remove_file("src/api/google.api.rs").unwrap();
+    fs::rename("src/api/memos.api.v2.rs", "src/api/memos_api_v2.rs").unwrap();
 
     Command::new("cargo").args(["fmt"]).output().unwrap();
 }

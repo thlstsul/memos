@@ -43,8 +43,12 @@ mod status_serde {
     {
         let row_status = RowStatus::try_from(*status);
         let row_status = row_status.unwrap_or(RowStatus::Unspecified);
-
-        serializer.serialize_str(row_status.as_str_name())
+        let row_status = if row_status == RowStatus::Unspecified {
+            "NORMAL"
+        } else {
+            row_status.as_str_name()
+        };
+        serializer.serialize_str(row_status)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<i32, D::Error>

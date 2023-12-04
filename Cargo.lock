@@ -1525,6 +1525,7 @@ dependencies = [
  "actix-session",
  "actix-web",
  "anyhow",
+ "async-trait",
  "hex",
  "libsql-client",
  "prost 0.12.3",
@@ -1540,6 +1541,7 @@ dependencies = [
  "sm3",
  "snafu",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

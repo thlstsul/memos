@@ -10,6 +10,7 @@ actix-protobuf = "0.10.0"
 actix-session = { version = "0.8.0", features = ["cookie-session"] }
 actix-web = "4.3.1"
 anyhow = "1.0.75"
+async-trait = "0.1.74"
 hex = "0.4.3"
 libsql-client = "0.31.0"
 prost = "0.12.3"
@@ -22,6 +23,7 @@ shuttle-turso = "0.34.0"
 sm3 = "0.4.2"
 snafu = "0.7.5"
 tokio = "1.26.0"
+tracing = "0.1.40"
 
 [build-dependencies]
 prost-build = "0.12.2"

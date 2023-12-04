@@ -39,7 +39,7 @@ pub struct User {
     #[prost(int32, tag = "2")]
     pub id: i32,
     #[prost(enumeration = "user::Role", tag = "3")]
-    #[serde(with = "crate::pb::role_serde")]
+    #[serde(with = "crate::api::role_serde")]
     pub role: i32,
     #[prost(string, tag = "4")]
     pub email: ::prost::alloc::string::String,
@@ -49,20 +49,21 @@ pub struct User {
     #[serde(rename(serialize = "avatarUrl"))]
     pub avatar_url: ::prost::alloc::string::String,
     #[prost(string, tag = "7")]
+    #[serde(skip)]
     pub password: ::prost::alloc::string::String,
     #[prost(enumeration = "RowStatus", tag = "8")]
-    #[serde(with = "crate::pb::status_serde", rename(serialize = "rowStatus"))]
+    #[serde(with = "crate::api::status_serde", rename(serialize = "rowStatus"))]
     pub row_status: i32,
     #[prost(message, optional, tag = "9")]
     #[serde(
-        with = "crate::pb::time_serde",
-        rename(serialize = "createdTs", deserialize = "create_ts")
+        with = "crate::api::time_serde",
+        rename(serialize = "createdTs", deserialize = "created_ts")
     )]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "10")]
     #[serde(
-        with = "crate::pb::time_serde",
-        rename(serialize = "updatedTs", deserialize = "update_ts")
+        with = "crate::api::time_serde",
+        rename(serialize = "updatedTs", deserialize = "updated_ts")
     )]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
@@ -248,7 +249,7 @@ pub struct Memo {
     #[prost(int32, tag = "1")]
     pub id: i32,
     #[prost(enumeration = "RowStatus", tag = "2")]
-    #[serde(with = "crate::pb::status_serde")]
+    #[serde(with = "crate::api::status_serde")]
     pub row_status: i32,
     #[prost(int32, tag = "3")]
     pub creator_id: i32,
@@ -374,7 +375,7 @@ pub struct Resource {
     #[prost(int32, tag = "1")]
     pub id: i32,
     #[prost(message, optional, tag = "2")]
-    #[serde(with = "crate::pb::time_serde")]
+    #[serde(with = "crate::api::time_serde")]
     pub created_ts: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(string, tag = "3")]
     pub filename: ::prost::alloc::string::String,
@@ -496,7 +497,7 @@ pub struct Activity {
     #[prost(string, tag = "4")]
     pub level: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "5")]
-    #[serde(with = "crate::pb::time_serde", rename = "create_ts")]
+    #[serde(with = "crate::api::time_serde", rename = "created_ts")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "6")]
     pub payload: ::core::option::Option<ActivityPayload>,
@@ -555,7 +556,7 @@ pub struct Inbox {
     #[prost(enumeration = "inbox::Status", tag = "4")]
     pub status: i32,
     #[prost(message, optional, tag = "5")]
-    #[serde(with = "crate::pb::time_serde", rename = "create_ts")]
+    #[serde(with = "crate::api::time_serde", rename = "created_ts")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(enumeration = "inbox::Type", tag = "6")]
     pub r#type: i32,

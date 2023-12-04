@@ -5,6 +5,3 @@ pub struct SignRequest {
     pub username: String,
     pub password: String,
 }
-
-#[derive(Serialize)]
-pub struct SignResponse {}

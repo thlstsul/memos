@@ -1,20 +1,21 @@
 use std::sync::Arc;
 
-use actix_web::{http::StatusCode, ResponseError};
 use libsql_client::Client;
 use sm3::{Digest, Sm3};
 use snafu::{ResultExt, Snafu};
 
-use crate::{dao::user::UserDao, pb::memos_api_v2::User};
+use crate::{api::memos_api_v2::User, dao::user::UserDao};
 
 pub struct AuthService {
     dao: UserDao,
 }
 
 impl AuthService {
-    pub fn new(client: Arc<Client>) -> Self {
+    pub fn new(client: &Arc<Client>) -> Self {
         Self {
-            dao: UserDao { client },
+            dao: UserDao {
+                client: Arc::clone(client),
+            },
         }
     }
 
@@ -23,21 +24,15 @@ impl AuthService {
         hasher.update(password);
 
         let password_hash = hex::encode(hasher.finalize());
-        self.dao
-            .get_user(name, password_hash)
-            .await
-            .context(GetUser)
+        self.dao.find_user(name, password_hash).await.context(Login)
     }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Data does not exsit"), context(suffix(false)))]
-    GetUser { source: crate::dao::user::Error },
-}
-
-impl ResponseError for Error {
-    fn status_code(&self) -> StatusCode {
-        StatusCode::UNAUTHORIZED
-    }
+    #[snafu(
+        display("Incorrect login credentials, please try again"),
+        context(suffix(false))
+    )]
+    Login { source: crate::dao::user::Error },
 }
