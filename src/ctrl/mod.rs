@@ -14,7 +14,11 @@ use actix_web::{
     HttpResponse, ResponseError, Scope,
 };
 
-use self::{auth::*, user::*};
+use self::{
+    auth::*,
+    system::{ping, status},
+    user::*,
+};
 
 mod auth;
 mod system;
@@ -55,10 +59,22 @@ fn v1_scope() -> Scope<
     >,
 > {
     web::scope("/api/v1")
+        .service(ping)
+        .service(status)
         .service(signin)
         .service(signout)
         .service(me)
         .service(user_detail)
+}
+
+impl ResponseError for crate::svc::system::Error {
+    fn status_code(&self) -> StatusCode {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+
+    fn error_response(&self) -> HttpResponse<BoxBody> {
+        error_response(self)
+    }
 }
 
 impl ResponseError for crate::svc::auth::Error {
@@ -66,7 +82,7 @@ impl ResponseError for crate::svc::auth::Error {
         StatusCode::UNAUTHORIZED
     }
 
-    fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
+    fn error_response(&self) -> HttpResponse<BoxBody> {
         error_response(self)
     }
 }
@@ -82,7 +98,7 @@ impl ResponseError for crate::svc::user::Error {
         }
     }
 
-    fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
+    fn error_response(&self) -> HttpResponse<BoxBody> {
         error_response(self)
     }
 }

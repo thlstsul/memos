@@ -19,7 +19,6 @@ impl SystemService {
     }
 
     pub async fn list_setting(&self) -> Result<Vec<SystemSetting>, Error> {
-        // TODO naming
         self.dao.list_setting().await.context(ListSettingFailed)
     }
 }

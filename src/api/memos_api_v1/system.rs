@@ -1,15 +1,17 @@
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
 use crate::api::memos_api_v2::User;
 
 #[derive(Deserialize, Serialize)]
 pub struct SystemSetting {
+    #[serde(with = "crate::api::system_setting")]
     name: SystemSettingKey,
     value: String,
     description: String,
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize)]
 pub struct SystemStatus {
     #[serde(rename = "additionalScript")]
     pub additional_script: String,
@@ -71,24 +73,32 @@ pub enum SystemSettingKey {
     Unknow,
 }
 
-impl From<String> for SystemSettingKey {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "server-id" => SystemSettingKey::ServerId,
-            "secret-session" => SystemSettingKey::SecretSession,
-            "allow-signup" => SystemSettingKey::AllowSignup,
-            "disable-password-login" => SystemSettingKey::DisablePasswordLogin,
-            "disable-public-memos" => SystemSettingKey::DisablePublicMemos,
-            "max-upload-size-mib" => SystemSettingKey::MaxUploadSizeMiB,
-            "additional-style" => SystemSettingKey::AdditionalStyle,
-            "additional-script" => SystemSettingKey::AdditionalScript,
-            "customized-profile" => SystemSettingKey::CustomizedProfile,
-            "storage-service-id" => SystemSettingKey::StorageServiceID,
-            "local-storage-path" => SystemSettingKey::LocalStoragePath,
-            "telegram-bot-token" => SystemSettingKey::TelegramBotToken,
-            "memo-display-with-updated-ts" => SystemSettingKey::MemoDisplayWithUpdatedTs,
-            "auto-backup-interval" => SystemSettingKey::AutoBackupInterval,
-            _ => SystemSettingKey::Unknow,
+impl Default for SystemStatus {
+    fn default() -> Self {
+        Self {
+            allow_sign_up: true,
+            customized_profile: CustomizedProfile {
+                locale: "zh-Hans".to_owned(),
+                name: "memos".to_owned(),
+                appearance: "system".to_owned(),
+                ..Default::default()
+            },
+            local_storage_path: "assets/{timestamp}_{filename}".to_owned(),
+            max_upload_size_mi_b: 32,
+            profile: Profile {
+                mode: "prod".to_owned(),
+                version: "".to_owned(),
+                ..Default::default()
+            },
+            storage_service_id: 0,
+            additional_script: Default::default(),
+            additional_style: Default::default(),
+            auto_backup_interval: Default::default(),
+            db_size: Default::default(),
+            disable_password_login: Default::default(),
+            disable_public_memos: Default::default(),
+            host: Default::default(),
+            memo_display_with_updated_ts: Default::default(),
         }
     }
 }
@@ -97,30 +107,47 @@ impl From<Vec<SystemSetting>> for SystemStatus {
     fn from(value: Vec<SystemSetting>) -> Self {
         let mut rtn = SystemStatus::default();
         for i in value {
-            let key: SystemSettingKey = i.name.into();
-            match key {
-                SystemSettingKey::ServerId => todo!(),
-                SystemSettingKey::SecretSession => todo!(),
-                SystemSettingKey::AllowSignup => todo!(),
-                SystemSettingKey::DisablePasswordLogin => todo!(),
-                SystemSettingKey::DisablePublicMemos => todo!(),
-                SystemSettingKey::MaxUploadSizeMiB => todo!(),
-                SystemSettingKey::AdditionalStyle => todo!(),
-                SystemSettingKey::AdditionalScript => todo!(),
-                SystemSettingKey::CustomizedProfile => todo!(),
-                SystemSettingKey::StorageServiceID => todo!(),
-                SystemSettingKey::LocalStoragePath => todo!(),
-                SystemSettingKey::TelegramBotToken => todo!(),
-                SystemSettingKey::MemoDisplayWithUpdatedTs => todo!(),
-                SystemSettingKey::AutoBackupInterval => todo!(),
-                SystemSettingKey::Unknow => todo!(),
+            match i.name {
+                SystemSettingKey::AllowSignup => {
+                    rtn.allow_sign_up = i.value.parse().unwrap_or_default()
+                }
+                SystemSettingKey::DisablePasswordLogin => {
+                    rtn.disable_password_login = i.value.parse().unwrap_or_default()
+                }
+                SystemSettingKey::DisablePublicMemos => {
+                    rtn.disable_public_memos = i.value.parse().unwrap_or_default()
+                }
+                SystemSettingKey::MaxUploadSizeMiB => {
+                    rtn.max_upload_size_mi_b = i.value.parse().unwrap_or_default()
+                }
+                SystemSettingKey::AdditionalStyle => rtn.additional_style = i.value,
+                SystemSettingKey::AdditionalScript => rtn.additional_script = i.value,
+                SystemSettingKey::CustomizedProfile => {
+                    let c_f = serde_json::from_str::<CustomizedProfile>(&i.value);
+                    if let Ok(c_f) = c_f {
+                        rtn.customized_profile = c_f;
+                    } else {
+                        error!("{c_f:?}");
+                    }
+                }
+                SystemSettingKey::StorageServiceID => {
+                    rtn.storage_service_id = i.value.parse().unwrap_or_default()
+                }
+                SystemSettingKey::LocalStoragePath => rtn.local_storage_path = i.value,
+                SystemSettingKey::MemoDisplayWithUpdatedTs => {
+                    rtn.memo_display_with_updated_ts = i.value.parse().unwrap_or_default()
+                }
+                SystemSettingKey::AutoBackupInterval => {
+                    rtn.auto_backup_interval = i.value.parse().unwrap_or_default()
+                }
+                _ => (),
             }
         }
         rtn
     }
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct CustomizedProfile {
     appearance: String,
     description: String,

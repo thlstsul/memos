@@ -1,7 +1,14 @@
-use actix_web::{get, web::Data, Responder, Result};
+use actix_web::{
+    get,
+    web::{Data, Json},
+    Responder, Result,
+};
 use libsql_client::Client;
 
-use crate::{api::memos_api_v1::system::Host, svc::user::UserService};
+use crate::{
+    api::memos_api_v1::system::{Host, SystemStatus},
+    svc::{system::SystemService, user::UserService},
+};
 
 #[get("/ping")]
 pub async fn ping() -> impl Responder {
@@ -10,7 +17,10 @@ pub async fn ping() -> impl Responder {
 
 #[get("/status")]
 pub async fn status(client: Data<Client>) -> Result<impl Responder> {
-    let userSvc = UserService::new(&client);
-    let host: Host = userSvc.host_user().await?.into();
-    todo!()
+    let user_svc = UserService::new(&client);
+    let sys_svc = SystemService::new(&client);
+    let host: Host = user_svc.host_user().await?.into();
+    let mut status: SystemStatus = sys_svc.list_setting().await?.into();
+    status.host = host;
+    Ok(Json(status))
 }

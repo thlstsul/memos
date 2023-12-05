@@ -1534,6 +1534,7 @@ dependencies = [
  "proto-builder-trait",
  "protoc-bin-vendored",
  "serde",
+ "serde_json",
  "shuttle-actix-web",
  "shuttle-runtime",
  "shuttle-secrets",
