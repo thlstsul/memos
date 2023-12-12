@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
-use crate::api::memos_api_v2::User;
+use crate::api::v2::User;
+
+const VERSION: &str = "v0.17.1";
+const MODE: &str = "prod";
 
 #[derive(Deserialize, Serialize)]
 pub struct SystemSetting {
@@ -86,11 +89,11 @@ impl Default for SystemStatus {
             local_storage_path: "assets/{timestamp}_{filename}".to_owned(),
             max_upload_size_mi_b: 32,
             profile: Profile {
-                mode: "prod".to_owned(),
-                version: "".to_owned(),
+                mode: MODE.to_owned(),
+                version: VERSION.to_owned(),
                 ..Default::default()
             },
-            storage_service_id: 0,
+            storage_service_id: -1,
             additional_script: Default::default(),
             additional_style: Default::default(),
             auto_backup_interval: Default::default(),
@@ -168,31 +171,40 @@ pub struct Profile {
     // Driver is the database driver
     // sqlite, mysql
     #[serde(skip)]
-    driver: String,
+    _driver: String,
     // DSN points to where memos stores its own data
     #[serde(skip)]
-    dsn: String,
+    _dsn: String,
     // Addr is the binding address for server
     #[serde(skip)]
-    addr: String,
+    _addr: String,
     // Port is the binding port for server
     #[serde(skip)]
-    port: String,
+    _port: String,
     // Data is the data directory
     #[serde(skip)]
-    data: String,
+    _data: String,
     // Metric indicate the metric collection is enabled or not
     #[serde(skip)]
-    metric: bool,
+    _metric: bool,
 }
 
 #[derive(Deserialize, Serialize, Default)]
 pub struct Host {
     id: i32,
+    #[serde(rename = "createdTs")]
+    pub create_time: i32,
+
+    #[serde(rename = "updatedTs")]
+    pub update_time: i32,
 }
 
 impl From<User> for Host {
     fn from(value: User) -> Self {
-        Self { id: value.id }
+        Self {
+            id: value.id,
+            create_time: 0,
+            update_time: 0,
+        }
     }
 }

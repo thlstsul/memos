@@ -6,7 +6,7 @@ use actix_web::{
 use libsql_client::Client;
 
 use crate::{
-    api::memos_api_v1::system::{Host, SystemStatus},
+    api::v1::system::{Host, SystemStatus},
     svc::{system::SystemService, user::UserService},
 };
 

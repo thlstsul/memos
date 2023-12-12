@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 actix-files = "0.6.2"
 actix-identity = "0.6.0"
-actix-protobuf = "0.10.0"
 actix-session = { version = "0.8.0", features = ["cookie-session"] }
 actix-web = "4.3.1"
 anyhow = "1.0.75"
@@ -25,8 +24,10 @@ sm3 = "0.4.2"
 snafu = "0.7.5"
 tokio = "1.26.0"
 tracing = "0.1.40"
+tonic = "0.10.2"
+tonic-web = "0.10.2"
 
 [build-dependencies]
-prost-build = "0.12.2"
 protoc-bin-vendored = "3.0.0"
-proto-builder-trait = { git = "https://github.com/thlstsul/proto-builder-trait.git", branch = "thlstsul-patch-1", default-features = false, features = ["prost"] }
+proto-builder-trait = { git = "https://github.com/thlstsul/proto-builder-trait.git", branch = "thlstsul-patch-1", default-features = false, features = ["tonic"] }
+tonic-build = "0.10.2"

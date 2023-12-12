@@ -6,7 +6,7 @@ use actix_web::{
 };
 use libsql_client::Client;
 
-use crate::{api::memos_api_v1::user::UserInfo, svc::user::UserService};
+use crate::{api::v1::user::UserInfo, svc::user::UserService};
 
 #[get("/user/{id}")]
 pub async fn user_detail(

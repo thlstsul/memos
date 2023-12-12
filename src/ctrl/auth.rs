@@ -7,7 +7,7 @@ use actix_web::{
 };
 use libsql_client::Client;
 
-use crate::{api::memos_api_v1::sign::SignRequest, svc::auth::AuthService};
+use crate::{api::v1::sign::SignRequest, svc::auth::AuthService};
 
 #[post("/auth/signin")]
 pub async fn signin(

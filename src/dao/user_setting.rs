@@ -3,7 +3,7 @@ use std::sync::Arc;
 use libsql_client::{Client, Statement};
 use snafu::{ResultExt, Snafu};
 
-use crate::api::memos_api_v1::user_setting::UserSetting;
+use crate::api::v1::user_setting::UserSetting;
 
 use super::Dao;
 

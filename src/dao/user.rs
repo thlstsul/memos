@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use libsql_client::{Client, Statement};
 use snafu::{ResultExt, Snafu};
+use tonic::Status;
 
-use crate::api::memos_api_v2::{user, User};
+use crate::api::v2::{user, User};
 
 use super::Dao;
 
@@ -19,11 +20,19 @@ impl Dao for UserDao {
 }
 
 impl UserDao {
-    pub async fn find_user(&self, name: String, password_hash: String) -> Result<User, Error> {
-        let stmt = Statement::with_args(
-            "select * from user where username = ? and password_hash = ?",
-            &[name, password_hash],
-        );
+    pub async fn find_user(
+        &self,
+        name: String,
+        password_hash: Option<String>,
+    ) -> Result<User, Error> {
+        let stmt = if let Some(password_hash) = password_hash {
+            Statement::with_args(
+                "select * from user where username = ? and password_hash = ?",
+                &[name, password_hash],
+            )
+        } else {
+            Statement::with_args("select * from user where username = ?", &[name])
+        };
         let users: Vec<User> = self.execute(stmt).await.context(Database)?;
         if let Some(user) = users.first() {
             Ok(user.clone())
@@ -62,4 +71,13 @@ pub enum Error {
     Database { source: anyhow::Error },
     #[snafu(display("Data does not exsit"), context(suffix(false)))]
     Inexistent,
+}
+
+impl From<Error> for Status {
+    fn from(value: Error) -> Self {
+        match value {
+            Error::Inexistent => Status::not_found(value.to_string()),
+            _ => Status::internal(value.to_string()),
+        }
+    }
 }

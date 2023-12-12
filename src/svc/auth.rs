@@ -4,7 +4,7 @@ use libsql_client::Client;
 use sm3::{Digest, Sm3};
 use snafu::{ResultExt, Snafu};
 
-use crate::{api::memos_api_v2::User, dao::user::UserDao};
+use crate::{api::v2::User, dao::user::UserDao};
 
 pub struct AuthService {
     dao: UserDao,
@@ -24,7 +24,10 @@ impl AuthService {
         hasher.update(password);
 
         let password_hash = hex::encode(hasher.finalize());
-        self.dao.find_user(name, password_hash).await.context(Login)
+        self.dao
+            .find_user(name, Some(password_hash))
+            .await
+            .context(Login)
     }
 }
 

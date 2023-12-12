@@ -67,6 +67,16 @@ fn v1_scope() -> Scope<
         .service(user_detail)
 }
 
+impl ResponseError for crate::api::Error {
+    fn status_code(&self) -> StatusCode {
+        StatusCode::BAD_REQUEST
+    }
+
+    fn error_response(&self) -> HttpResponse<BoxBody> {
+        error_response(self)
+    }
+}
+
 impl ResponseError for crate::svc::system::Error {
     fn status_code(&self) -> StatusCode {
         StatusCode::INTERNAL_SERVER_ERROR

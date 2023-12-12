@@ -1,7 +1,6 @@
 use std::{fs, process::Command};
 
-use prost_build::Config;
-use proto_builder_trait::prost::BuilderAttributes;
+use proto_builder_trait::tonic::BuilderAttributes;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -9,8 +8,8 @@ fn main() {
 
     std::env::set_var("PROTOC", protoc_bin_vendored::protoc_bin_path().unwrap());
 
-    Config::new()
-        .out_dir("src/api")
+    tonic_build::configure()
+        .out_dir("src/api/v2")
         .with_serde(
             &[
                 "memos.api.v2.User",
@@ -74,7 +73,7 @@ fn main() {
             "memos.api.v2.User.password",
             r#"#[serde(skip)]"#,
         )
-        .compile_protos(
+        .compile(
             &[
                 "proto/api/v2/user_service.proto",
                 "proto/api/v2/system_service.proto",
@@ -89,8 +88,8 @@ fn main() {
         )
         .unwrap();
 
-    fs::remove_file("src/api/google.api.rs").unwrap();
-    fs::rename("src/api/memos.api.v2.rs", "src/api/memos_api_v2.rs").unwrap();
+    fs::remove_file("src/api/v2/google.api.rs").unwrap();
+    fs::rename("src/api/v2/memos.api.v2.rs", "src/api/v2/mod.rs").unwrap();
 
     Command::new("cargo").args(["fmt"]).output().unwrap();
 }

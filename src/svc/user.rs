@@ -2,11 +2,19 @@ use std::sync::Arc;
 
 use libsql_client::Client;
 use snafu::{ResultExt, Snafu};
+use tonic::{Request, Response, Status};
 
-use crate::api::memos_api_v1::user_setting::UserSetting;
+use crate::api::v1::user_setting::UserSetting;
+use crate::api::v2;
+use crate::api::v2::{
+    CreateUserAccessTokenRequest, CreateUserAccessTokenResponse, CreateUserRequest,
+    CreateUserResponse, DeleteUserAccessTokenRequest, DeleteUserAccessTokenResponse,
+    GetUserRequest, GetUserResponse, ListUserAccessTokensRequest, ListUserAccessTokensResponse,
+    UpdateUserRequest, UpdateUserResponse, User,
+};
 use crate::dao::user::Error as DaoErr;
+use crate::dao::user::UserDao;
 use crate::dao::user_setting::UserSettingDao;
-use crate::{api::memos_api_v2::User, dao::user::UserDao};
 
 pub struct UserService {
     user_dao: UserDao,
@@ -28,7 +36,9 @@ impl UserService {
     pub async fn petch_user(&self, id: i32) -> Result<User, Error> {
         let rs = self.user_dao.petch_user(id).await;
         if let Err(DaoErr::Inexistent) = rs {
-            rs.context(UserNotFound { id })
+            rs.context(UserNotFound {
+                ident: id.to_string(),
+            })
         } else {
             rs.context(QueryUserFailed)
         }
@@ -37,7 +47,9 @@ impl UserService {
     pub async fn host_user(&self) -> Result<User, Error> {
         let rs = self.user_dao.host_user().await;
         if let Err(DaoErr::Inexistent) = rs {
-            rs.context(UserNotFound { id: -1 })
+            rs.context(UserNotFound {
+                ident: String::new(),
+            })
         } else {
             rs.context(QueryUserFailed)
         }
@@ -51,11 +63,56 @@ impl UserService {
     }
 }
 
+#[tonic::async_trait]
+impl v2::user_service_server::UserService for UserService {
+    async fn get_user(
+        &self,
+        request: Request<GetUserRequest>,
+    ) -> Result<Response<GetUserResponse>, Status> {
+        let name = request.into_inner().get_name()?;
+        let user = self.user_dao.find_user(name.clone(), None).await?;
+        Ok(Response::new(user.into()))
+    }
+    async fn create_user(
+        &self,
+        request: Request<CreateUserRequest>,
+    ) -> Result<Response<CreateUserResponse>, Status> {
+        todo!()
+    }
+    async fn update_user(
+        &self,
+        request: Request<UpdateUserRequest>,
+    ) -> Result<Response<UpdateUserResponse>, Status> {
+        todo!()
+    }
+    /// ListUserAccessTokens returns a list of access tokens for a user.
+    async fn list_user_access_tokens(
+        &self,
+        request: Request<ListUserAccessTokensRequest>,
+    ) -> Result<Response<ListUserAccessTokensResponse>, Status> {
+        todo!()
+    }
+    /// CreateUserAccessToken creates a new access token for a user.
+    async fn create_user_access_token(
+        &self,
+        request: Request<CreateUserAccessTokenRequest>,
+    ) -> Result<Response<CreateUserAccessTokenResponse>, Status> {
+        todo!()
+    }
+    /// DeleteUserAccessToken deletes an access token for a user.
+    async fn delete_user_access_token(
+        &self,
+        request: Request<DeleteUserAccessTokenRequest>,
+    ) -> Result<Response<DeleteUserAccessTokenResponse>, Status> {
+        todo!()
+    }
+}
+
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("User not found: {id}"), context(suffix(false)))]
+    #[snafu(display("User not found: {ident}"), context(suffix(false)))]
     UserNotFound {
-        id: i32,
+        ident: String,
         source: crate::dao::user::Error,
     },
     #[snafu(display("Failed to find user"), context(suffix(false)))]

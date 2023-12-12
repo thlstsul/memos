@@ -1,4 +1,4 @@
-use crate::api::memos_api_v2::User;
+use crate::api::v2::User;
 
 use super::user_setting::UserSetting;
 

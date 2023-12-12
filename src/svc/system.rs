@@ -3,7 +3,7 @@ use std::sync::Arc;
 use libsql_client::Client;
 use snafu::{ResultExt, Snafu};
 
-use crate::{api::memos_api_v1::system::SystemSetting, dao::system_setting::SystemSettingDao};
+use crate::{api::v1::system::SystemSetting, dao::system_setting::SystemSettingDao};
 
 pub struct SystemService {
     dao: SystemSettingDao,

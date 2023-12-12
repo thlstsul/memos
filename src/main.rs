@@ -17,10 +17,15 @@ mod ctrl;
 mod dao;
 mod svc;
 
-#[get(r"/{filename:.*\..*}")]
+#[get(r"/{filename:.*\.html|.*\.js|.*\.json|.*\.css|.*\.woff2|.*\.woff|.*\.ttf|.*\.png|.*\.webp}")]
 async fn static_file(filename: web::Path<String>) -> impl Responder {
     let path = format!("{}/{}", "web/dist", filename);
     NamedFile::open_async(path).await
+}
+
+#[get("/")]
+async fn index() -> impl Responder {
+    NamedFile::open_async("web/dist/index.html").await
 }
 
 #[shuttle_runtime::main]
@@ -33,7 +38,7 @@ async fn actix_web(
     let client = Data::new(client);
     let config = move |cfg: &mut ServiceConfig| {
         cfg.app_data(client.clone())
-            .service(web::redirect("/", "/index.html"))
+            .service(index)
             .service(static_file)
             .service(root(key))
             .default_service(web::to(HttpResponse::NotFound));
