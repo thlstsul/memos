@@ -6,4 +6,4 @@
 	url = https://github.com/thlstsul/memos-proto.git
 [submodule "googleapis"]
 	path = googleapis
-	url = https://github.com/googleapis/googleapis.git
+	url = https://github.com/thlstsul/googleapis.git
