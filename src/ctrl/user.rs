@@ -23,7 +23,6 @@ pub async fn user_detail(
 pub async fn me(client: Data<Client>, ident: Identity) -> Result<impl Responder> {
     let svc = UserService::new(&client);
     let id = ident.id()?.parse().unwrap_or_default();
-    let user = svc.petch_user(id).await?;
-    let settings = svc.find_setting(id).await?;
+    let (user, settings) = tokio::try_join!(svc.petch_user(id), svc.find_setting(id))?;
     Ok(Json(UserInfo { user, settings }))
 }

@@ -1,3 +1,4 @@
+pub mod memo;
 pub mod sign;
 pub mod system;
 pub mod user;

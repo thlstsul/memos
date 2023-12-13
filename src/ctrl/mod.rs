@@ -24,6 +24,7 @@ use self::{
 };
 
 mod auth;
+mod memo;
 mod system;
 mod user;
 

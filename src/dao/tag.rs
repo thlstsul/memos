@@ -20,7 +20,7 @@ impl Dao for TagDao {
 
 impl TagDao {
     pub async fn list_tags(&self, creator: String) -> Result<Vec<Tag>, Error> {
-        let stmt = Statement::with_args("select a.username creator, b.name from user a, tag b where a.username = ? and a.id = b.creator_id", &[creator]);
+        let stmt = Statement::with_args("select user.username as creator, tag.name from user, tag where user.username = ? and user.id = tag.creator_id", &[creator]);
         self.execute(stmt).await.context(Database)
     }
 }

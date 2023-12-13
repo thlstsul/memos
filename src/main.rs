@@ -15,7 +15,10 @@ use tokio::net::TcpListener;
 use tonic::transport::{server::TcpIncoming, Server};
 use url::Url;
 
-use crate::{api::v2::user_service_server::UserServiceServer, svc::user::UserService};
+use crate::{
+    api::v2::user_service_server::UserServiceServer,
+    svc::{user::UserService, ServiceFactory},
+};
 
 mod api;
 mod ctrl;
@@ -45,14 +48,14 @@ async fn actix_web(
     let listener = TcpListener::bind("0.0.0.0:0").await.unwrap();
     let forward_socket_addr = listener.local_addr().unwrap();
     tokio::spawn(async move {
-        let user = UserService::new(&clinet_copy);
-        let user = UserServiceServer::new(user);
-        let user = tonic_web::enable(user);
+        let user = ServiceFactory::get_user(&clinet_copy);
+        let tag = ServiceFactory::get_tag(&clinet_copy);
 
         let incoming = TcpIncoming::from_listener(listener, true, None).unwrap();
         Server::builder()
             .accept_http1(true)
             .add_service(user)
+            .add_service(tag)
             .serve_with_incoming(incoming)
             .await
             .unwrap();
