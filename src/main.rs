@@ -5,7 +5,7 @@ use actix_web::{
     cookie::Key,
     get,
     web::{self, Data, ServiceConfig},
-    HttpResponse, Responder,
+    Responder,
 };
 use ctrl::root;
 use libsql_client::client::Client;

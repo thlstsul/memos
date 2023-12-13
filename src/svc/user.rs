@@ -5,12 +5,11 @@ use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
 
 use crate::api::v1::user_setting::UserSetting;
-use crate::api::v2;
 use crate::api::v2::{
-    CreateUserAccessTokenRequest, CreateUserAccessTokenResponse, CreateUserRequest,
-    CreateUserResponse, DeleteUserAccessTokenRequest, DeleteUserAccessTokenResponse,
-    GetUserRequest, GetUserResponse, ListUserAccessTokensRequest, ListUserAccessTokensResponse,
-    UpdateUserRequest, UpdateUserResponse, User,
+    user_service_server, CreateUserAccessTokenRequest, CreateUserAccessTokenResponse,
+    CreateUserRequest, CreateUserResponse, DeleteUserAccessTokenRequest,
+    DeleteUserAccessTokenResponse, GetUserRequest, GetUserResponse, ListUserAccessTokensRequest,
+    ListUserAccessTokensResponse, UpdateUserRequest, UpdateUserResponse, User,
 };
 use crate::dao::user::Error as DaoErr;
 use crate::dao::user::UserDao;
@@ -64,7 +63,7 @@ impl UserService {
 }
 
 #[tonic::async_trait]
-impl v2::user_service_server::UserService for UserService {
+impl user_service_server::UserService for UserService {
     async fn get_user(
         &self,
         request: Request<GetUserRequest>,

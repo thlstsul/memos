@@ -28,6 +28,6 @@ impl SystemSettingDao {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Execute fail"), context(suffix(false)))]
+    #[snafu(display("Execute failed"), context(suffix(false)))]
     Database { source: anyhow::Error },
 }

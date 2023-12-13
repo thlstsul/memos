@@ -1,7 +1,9 @@
 use snafu::{ensure, ResultExt, Snafu};
 use tonic::Status;
 
-use self::v2::{GetUserRequest, GetUserResponse, Inbox, User};
+use self::v2::{
+    GetUserRequest, GetUserResponse, Inbox, ListTagsRequest, ListTagsResponse, Tag, User,
+};
 
 pub mod v1;
 pub mod v2;
@@ -20,6 +22,22 @@ impl From<User> for GetUserResponse {
         let mut user = value;
         user.name = format!("{}/{}", USER_NAME_PREFIX, user.name);
         Self { user: Some(user) }
+    }
+}
+
+impl ListTagsRequest {
+    pub fn get_creator(&self) -> Result<String, Error> {
+        get_name_parent_token(self.creator.clone(), USER_NAME_PREFIX)
+    }
+}
+
+impl From<Vec<Tag>> for ListTagsResponse {
+    fn from(tags: Vec<Tag>) -> Self {
+        let mut tags = tags;
+        tags.iter_mut()
+            .for_each(|i| i.creator = format!("{}/{}", USER_NAME_PREFIX, i.creator));
+
+        Self { tags }
     }
 }
 
