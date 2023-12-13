@@ -43,18 +43,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-grpc-web"
-version = "0.1.0"
-source = "git+https://github.com/thlstsul/actix-grpc-web.git#332135ec2a264e9f67f8720659ec820895946286"
-dependencies = [
- "actix-web",
- "derive_more",
- "futures-util",
- "prost 0.12.3",
- "tracing",
-]
-
-[[package]]
 name = "actix-http"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -184,6 +172,26 @@ dependencies = [
  "derive_more",
  "serde",
  "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "actix-tls"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72616e7fbec0aa99c6f3164677fa48ff5a60036d0799c98cab894a44f3e0efc3"
+dependencies = [
+ "actix-rt",
+ "actix-service",
+ "actix-utils",
+ "futures-core",
+ "http",
+ "impl-more",
+ "pin-project-lite",
+ "rustls 0.21.10",
+ "rustls-webpki",
+ "tokio",
+ "tokio-util",
  "tracing",
 ]
 
@@ -413,6 +421,39 @@ name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
+
+[[package]]
+name = "awc"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fa3c705a9c7917ac0f41c0757a0a747b43bbc29b0b364b081bd7c5fc67fb223"
+dependencies = [
+ "actix-codec",
+ "actix-http",
+ "actix-rt",
+ "actix-service",
+ "actix-tls",
+ "actix-utils",
+ "base64 0.21.5",
+ "bytes",
+ "cfg-if",
+ "cookie",
+ "derive_more",
+ "futures-core",
+ "futures-util",
+ "h2",
+ "http",
+ "itoa",
+ "log",
+ "mime",
+ "percent-encoding",
+ "pin-project-lite",
+ "rand",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "tokio",
+]
 
 [[package]]
 name = "axum"
@@ -1299,6 +1340,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "impl-more"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "206ca75c9c03ba3d4ace2460e57b189f39f43de612c2f85836e65c929701bb2d"
+
+[[package]]
 name = "indexmap"
 version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1511,12 +1558,12 @@ name = "memos"
 version = "0.1.0"
 dependencies = [
  "actix-files",
- "actix-grpc-web",
  "actix-identity",
  "actix-session",
  "actix-web",
  "anyhow",
  "async-trait",
+ "awc",
  "hex",
  "libsql-client",
  "prost 0.12.3",
@@ -1536,6 +1583,7 @@ dependencies = [
  "tonic-build",
  "tonic-web",
  "tracing",
+ "url",
 ]
 
 [[package]]
@@ -1669,6 +1717,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "opentelemetry-appender-tracing"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12c4bd073648dae8ac45cfc81588d74b3dc5f334119ac08567ddcbfe16f2d809"
+dependencies = [
+ "once_cell",
+ "opentelemetry",
+ "opentelemetry_sdk",
+ "tracing",
+ "tracing-core",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "opentelemetry-http"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1737,6 +1799,7 @@ dependencies = [
  "ordered-float",
  "percent-encoding",
  "rand",
+ "serde_json",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -1788,9 +1851,9 @@ checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
 name = "pem"
-version = "3.0.2"
+version = "3.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3163d2912b7c3b52d651a055f2c7eec9ba5cd22d26ef75b8dd3a59980b185923"
+checksum = "1b8fcc794035347fb64beda2d3b462595dd2753e3f268d89c5aae77e8cf2c310"
 dependencies = [
  "base64 0.21.5",
  "serde",
@@ -2493,9 +2556,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-actix-web"
-version = "0.34.1"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25255071b9637e48ab34024b5729ee8b49932a3eac291a09dc0fa1a25fe66b5a"
+checksum = "b277e3828b52f2c159906b59833167de31c6cb86a62f5a7b613f7acafe72ce41"
 dependencies = [
  "actix-web",
  "num_cpus",
@@ -2504,9 +2567,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-codegen"
-version = "0.34.1"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99f584e6f02d513abb864d5a33fb24531318080385eeac6160a9ccf2988b31bb"
+checksum = "dd0aa40ce33e1b1aec9c3842ce309c2de14ee366fc94d90950881f7043005c99"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -2516,9 +2579,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-common"
-version = "0.34.1"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0406c689a1edb0d12bd813d2b245619752ce0ad6122dad35c3f08ffccd2a40c"
+checksum = "ad586504f3453786f8994e92bb1d6497eb27f89ce5c308eedb56c62b6d698def"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2533,6 +2596,7 @@ dependencies = [
  "hyper",
  "jsonwebtoken",
  "opentelemetry",
+ "opentelemetry-appender-tracing",
  "opentelemetry-http",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
@@ -2548,6 +2612,7 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
+ "tracing-core",
  "tracing-opentelemetry",
  "tracing-subscriber",
  "ttl_cache",
@@ -2558,9 +2623,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-proto"
-version = "0.34.1"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa63942eb5dfbc6370a82611f40254b9af28f323985d3c01be400baf729c1104"
+checksum = "007fee4c4a09cb60e2e6af3136c80ccae49e45d421677bd861815f1d264d65a1"
 dependencies = [
  "futures-core",
  "prost 0.12.3",
@@ -2571,9 +2636,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-runtime"
-version = "0.34.1"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b8c49e755478841ae03351c3a4e7af99c684ce9757e5ddb0071d1ac42d33937"
+checksum = "69d171a6a029eccc0c7a56a8a6de693a4d29278656a0f893207a6bf40f3a8804"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2597,9 +2662,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-secrets"
-version = "0.34.1"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0e0269b915526626e515996f77f68b433defc3be35221da87ed3eea4dce25a4"
+checksum = "784e6313504de8df71a2c2e0e541ae6da0f49ba150de34ea0520108dd961aa2a"
 dependencies = [
  "async-trait",
  "secrecy",
@@ -2609,9 +2674,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-service"
-version = "0.34.1"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c89dbd86fb79a791587317252daac5aa5026ed6fd73ce9f458acd30245bb13"
+checksum = "a83831eaa185d65300efc0e3bf41e8b5a80bc2dfd2d26228cf20124770192e01"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2623,9 +2688,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-turso"
-version = "0.34.1"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9591e07edbc039bb274e9152c29088a051745be295f5a683c01e0954e1b984d3"
+checksum = "b6288833dd77b6d2c904c92d236fd7e28c45c6e81643fa083df973bea7ea6f99"
 dependencies = [
  "async-trait",
  "dunce",
@@ -3279,6 +3344,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-serde"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc6b213177105856957181934e4920de57730fc69bf42c37ee5bb664d406d9e1"
+dependencies = [
+ "serde",
+ "tracing-core",
+]
+
+[[package]]
 name = "tracing-subscriber"
 version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3288,12 +3363,15 @@ dependencies = [
  "nu-ansi-term",
  "once_cell",
  "regex",
+ "serde",
+ "serde_json",
  "sharded-slab",
  "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
  "tracing-log",
+ "tracing-serde",
 ]
 
 [[package]]

@@ -1,4 +1,5 @@
 use snafu::{ensure, ResultExt, Snafu};
+use tonic::Status;
 
 use self::v2::{GetUserRequest, GetUserResponse, Inbox, User};
 
@@ -34,8 +35,8 @@ impl Inbox {
 
 fn get_name_parent_token(name: String, token: &str) -> Result<String, Error> {
     let parts: Vec<&str> = name.split("/").collect();
-    ensure!(parts.len() != 2, InvalidRequest { name });
-    ensure!(token != parts[0], InvalidPrefix { name });
+    ensure!(parts.len() == 2, InvalidRequest { name });
+    ensure!(token == parts[0], InvalidPrefix { name });
     Ok(parts[1].to_owned())
 }
 
@@ -50,6 +51,12 @@ pub enum Error {
         name: String,
         source: std::num::ParseIntError,
     },
+}
+
+impl From<Error> for Status {
+    fn from(value: Error) -> Self {
+        Status::invalid_argument(value.to_string())
+    }
 }
 
 /// prost_types::Timestamp serialize
