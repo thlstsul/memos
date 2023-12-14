@@ -17,15 +17,13 @@ pub mod user;
 pub struct ServiceFactory;
 
 impl ServiceFactory {
-    pub fn get_user(client: &Arc<Client>) -> CorsGrpcWeb<UserServiceServer<UserService>> {
+    pub fn get_user(client: &Arc<Client>) -> UserServiceServer<UserService> {
         let user = UserService::new(client);
-        let user = UserServiceServer::new(user);
-        tonic_web::enable(user)
+        UserServiceServer::new(user)
     }
 
-    pub fn get_tag(client: &Arc<Client>) -> CorsGrpcWeb<TagServiceServer<TagService>> {
+    pub fn get_tag(client: &Arc<Client>) -> TagServiceServer<TagService> {
         let tag = TagService::new(client);
-        let tag = TagServiceServer::new(tag);
-        tonic_web::enable(tag)
+        TagServiceServer::new(tag)
     }
 }

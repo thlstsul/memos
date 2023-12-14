@@ -13,6 +13,7 @@ use shuttle_actix_web::ShuttleActixWeb;
 use shuttle_secrets::SecretStore;
 use tokio::net::TcpListener;
 use tonic::transport::{server::TcpIncoming, Server};
+use tonic_web::GrpcWebLayer;
 use url::Url;
 
 use crate::svc::ServiceFactory;
@@ -51,6 +52,7 @@ async fn actix_web(
         let incoming = TcpIncoming::from_listener(listener, true, None).unwrap();
         Server::builder()
             .accept_http1(true)
+            .layer(GrpcWebLayer::new())
             .add_service(user)
             .add_service(tag)
             .serve_with_incoming(incoming)
