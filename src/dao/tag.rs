@@ -23,6 +23,15 @@ impl TagDao {
         let stmt = Statement::with_args("select user.username as creator, tag.name from user, tag where user.username = ? and user.id = tag.creator_id", &[creator]);
         self.execute(stmt).await.context(Database)
     }
+
+    pub async fn delete_tag(&self, tag: Tag) -> Result<(), Error> {
+        let stmt = Statement::with_args(
+            "delete from tag where creator_id = ( select id from user where username = ? limit 1 ) and name = ?",
+            &[tag.creator, tag.name],
+        );
+        self.client.execute(stmt).await.context(Database)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Snafu)]

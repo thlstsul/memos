@@ -43,7 +43,11 @@ impl tag_service_server::TagService for TagService {
         &self,
         request: Request<DeleteTagRequest>,
     ) -> Result<Response<DeleteTagResponse>, Status> {
-        todo!()
+        if let Some(tag) = request.into_inner().tag {
+            self.dao.delete_tag(tag).await?;
+        }
+
+        Ok(Response::new(DeleteTagResponse {}))
     }
 }
 

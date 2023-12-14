@@ -15,10 +15,7 @@ use tokio::net::TcpListener;
 use tonic::transport::{server::TcpIncoming, Server};
 use url::Url;
 
-use crate::{
-    api::v2::user_service_server::UserServiceServer,
-    svc::{user::UserService, ServiceFactory},
-};
+use crate::svc::ServiceFactory;
 
 mod api;
 mod ctrl;
