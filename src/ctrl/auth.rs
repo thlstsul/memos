@@ -1,10 +1,3 @@
-use actix_identity::Identity;
-use actix_web::{
-    http::StatusCode,
-    post,
-    web::{Data, Json, Redirect},
-    HttpMessage, HttpRequest, Responder, Result,
-};
 use libsql_client::Client;
 
 use crate::{api::v1::sign::SignRequest, svc::auth::AuthService};

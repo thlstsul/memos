@@ -1,0 +1,11 @@
+{
+  "binaries": [
+    {
+      "name": "memos",
+      "src_path": "/root/memos/src/main.rs"
+    }
+  ],
+  "examples": [],
+  "integration_tests": [],
+  "unit_tests": []
+}

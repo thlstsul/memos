@@ -3,3 +3,4 @@
 Secrets*.toml
 dumpfile.sql
 memos.db
+/firedbg
