@@ -9,11 +9,16 @@ use hyper::HeaderMap;
 use hyper::{body::HttpBody, Body, Request, Response};
 use pin_project::pin_project;
 use shuttle_runtime::{CustomError, Error};
+use tonic_web::GrpcWebLayer;
+use tower::layer::util::{Identity, Stack};
 use tower::Service;
+
+use crate::ctrl::auth::AuthLayer;
 
 pub struct GrpcWebService {
     pub axum_router: axum::Router,
-    pub tonic_router: tonic::transport::server::Router,
+    pub tonic_router:
+        tonic::transport::server::Router<Stack<AuthLayer, Stack<GrpcWebLayer, Identity>>>,
 }
 
 #[shuttle_runtime::async_trait]
@@ -24,9 +29,10 @@ impl shuttle_runtime::Service for GrpcWebService {
         let axum_make_service = self.axum_router.into_make_service();
         let grpc_service = self.tonic_router.into_service();
         let hybrid_make_service = hybrid(axum_make_service, grpc_service);
-        let server = hyper::Server::bind(&addr).serve(hybrid_make_service);
 
-        server.await.map_err(CustomError::new)
+        let server = hyper::Server::bind(&addr).serve(hybrid_make_service);
+        server.await.map_err(CustomError::new)?;
+        Ok(())
     }
 }
 
