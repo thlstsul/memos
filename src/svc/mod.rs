@@ -1,15 +1,17 @@
 use std::sync::Arc;
 
 use libsql_client::Client;
-use tonic_web::CorsGrpcWeb;
+use snafu::Snafu;
+use tonic::{Request, Status};
 
-use crate::api::v2::{
-    tag_service_server::TagServiceServer, user_service_server::UserServiceServer,
+use crate::{
+    api::v2::{tag_service_server::TagServiceServer, user_service_server::UserServiceServer, User},
+    ctrl::auth::AuthSession,
 };
 
 use self::{tag::TagService, user::UserService};
 
-pub mod auth;
+pub mod memo;
 pub mod system;
 pub mod tag;
 pub mod user;
@@ -25,5 +27,28 @@ impl ServiceFactory {
     pub fn get_tag(client: &Arc<Client>) -> TagServiceServer<TagService> {
         let tag = TagService::new(client);
         TagServiceServer::new(tag)
+    }
+}
+
+pub fn get_current_user<'a, T>(req: &'a Request<T>) -> Result<&'a User, Error> {
+    if let Some(AuthSession {
+        user: Some(user), ..
+    }) = req.extensions().get::<AuthSession>()
+    {
+        Ok(user)
+    } else {
+        Err(Error::CurrentUser)
+    }
+}
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Failed to get current user"), context(suffix(false)))]
+    CurrentUser,
+}
+
+impl From<Error> for Status {
+    fn from(value: Error) -> Self {
+        Status::internal(value.to_string())
     }
 }

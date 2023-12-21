@@ -1,18 +1,9 @@
 use serde::{Deserialize, Serialize};
-use tracing::error;
 
 use crate::api::v2::User;
 
 const VERSION: &str = "v0.17.1";
 const MODE: &str = "prod";
-
-#[derive(Deserialize, Serialize)]
-pub struct SystemSetting {
-    #[serde(with = "crate::api::system_setting")]
-    name: SystemSettingKey,
-    value: String,
-    description: String,
-}
 
 #[derive(Deserialize, Serialize)]
 pub struct SystemStatus {
@@ -44,38 +35,6 @@ pub struct SystemStatus {
     pub storage_service_id: i32,
 }
 
-pub enum SystemSettingKey {
-    // the name of server id.
-    ServerId,
-    // the name of secret session.
-    SecretSession,
-    // the name of allow signup setting.
-    AllowSignup,
-    // the name of disable password login setting.
-    DisablePasswordLogin,
-    // the name of disable public memos setting.
-    DisablePublicMemos,
-    // the name of max upload size setting.
-    MaxUploadSizeMiB,
-    // the name of additional style.
-    AdditionalStyle,
-    // the name of additional script.
-    AdditionalScript,
-    // the name of customized server profile.
-    CustomizedProfile,
-    // the name of storage service ID.
-    StorageServiceID,
-    // the name of local storage path.
-    LocalStoragePath,
-    // the name of Telegram Bot Token.
-    TelegramBotToken,
-    // the name of memo display with updated ts.
-    MemoDisplayWithUpdatedTs,
-    // the name of auto backup interval as seconds.
-    AutoBackupInterval,
-    Unknow,
-}
-
 impl Default for SystemStatus {
     fn default() -> Self {
         Self {
@@ -103,50 +62,6 @@ impl Default for SystemStatus {
             host: Default::default(),
             memo_display_with_updated_ts: Default::default(),
         }
-    }
-}
-
-impl From<Vec<SystemSetting>> for SystemStatus {
-    fn from(value: Vec<SystemSetting>) -> Self {
-        let mut rtn = SystemStatus::default();
-        for i in value {
-            match i.name {
-                SystemSettingKey::AllowSignup => {
-                    rtn.allow_sign_up = i.value.parse().unwrap_or_default()
-                }
-                SystemSettingKey::DisablePasswordLogin => {
-                    rtn.disable_password_login = i.value.parse().unwrap_or_default()
-                }
-                SystemSettingKey::DisablePublicMemos => {
-                    rtn.disable_public_memos = i.value.parse().unwrap_or_default()
-                }
-                SystemSettingKey::MaxUploadSizeMiB => {
-                    rtn.max_upload_size_mi_b = i.value.parse().unwrap_or_default()
-                }
-                SystemSettingKey::AdditionalStyle => rtn.additional_style = i.value,
-                SystemSettingKey::AdditionalScript => rtn.additional_script = i.value,
-                SystemSettingKey::CustomizedProfile => {
-                    let c_f = serde_json::from_str::<CustomizedProfile>(&i.value);
-                    if let Ok(c_f) = c_f {
-                        rtn.customized_profile = c_f;
-                    } else {
-                        error!("{c_f:?}");
-                    }
-                }
-                SystemSettingKey::StorageServiceID => {
-                    rtn.storage_service_id = i.value.parse().unwrap_or_default()
-                }
-                SystemSettingKey::LocalStoragePath => rtn.local_storage_path = i.value,
-                SystemSettingKey::MemoDisplayWithUpdatedTs => {
-                    rtn.memo_display_with_updated_ts = i.value.parse().unwrap_or_default()
-                }
-                SystemSettingKey::AutoBackupInterval => {
-                    rtn.auto_backup_interval = i.value.parse().unwrap_or_default()
-                }
-                _ => (),
-            }
-        }
-        rtn
     }
 }
 

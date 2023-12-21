@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use libsql_client::Client;
+use libsql_client::{Client, Statement};
 use snafu::{ResultExt, Snafu};
 
-use crate::api::v1::system::SystemSetting;
+use crate::api::system::{SystemSetting, SystemSettingKey};
 
 use super::Dao;
 
@@ -24,10 +24,24 @@ impl SystemSettingDao {
             .await
             .context(Database)
     }
+
+    pub async fn find_setting(
+        &self,
+        key: SystemSettingKey,
+    ) -> Result<Option<SystemSetting>, Error> {
+        let stmt = Statement::with_args(
+            "select * from system_setting where name = ?",
+            &[key.to_string()],
+        );
+        let settings: Vec<SystemSetting> = self.execute(stmt).await.context(Database)?;
+        Ok(settings.first().cloned())
+    }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Execute failed"), context(suffix(false)))]
     Database { source: anyhow::Error },
+    #[snafu(display("Data does not exsit"), context(suffix(false)))]
+    Inexistent,
 }

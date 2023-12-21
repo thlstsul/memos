@@ -8,7 +8,7 @@ use crate::api::v2::{user, User};
 
 use super::Dao;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UserDao {
     pub client: Arc<Client>,
 }

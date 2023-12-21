@@ -1,8 +1,6 @@
-use actix_web::{
-    get,
-    web::{Data, Json},
-    Responder, Result,
-};
+use std::sync::Arc;
+
+use axum::{extract::State, response::IntoResponse, response::Result, routing::get, Json, Router};
 use libsql_client::Client;
 
 use crate::{
@@ -10,13 +8,17 @@ use crate::{
     svc::{system::SystemService, user::UserService},
 };
 
-#[get("/ping")]
-pub async fn ping() -> impl Responder {
+pub fn router() -> Router<Arc<Client>> {
+    Router::new()
+        .route("/ping", get(ping))
+        .route("/status", get(status))
+}
+
+async fn ping() -> impl IntoResponse {
     "true"
 }
 
-#[get("/status")]
-pub async fn status(client: Data<Client>) -> Result<impl Responder> {
+async fn status(client: State<Arc<Client>>) -> Result<Json<SystemStatus>> {
     let user_svc = UserService::new(&client);
     let sys_svc = SystemService::new(&client);
     let host: Host = user_svc.host_user().await?.into();

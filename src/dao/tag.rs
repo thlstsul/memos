@@ -32,6 +32,23 @@ impl TagDao {
         self.client.execute(stmt).await.context(Database)?;
         Ok(())
     }
+
+    pub async fn upsert_tag(&self, name: String, creator_id: i32) -> Result<(), Error> {
+        let stmt = Statement::with_args(
+            r"
+            INSERT INTO tag (
+                name, creator_id
+            )
+            VALUES (?, ?)
+            ON CONFLICT(name, creator_id) DO UPDATE 
+            SET
+                name = EXCLUDED.name
+        ",
+            &[name, creator_id.to_string()],
+        );
+        self.client.execute(stmt).await.context(Database)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Snafu)]

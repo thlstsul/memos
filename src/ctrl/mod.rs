@@ -1,84 +1,61 @@
-use std::fmt::Write;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use hyper::header;
 
-use self::{
-    auth::*,
-    system::{ping, status},
-    user::*,
-};
+pub mod auth;
+pub mod memo;
+pub mod system;
+pub mod user;
 
-mod auth;
-mod memo;
-mod system;
-mod user;
-
-impl ResponseError for crate::api::Error {
-    fn status_code(&self) -> StatusCode {
-        StatusCode::BAD_REQUEST
-    }
-
-    fn error_response(&self) -> HttpResponse<BoxBody> {
-        error_response(self)
+impl IntoResponse for crate::api::Error {
+    fn into_response(self) -> Response {
+        error_response(StatusCode::BAD_REQUEST, self)
     }
 }
 
-impl ResponseError for crate::svc::system::Error {
-    fn status_code(&self) -> StatusCode {
-        StatusCode::INTERNAL_SERVER_ERROR
-    }
-
-    fn error_response(&self) -> HttpResponse<BoxBody> {
-        error_response(self)
+impl IntoResponse for memo::Error {
+    fn into_response(self) -> Response {
+        error_response(StatusCode::BAD_REQUEST, self)
     }
 }
 
-impl ResponseError for crate::svc::auth::Error {
-    fn status_code(&self) -> StatusCode {
-        StatusCode::UNAUTHORIZED
-    }
-
-    fn error_response(&self) -> HttpResponse<BoxBody> {
-        error_response(self)
+impl IntoResponse for crate::svc::system::Error {
+    fn into_response(self) -> Response {
+        error_response(StatusCode::INTERNAL_SERVER_ERROR, self)
     }
 }
 
-impl ResponseError for crate::svc::user::Error {
-    fn status_code(&self) -> StatusCode {
-        match self {
+impl IntoResponse for crate::svc::memo::Error {
+    fn into_response(self) -> Response {
+        error_response(StatusCode::INTERNAL_SERVER_ERROR, self)
+    }
+}
+
+impl IntoResponse for crate::svc::user::Error {
+    fn into_response(self) -> Response {
+        let status_code = match self {
+            crate::svc::user::Error::Login { .. } => StatusCode::UNAUTHORIZED,
             crate::svc::user::Error::UserNotFound { .. } => StatusCode::NOT_FOUND,
             crate::svc::user::Error::QueryUserFailed { .. }
             | crate::svc::user::Error::QuerySettingFailed { .. } => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
-        }
-    }
-
-    fn error_response(&self) -> HttpResponse<BoxBody> {
-        error_response(self)
+        };
+        error_response(status_code, self)
     }
 }
 
-pub fn error_response<T>(slf: &T) -> HttpResponse<BoxBody>
+pub fn error_response<T>(status_code: StatusCode, slf: T) -> Response
 where
-    T: ResponseError,
+    T: std::error::Error,
 {
-    let mut res = HttpResponse::new(slf.status_code());
-
-    let mut buf = BytesMut::new();
-    let _ = write!(
-        &mut buf,
-        r#"{{
-        "error": "code={}, message={}",
-        "message": "{}"
-        }}"#,
-        slf.status_code(),
-        slf,
-        slf
-    );
-
-    res.headers_mut().insert(
-        header::CONTENT_TYPE,
-        HeaderValue::from_static("text/json; charset=utf-8"),
-    );
-
-    res.set_body(BoxBody::new(buf))
+    (
+        status_code,
+        [(header::CONTENT_TYPE, "text/json; charset=utf-8")],
+        format!(
+            r#"{{"error": "code={}, message={}", "message": "{}"}}"#,
+            status_code, slf, slf
+        ),
+    )
+        .into_response()
 }

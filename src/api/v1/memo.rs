@@ -1,16 +1,17 @@
 use serde::Deserialize;
 
-#[derive(Deserialize)]
-pub struct GetMemoRequest {
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListMemoRequest {
     #[serde(rename = "creatorId")]
     pub creator_id: Option<i32>,
     #[serde(rename = "creatorUsername")]
     pub creator_username: Option<String>,
     #[serde(rename = "rowStatus")]
     pub row_status: Option<String>,
-    pub pinned: Option<bool>,
+    #[serde(default)]
+    pub pinned: bool,
     pub tag: Option<String>,
     pub content: Option<String>,
-    pub limit: i32,
-    pub offset: Option<i32>,
+    pub limit: Option<isize>,
+    pub offset: Option<isize>,
 }

@@ -5,9 +5,10 @@ use tonic::{Request, Response, Status};
 
 use crate::api::v2::{
     tag_service_server, DeleteTagRequest, DeleteTagResponse, ListTagsRequest, ListTagsResponse,
-    UpsertTagRequest, UpsertTagResponse,
+    Tag, UpsertTagRequest, UpsertTagResponse,
 };
 use crate::dao::tag::TagDao;
+use crate::svc::get_current_user;
 
 pub struct TagService {
     dao: TagDao,
@@ -29,7 +30,18 @@ impl tag_service_server::TagService for TagService {
         &self,
         request: Request<UpsertTagRequest>,
     ) -> Result<Response<UpsertTagResponse>, Status> {
-        todo!()
+        let user = get_current_user(&request)?;
+        let creator = user.name.clone();
+        let creator_id = user.id;
+        let name = &request.get_ref().name;
+
+        self.dao.upsert_tag(name.clone(), user.id).await?;
+        Ok(Response::new(UpsertTagResponse {
+            tag: Some(Tag {
+                name: name.clone(),
+                creator,
+            }),
+        }))
     }
     async fn list_tags(
         &self,

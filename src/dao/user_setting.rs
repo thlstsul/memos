@@ -7,7 +7,7 @@ use crate::api::v1::user_setting::UserSetting;
 
 use super::Dao;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UserSettingDao {
     pub client: Arc<Client>,
 }

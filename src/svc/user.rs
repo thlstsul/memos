@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use libsql_client::Client;
+use sm3::{Digest, Sm3};
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
 
@@ -15,6 +16,7 @@ use crate::dao::user::Error as DaoErr;
 use crate::dao::user::UserDao;
 use crate::dao::user_setting::UserSettingDao;
 
+#[derive(Debug, Clone)]
 pub struct UserService {
     user_dao: UserDao,
     setting_dao: UserSettingDao,
@@ -30,6 +32,17 @@ impl UserService {
                 client: Arc::clone(client),
             },
         }
+    }
+
+    pub async fn sign_in(&self, name: String, password: String) -> Result<User, Error> {
+        let mut hasher = Sm3::new();
+        hasher.update(password);
+
+        let password_hash = hex::encode(hasher.finalize());
+        self.user_dao
+            .find_user(name, Some(password_hash))
+            .await
+            .context(Login)
     }
 
     pub async fn petch_user(&self, id: i32) -> Result<User, Error> {
@@ -49,6 +62,15 @@ impl UserService {
             rs.context(UserNotFound {
                 ident: String::new(),
             })
+        } else {
+            rs.context(QueryUserFailed)
+        }
+    }
+
+    pub async fn find_user(&self, name: String) -> Result<User, Error> {
+        let rs = self.user_dao.find_user(name.clone(), None).await;
+        if let Err(DaoErr::Inexistent) = rs {
+            rs.context(UserNotFound { ident: name })
         } else {
             rs.context(QueryUserFailed)
         }
@@ -109,6 +131,11 @@ impl user_service_server::UserService for UserService {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
+    #[snafu(
+        display("Incorrect login credentials, please try again"),
+        context(suffix(false))
+    )]
+    Login { source: crate::dao::user::Error },
     #[snafu(display("User not found: {ident}"), context(suffix(false)))]
     UserNotFound {
         ident: String,

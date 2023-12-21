@@ -33,13 +33,6 @@ fn main() {
             ],
             &[r#"#[serde(with = "crate::api::time_serde", rename = "created_ts")]"#],
         )
-        .with_field_attributes(
-            &[
-                "memos.api.v2.Resource.r#type",
-                "memos.api.v2.Activity.r#type",
-            ],
-            &[r#"#[serde(rename = "type")]"#],
-        )
         .field_attribute(
             "memos.api.v2.Memo.row_status",
             r#"#[serde(with = "crate::api::status_serde")]"#,
