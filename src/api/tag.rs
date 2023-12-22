@@ -6,7 +6,7 @@ use super::{
 
 impl ListTagsRequest {
     pub fn get_creator(&self) -> Result<String, Error> {
-        get_name_parent_token(self.creator.clone(), USER_NAME_PREFIX)
+        get_name_parent_token(self.user.clone(), USER_NAME_PREFIX)
     }
 }
 

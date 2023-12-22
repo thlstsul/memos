@@ -75,6 +75,8 @@ fn main() {
                 "proto/api/v2/tag_service.proto",
                 "proto/api/v2/activity_service.proto",
                 "proto/api/v2/inbox_service.proto",
+                "proto/api/v2/auth_service.proto",
+                "proto/api/v2/webhook_service.proto",
             ],
             // https://github.com/googleapis/googleapis.git
             &["proto", "googleapis"],

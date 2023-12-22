@@ -1,6 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use hyper::header;
+use tracing::error;
 
 pub mod auth;
 pub mod memo;
@@ -49,6 +50,7 @@ pub fn error_response<T>(status_code: StatusCode, slf: T) -> Response
 where
     T: std::error::Error,
 {
+    error!("{slf}");
     (
         status_code,
         [(header::CONTENT_TYPE, "text/json; charset=utf-8")],

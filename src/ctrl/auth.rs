@@ -18,6 +18,7 @@ use libsql_client::Client;
 use pin_project_lite::pin_project;
 use tower::{Layer, Service};
 use tower_cookies::CookieManager;
+use tracing::info;
 
 use crate::{
     api::{v1::sign::SignRequest, v2::User},
@@ -125,11 +126,18 @@ pub type AuthSession = axum_login::AuthSession<Backend>;
 #[derive(Debug, Clone)]
 pub struct AuthLayer {
     auth_manager_layer: axum_login::AuthManagerLayer<Backend, MemoryStore>,
+    public_path: Vec<String>,
 }
 
 impl AuthLayer {
-    pub fn new(auth_manager_layer: axum_login::AuthManagerLayer<Backend, MemoryStore>) -> Self {
-        Self { auth_manager_layer }
+    pub fn new(
+        auth_manager_layer: axum_login::AuthManagerLayer<Backend, MemoryStore>,
+        public_path: Vec<String>,
+    ) -> Self {
+        Self {
+            auth_manager_layer,
+            public_path,
+        }
     }
 }
 
@@ -137,7 +145,10 @@ impl<S> Layer<S> for AuthLayer {
     type Service = CookieManager<SessionManager<AuthManager<AuthService<S>, Backend>, MemoryStore>>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        let auth_service = AuthService { inner };
+        let auth_service = AuthService {
+            inner,
+            public_path: self.public_path.clone(),
+        };
 
         self.auth_manager_layer.layer(auth_service)
     }
@@ -146,6 +157,7 @@ impl<S> Layer<S> for AuthLayer {
 #[derive(Clone, Debug)]
 pub struct AuthService<S> {
     pub inner: S,
+    pub public_path: Vec<String>,
 }
 
 impl<ReqBody, ResBody, S> Service<Request<ReqBody>> for AuthService<S>
@@ -163,7 +175,13 @@ where
     }
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        if let Some(AuthSession { user: Some(_), .. }) = req.extensions().get::<AuthSession>() {
+        let path = req.uri().path().to_owned();
+        if self.public_path.contains(&path) {
+            info!("public path: {path}");
+            ResponseFuture::future(self.inner.call(req))
+        } else if let Some(AuthSession { user: Some(_), .. }) =
+            req.extensions().get::<AuthSession>()
+        {
             ResponseFuture::future(self.inner.call(req))
         } else {
             let res = Response::builder()

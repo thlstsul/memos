@@ -2,10 +2,12 @@ use std::sync::Arc;
 
 use libsql_client::Client;
 use tonic::{Request, Response, Status};
+use tracing::error;
 
 use crate::api::v2::{
-    tag_service_server, DeleteTagRequest, DeleteTagResponse, ListTagsRequest, ListTagsResponse,
-    Tag, UpsertTagRequest, UpsertTagResponse,
+    tag_service_server, DeleteTagRequest, DeleteTagResponse, GetTagSuggestionsRequest,
+    GetTagSuggestionsResponse, ListTagsRequest, ListTagsResponse, Tag, UpsertTagRequest,
+    UpsertTagResponse,
 };
 use crate::dao::tag::TagDao;
 use crate::svc::get_current_user;
@@ -61,10 +63,17 @@ impl tag_service_server::TagService for TagService {
 
         Ok(Response::new(DeleteTagResponse {}))
     }
+    async fn get_tag_suggestions(
+        &self,
+        request: Request<GetTagSuggestionsRequest>,
+    ) -> Result<Response<GetTagSuggestionsResponse>, Status> {
+        todo!()
+    }
 }
 
 impl From<crate::dao::tag::Error> for Status {
     fn from(value: crate::dao::tag::Error) -> Self {
+        error!("{value}");
         Status::internal(value.to_string())
     }
 }

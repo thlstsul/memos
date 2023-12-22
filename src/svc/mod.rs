@@ -5,12 +5,16 @@ use snafu::Snafu;
 use tonic::{Request, Status};
 
 use crate::{
-    api::v2::{tag_service_server::TagServiceServer, user_service_server::UserServiceServer, User},
+    api::v2::{
+        auth_service_server::AuthServiceServer, tag_service_server::TagServiceServer,
+        user_service_server::UserServiceServer, User,
+    },
     ctrl::auth::AuthSession,
 };
 
-use self::{tag::TagService, user::UserService};
+use self::{auth::AuthService, tag::TagService, user::UserService};
 
+pub mod auth;
 pub mod memo;
 pub mod system;
 pub mod tag;
@@ -28,12 +32,16 @@ impl ServiceFactory {
         let tag = TagService::new(client);
         TagServiceServer::new(tag)
     }
+
+    pub fn get_auth() -> AuthServiceServer<AuthService> {
+        AuthServiceServer::new(AuthService)
+    }
 }
 
-pub fn get_current_user<'a, T>(req: &'a Request<T>) -> Result<&'a User, Error> {
+pub fn get_current_user<'a, T>(request: &'a Request<T>) -> Result<&'a User, Error> {
     if let Some(AuthSession {
         user: Some(user), ..
-    }) = req.extensions().get::<AuthSession>()
+    }) = request.extensions().get::<AuthSession>()
     {
         Ok(user)
     } else {

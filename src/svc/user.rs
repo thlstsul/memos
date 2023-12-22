@@ -9,8 +9,10 @@ use crate::api::v1::user_setting::UserSetting;
 use crate::api::v2::{
     user_service_server, CreateUserAccessTokenRequest, CreateUserAccessTokenResponse,
     CreateUserRequest, CreateUserResponse, DeleteUserAccessTokenRequest,
-    DeleteUserAccessTokenResponse, GetUserRequest, GetUserResponse, ListUserAccessTokensRequest,
-    ListUserAccessTokensResponse, UpdateUserRequest, UpdateUserResponse, User,
+    DeleteUserAccessTokenResponse, DeleteUserRequest, DeleteUserResponse, GetUserRequest,
+    GetUserResponse, GetUserSettingRequest, GetUserSettingResponse, ListUserAccessTokensRequest,
+    ListUserAccessTokensResponse, UpdateUserRequest, UpdateUserResponse, UpdateUserSettingRequest,
+    UpdateUserSettingResponse, User,
 };
 use crate::dao::user::Error as DaoErr;
 use crate::dao::user::UserDao;
@@ -125,6 +127,24 @@ impl user_service_server::UserService for UserService {
         &self,
         request: Request<DeleteUserAccessTokenRequest>,
     ) -> Result<Response<DeleteUserAccessTokenResponse>, Status> {
+        todo!()
+    }
+    async fn delete_user(
+        &self,
+        request: Request<DeleteUserRequest>,
+    ) -> Result<Response<DeleteUserResponse>, Status> {
+        todo!()
+    }
+    async fn get_user_setting(
+        &self,
+        request: Request<GetUserSettingRequest>,
+    ) -> Result<Response<GetUserSettingResponse>, Status> {
+        todo!()
+    }
+    async fn update_user_setting(
+        &self,
+        request: Request<UpdateUserSettingRequest>,
+    ) -> Result<Response<UpdateUserSettingResponse>, Status> {
         todo!()
     }
 }

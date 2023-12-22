@@ -1,6 +1,8 @@
 use snafu::{ensure, Snafu};
 use tonic::Status;
+use tracing::error;
 
+pub mod auth;
 pub mod inbox;
 pub mod memo;
 pub mod system;
@@ -29,6 +31,7 @@ pub enum Error {
 
 impl From<Error> for Status {
     fn from(value: Error) -> Self {
+        error!("{value}");
         Status::invalid_argument(value.to_string())
     }
 }

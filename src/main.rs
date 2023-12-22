@@ -79,13 +79,25 @@ async fn grpc_web(
 
     let user = ServiceFactory::get_user(&client);
     let tag = ServiceFactory::get_tag(&client);
+    let auth = ServiceFactory::get_auth();
+
+    let public_path = vec![
+        "/memos.api.v2.AuthService/GetAuthStatus",
+        "/memos.api.v2.MemoService/ListMemos",
+        "/memos.api.v2.MemoService/ListMemoRelations",
+        "/memos.api.v2.MemoService/ListMemoResources",
+    ]
+    .into_iter()
+    .map(|s| s.to_owned())
+    .collect();
 
     let tonic_router = Server::builder()
         .accept_http1(true)
         .layer(GrpcWebLayer::new())
-        .layer(AuthLayer::new(auth_manager_layer))
+        .layer(AuthLayer::new(auth_manager_layer, public_path))
         .add_service(user)
-        .add_service(tag);
+        .add_service(tag)
+        .add_service(auth);
 
     Ok(GrpcWebService {
         axum_router,
