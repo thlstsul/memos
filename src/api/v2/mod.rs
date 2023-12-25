@@ -34,7 +34,7 @@ pub struct User {
     /// The name of the user.
     /// Format: users/{username}
     #[prost(string, tag = "1")]
-    #[serde(rename = "username")]
+    #[serde(skip)]
     pub name: ::prost::alloc::string::String,
     #[prost(int32, tag = "2")]
     pub id: i32,
@@ -42,29 +42,25 @@ pub struct User {
     #[serde(with = "crate::api::role_serde")]
     pub role: i32,
     #[prost(string, tag = "4")]
-    pub email: ::prost::alloc::string::String,
+    pub username: ::prost::alloc::string::String,
     #[prost(string, tag = "5")]
-    pub nickname: ::prost::alloc::string::String,
+    pub email: ::prost::alloc::string::String,
     #[prost(string, tag = "6")]
+    pub nickname: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
     #[serde(rename(serialize = "avatarUrl"))]
     pub avatar_url: ::prost::alloc::string::String,
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "8")]
     #[serde(skip)]
     pub password: ::prost::alloc::string::String,
-    #[prost(enumeration = "RowStatus", tag = "8")]
+    #[prost(enumeration = "RowStatus", tag = "9")]
     #[serde(with = "crate::api::status_serde", rename(serialize = "rowStatus"))]
     pub row_status: i32,
-    #[prost(message, optional, tag = "9")]
-    #[serde(
-        with = "crate::api::time_serde",
-        rename(serialize = "createdTs", deserialize = "created_ts")
-    )]
-    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "10")]
-    #[serde(
-        with = "crate::api::time_serde",
-        rename(serialize = "updatedTs", deserialize = "updated_ts")
-    )]
+    #[serde(with = "crate::api::time_serde", rename(serialize = "createdTs"))]
+    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "11")]
+    #[serde(with = "crate::api::time_serde", rename(serialize = "updatedTs"))]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// Nested message and enum types in `User`.
@@ -101,6 +97,15 @@ pub mod user {
             }
         }
     }
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListUsersRequest {}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListUsersResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub users: ::prost::alloc::vec::Vec<User>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -343,6 +348,24 @@ pub mod user_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        /// ListUsers returns a list of users.
+        pub async fn list_users(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListUsersRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListUsersResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/memos.api.v2.UserService/ListUsers");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v2.UserService", "ListUsers"));
+            self.inner.unary(req, path, codec).await
+        }
         /// GetUser gets a user by name.
         pub async fn get_user(
             &mut self,
@@ -538,6 +561,11 @@ pub mod user_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with UserServiceServer.
     #[async_trait]
     pub trait UserService: Send + Sync + 'static {
+        /// ListUsers returns a list of users.
+        async fn list_users(
+            &self,
+            request: tonic::Request<super::ListUsersRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListUsersResponse>, tonic::Status>;
         /// GetUser gets a user by name.
         async fn get_user(
             &self,
@@ -658,6 +686,46 @@ pub mod user_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
+                "/memos.api.v2.UserService/ListUsers" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListUsersSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::ListUsersRequest> for ListUsersSvc<T> {
+                        type Response = super::ListUsersResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListUsersRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::list_users(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListUsersSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/memos.api.v2.UserService/GetUser" => {
                     #[allow(non_camel_case_types)]
                     struct GetUserSvc<T: UserService>(pub Arc<T>);
@@ -1453,142 +1521,297 @@ pub mod system_service_server {
         const NAME: &'static str = "memos.api.v2.SystemService";
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Memo {
-    #[prost(int32, tag = "1")]
-    pub id: i32,
-    #[prost(enumeration = "RowStatus", tag = "2")]
-    #[serde(with = "crate::api::status_serde")]
-    pub row_status: i32,
-    #[prost(int32, tag = "3")]
-    pub creator_id: i32,
-    #[prost(int64, tag = "4")]
-    pub created_ts: i64,
-    #[prost(int64, tag = "5")]
-    pub updated_ts: i64,
-    #[prost(string, tag = "6")]
-    pub content: ::prost::alloc::string::String,
-    #[prost(enumeration = "Visibility", tag = "7")]
-    pub visibility: i32,
-    #[prost(bool, tag = "8")]
-    pub pinned: bool,
+pub struct ParseMarkdownRequest {
+    #[prost(string, tag = "1")]
+    pub markdown: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateMemoRequest {
+pub struct ParseMarkdownResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub nodes: ::prost::alloc::vec::Vec<Node>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Node {
+    #[prost(enumeration = "NodeType", tag = "1")]
+    pub r#type: i32,
+    #[prost(
+        oneof = "node::Node",
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20"
+    )]
+    pub node: ::core::option::Option<node::Node>,
+}
+/// Nested message and enum types in `Node`.
+pub mod node {
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Node {
+        #[prost(message, tag = "2")]
+        LineBreakNode(super::LineBreakNode),
+        #[prost(message, tag = "3")]
+        ParagraphNode(super::ParagraphNode),
+        #[prost(message, tag = "4")]
+        CodeBlockNode(super::CodeBlockNode),
+        #[prost(message, tag = "5")]
+        HeadingNode(super::HeadingNode),
+        #[prost(message, tag = "6")]
+        HorizontalRuleNode(super::HorizontalRuleNode),
+        #[prost(message, tag = "7")]
+        BlockquoteNode(super::BlockquoteNode),
+        #[prost(message, tag = "8")]
+        OrderedListNode(super::OrderedListNode),
+        #[prost(message, tag = "9")]
+        UnorderedListNode(super::UnorderedListNode),
+        #[prost(message, tag = "10")]
+        TaskListNode(super::TaskListNode),
+        #[prost(message, tag = "11")]
+        TextNode(super::TextNode),
+        #[prost(message, tag = "12")]
+        BoldNode(super::BoldNode),
+        #[prost(message, tag = "13")]
+        ItalicNode(super::ItalicNode),
+        #[prost(message, tag = "14")]
+        BoldItalicNode(super::BoldItalicNode),
+        #[prost(message, tag = "15")]
+        CodeNode(super::CodeNode),
+        #[prost(message, tag = "16")]
+        ImageNode(super::ImageNode),
+        #[prost(message, tag = "17")]
+        LinkNode(super::LinkNode),
+        #[prost(message, tag = "18")]
+        TagNode(super::TagNode),
+        #[prost(message, tag = "19")]
+        StrikethroughNode(super::StrikethroughNode),
+        #[prost(message, tag = "20")]
+        EscapingCharacterNode(super::EscapingCharacterNode),
+    }
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LineBreakNode {}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ParagraphNode {
+    #[prost(message, repeated, tag = "1")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CodeBlockNode {
+    #[prost(string, tag = "1")]
+    pub language: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub content: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct HeadingNode {
+    #[prost(int32, tag = "1")]
+    pub level: i32,
+    #[prost(message, repeated, tag = "2")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct HorizontalRuleNode {
+    #[prost(string, tag = "1")]
+    pub symbol: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BlockquoteNode {
+    #[prost(message, repeated, tag = "1")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OrderedListNode {
+    #[prost(string, tag = "1")]
+    pub number: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "2")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnorderedListNode {
+    #[prost(string, tag = "1")]
+    pub symbol: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "2")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TaskListNode {
+    #[prost(string, tag = "1")]
+    pub symbol: ::prost::alloc::string::String,
+    #[prost(bool, tag = "2")]
+    pub complete: bool,
+    #[prost(message, repeated, tag = "3")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TextNode {
     #[prost(string, tag = "1")]
     pub content: ::prost::alloc::string::String,
-    #[prost(enumeration = "Visibility", tag = "2")]
-    pub visibility: i32,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateMemoResponse {
-    #[prost(message, optional, tag = "1")]
-    pub memo: ::core::option::Option<Memo>,
+pub struct BoldNode {
+    #[prost(string, tag = "1")]
+    pub symbol: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "2")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemosRequest {
-    #[prost(int32, tag = "1")]
-    pub page: i32,
-    #[prost(int32, tag = "2")]
-    pub page_size: i32,
-    /// Filter is used to filter memos returned in the list.
-    #[prost(string, tag = "3")]
-    pub filter: ::prost::alloc::string::String,
-    #[prost(int32, optional, tag = "4")]
-    pub creator_id: ::core::option::Option<i32>,
+pub struct ItalicNode {
+    #[prost(string, tag = "1")]
+    pub symbol: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub content: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemosResponse {
-    #[prost(message, repeated, tag = "1")]
-    pub memos: ::prost::alloc::vec::Vec<Memo>,
+pub struct BoldItalicNode {
+    #[prost(string, tag = "1")]
+    pub symbol: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub content: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetMemoRequest {
-    #[prost(int32, tag = "1")]
-    pub id: i32,
+pub struct CodeNode {
+    #[prost(string, tag = "1")]
+    pub content: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetMemoResponse {
-    #[prost(message, optional, tag = "1")]
-    pub memo: ::core::option::Option<Memo>,
+pub struct ImageNode {
+    #[prost(string, tag = "1")]
+    pub alt_text: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateMemoCommentRequest {
-    /// id is the memo id to create comment for.
-    #[prost(int32, tag = "1")]
-    pub id: i32,
-    #[prost(message, optional, tag = "2")]
-    pub create: ::core::option::Option<CreateMemoRequest>,
+pub struct LinkNode {
+    #[prost(string, tag = "1")]
+    pub text: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateMemoCommentResponse {
-    #[prost(message, optional, tag = "1")]
-    pub memo: ::core::option::Option<Memo>,
+pub struct TagNode {
+    #[prost(string, tag = "1")]
+    pub content: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemoCommentsRequest {
-    #[prost(int32, tag = "1")]
-    pub id: i32,
+pub struct StrikethroughNode {
+    #[prost(string, tag = "1")]
+    pub content: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemoCommentsResponse {
-    #[prost(message, repeated, tag = "1")]
-    pub memos: ::prost::alloc::vec::Vec<Memo>,
+pub struct EscapingCharacterNode {
+    #[prost(string, tag = "1")]
+    pub symbol: ::prost::alloc::string::String,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum Visibility {
-    Unspecified = 0,
-    Private = 1,
-    Protected = 2,
-    Public = 3,
+pub enum NodeType {
+    NodeUnspecified = 0,
+    LineBreak = 1,
+    Paragraph = 2,
+    CodeBlock = 3,
+    Heading = 4,
+    HorizontalRule = 5,
+    Blockquote = 6,
+    OrderedList = 7,
+    UnorderedList = 8,
+    TaskList = 9,
+    Text = 10,
+    Bold = 11,
+    Italic = 12,
+    BoldItalic = 13,
+    Code = 14,
+    Image = 15,
+    Link = 16,
+    Tag = 17,
+    Strikethrough = 18,
+    EscapingCharacter = 19,
 }
-impl Visibility {
+impl NodeType {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Visibility::Unspecified => "VISIBILITY_UNSPECIFIED",
-            Visibility::Private => "PRIVATE",
-            Visibility::Protected => "PROTECTED",
-            Visibility::Public => "PUBLIC",
+            NodeType::NodeUnspecified => "NODE_UNSPECIFIED",
+            NodeType::LineBreak => "LINE_BREAK",
+            NodeType::Paragraph => "PARAGRAPH",
+            NodeType::CodeBlock => "CODE_BLOCK",
+            NodeType::Heading => "HEADING",
+            NodeType::HorizontalRule => "HORIZONTAL_RULE",
+            NodeType::Blockquote => "BLOCKQUOTE",
+            NodeType::OrderedList => "ORDERED_LIST",
+            NodeType::UnorderedList => "UNORDERED_LIST",
+            NodeType::TaskList => "TASK_LIST",
+            NodeType::Text => "TEXT",
+            NodeType::Bold => "BOLD",
+            NodeType::Italic => "ITALIC",
+            NodeType::BoldItalic => "BOLD_ITALIC",
+            NodeType::Code => "CODE",
+            NodeType::Image => "IMAGE",
+            NodeType::Link => "LINK",
+            NodeType::Tag => "TAG",
+            NodeType::Strikethrough => "STRIKETHROUGH",
+            NodeType::EscapingCharacter => "ESCAPING_CHARACTER",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "VISIBILITY_UNSPECIFIED" => Some(Self::Unspecified),
-            "PRIVATE" => Some(Self::Private),
-            "PROTECTED" => Some(Self::Protected),
-            "PUBLIC" => Some(Self::Public),
+            "NODE_UNSPECIFIED" => Some(Self::NodeUnspecified),
+            "LINE_BREAK" => Some(Self::LineBreak),
+            "PARAGRAPH" => Some(Self::Paragraph),
+            "CODE_BLOCK" => Some(Self::CodeBlock),
+            "HEADING" => Some(Self::Heading),
+            "HORIZONTAL_RULE" => Some(Self::HorizontalRule),
+            "BLOCKQUOTE" => Some(Self::Blockquote),
+            "ORDERED_LIST" => Some(Self::OrderedList),
+            "UNORDERED_LIST" => Some(Self::UnorderedList),
+            "TASK_LIST" => Some(Self::TaskList),
+            "TEXT" => Some(Self::Text),
+            "BOLD" => Some(Self::Bold),
+            "ITALIC" => Some(Self::Italic),
+            "BOLD_ITALIC" => Some(Self::BoldItalic),
+            "CODE" => Some(Self::Code),
+            "IMAGE" => Some(Self::Image),
+            "LINK" => Some(Self::Link),
+            "TAG" => Some(Self::Tag),
+            "STRIKETHROUGH" => Some(Self::Strikethrough),
+            "ESCAPING_CHARACTER" => Some(Self::EscapingCharacter),
             _ => None,
         }
     }
 }
 /// Generated client implementations.
-pub mod memo_service_client {
+pub mod markdown_service_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::http::Uri;
     use tonic::codegen::*;
     #[derive(Debug, Clone)]
-    pub struct MemoServiceClient<T> {
+    pub struct MarkdownServiceClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl MemoServiceClient<tonic::transport::Channel> {
+    impl MarkdownServiceClient<tonic::transport::Channel> {
         /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -1599,7 +1822,7 @@ pub mod memo_service_client {
             Ok(Self::new(conn))
         }
     }
-    impl<T> MemoServiceClient<T>
+    impl<T> MarkdownServiceClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::Error: Into<StdError>,
@@ -1617,7 +1840,7 @@ pub mod memo_service_client {
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
-        ) -> MemoServiceClient<InterceptedService<T, F>>
+        ) -> MarkdownServiceClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
@@ -1630,7 +1853,7 @@ pub mod memo_service_client {
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + Send + Sync,
         {
-            MemoServiceClient::new(InterceptedService::new(inner, interceptor))
+            MarkdownServiceClient::new(InterceptedService::new(inner, interceptor))
         }
         /// Compress requests with the given encoding.
         ///
@@ -1663,62 +1886,10 @@ pub mod memo_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        pub async fn create_memo(
+        pub async fn parse_markdown(
             &mut self,
-            request: impl tonic::IntoRequest<super::CreateMemoRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateMemoResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/CreateMemo");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v2.MemoService", "CreateMemo"));
-            self.inner.unary(req, path, codec).await
-        }
-        pub async fn list_memos(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListMemosRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemosResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/ListMemos");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v2.MemoService", "ListMemos"));
-            self.inner.unary(req, path, codec).await
-        }
-        pub async fn get_memo(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetMemoRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetMemoResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/GetMemo");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v2.MemoService", "GetMemo"));
-            self.inner.unary(req, path, codec).await
-        }
-        pub async fn create_memo_comment(
-            &mut self,
-            request: impl tonic::IntoRequest<super::CreateMemoCommentRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateMemoCommentResponse>, tonic::Status>
+            request: impl tonic::IntoRequest<super::ParseMarkdownRequest>,
+        ) -> std::result::Result<tonic::Response<super::ParseMarkdownResponse>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
@@ -1728,67 +1899,30 @@ pub mod memo_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/CreateMemoComment");
+                http::uri::PathAndQuery::from_static("/memos.api.v2.MarkdownService/ParseMarkdown");
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v2.MemoService",
-                "CreateMemoComment",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        pub async fn list_memo_comments(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListMemoCommentsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemoCommentsResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/ListMemoComments");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v2.MemoService",
-                "ListMemoComments",
+                "memos.api.v2.MarkdownService",
+                "ParseMarkdown",
             ));
             self.inner.unary(req, path, codec).await
         }
     }
 }
 /// Generated server implementations.
-pub mod memo_service_server {
+pub mod markdown_service_server {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    /// Generated trait containing gRPC methods that should be implemented for use with MemoServiceServer.
+    /// Generated trait containing gRPC methods that should be implemented for use with MarkdownServiceServer.
     #[async_trait]
-    pub trait MemoService: Send + Sync + 'static {
-        async fn create_memo(
+    pub trait MarkdownService: Send + Sync + 'static {
+        async fn parse_markdown(
             &self,
-            request: tonic::Request<super::CreateMemoRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateMemoResponse>, tonic::Status>;
-        async fn list_memos(
-            &self,
-            request: tonic::Request<super::ListMemosRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemosResponse>, tonic::Status>;
-        async fn get_memo(
-            &self,
-            request: tonic::Request<super::GetMemoRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetMemoResponse>, tonic::Status>;
-        async fn create_memo_comment(
-            &self,
-            request: tonic::Request<super::CreateMemoCommentRequest>,
-        ) -> std::result::Result<tonic::Response<super::CreateMemoCommentResponse>, tonic::Status>;
-        async fn list_memo_comments(
-            &self,
-            request: tonic::Request<super::ListMemoCommentsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemoCommentsResponse>, tonic::Status>;
+            request: tonic::Request<super::ParseMarkdownRequest>,
+        ) -> std::result::Result<tonic::Response<super::ParseMarkdownResponse>, tonic::Status>;
     }
     #[derive(Debug)]
-    pub struct MemoServiceServer<T: MemoService> {
+    pub struct MarkdownServiceServer<T: MarkdownService> {
         inner: _Inner<T>,
         accept_compression_encodings: EnabledCompressionEncodings,
         send_compression_encodings: EnabledCompressionEncodings,
@@ -1796,7 +1930,7 @@ pub mod memo_service_server {
         max_encoding_message_size: Option<usize>,
     }
     struct _Inner<T>(Arc<T>);
-    impl<T: MemoService> MemoServiceServer<T> {
+    impl<T: MarkdownService> MarkdownServiceServer<T> {
         pub fn new(inner: T) -> Self {
             Self::from_arc(Arc::new(inner))
         }
@@ -1845,9 +1979,9 @@ pub mod memo_service_server {
             self
         }
     }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for MemoServiceServer<T>
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for MarkdownServiceServer<T>
     where
-        T: MemoService,
+        T: MarkdownService,
         B: Body + Send + 'static,
         B::Error: Into<StdError> + Send + 'static,
     {
@@ -1863,141 +1997,22 @@ pub mod memo_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/memos.api.v2.MemoService/CreateMemo" => {
+                "/memos.api.v2.MarkdownService/ParseMarkdown" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateMemoSvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService> tonic::server::UnaryService<super::CreateMemoRequest> for CreateMemoSvc<T> {
-                        type Response = super::CreateMemoResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::CreateMemoRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as MemoService>::create_memo(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = CreateMemoSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v2.MemoService/ListMemos" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListMemosSvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService> tonic::server::UnaryService<super::ListMemosRequest> for ListMemosSvc<T> {
-                        type Response = super::ListMemosResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListMemosRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as MemoService>::list_memos(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = ListMemosSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v2.MemoService/GetMemo" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetMemoSvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService> tonic::server::UnaryService<super::GetMemoRequest> for GetMemoSvc<T> {
-                        type Response = super::GetMemoResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetMemoRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut =
-                                async move { <T as MemoService>::get_memo(&inner, request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = GetMemoSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v2.MemoService/CreateMemoComment" => {
-                    #[allow(non_camel_case_types)]
-                    struct CreateMemoCommentSvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService>
-                        tonic::server::UnaryService<super::CreateMemoCommentRequest>
-                        for CreateMemoCommentSvc<T>
+                    struct ParseMarkdownSvc<T: MarkdownService>(pub Arc<T>);
+                    impl<T: MarkdownService>
+                        tonic::server::UnaryService<super::ParseMarkdownRequest>
+                        for ParseMarkdownSvc<T>
                     {
-                        type Response = super::CreateMemoCommentResponse;
+                        type Response = super::ParseMarkdownResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::CreateMemoCommentRequest>,
+                            request: tonic::Request<super::ParseMarkdownRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as MemoService>::create_memo_comment(&inner, request).await
+                                <T as MarkdownService>::parse_markdown(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2009,49 +2024,7 @@ pub mod memo_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = CreateMemoCommentSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v2.MemoService/ListMemoComments" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListMemoCommentsSvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService> tonic::server::UnaryService<super::ListMemoCommentsRequest>
-                        for ListMemoCommentsSvc<T>
-                    {
-                        type Response = super::ListMemoCommentsResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListMemoCommentsRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as MemoService>::list_memo_comments(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = ListMemoCommentsSvc(inner);
+                        let method = ParseMarkdownSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2078,7 +2051,7 @@ pub mod memo_service_server {
             }
         }
     }
-    impl<T: MemoService> Clone for MemoServiceServer<T> {
+    impl<T: MarkdownService> Clone for MarkdownServiceServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self {
@@ -2090,7 +2063,7 @@ pub mod memo_service_server {
             }
         }
     }
-    impl<T: MemoService> Clone for _Inner<T> {
+    impl<T: MarkdownService> Clone for _Inner<T> {
         fn clone(&self) -> Self {
             Self(Arc::clone(&self.0))
         }
@@ -2100,11 +2073,54 @@ pub mod memo_service_server {
             write!(f, "{:?}", self.0)
         }
     }
-    impl<T: MemoService> tonic::server::NamedService for MemoServiceServer<T> {
-        const NAME: &'static str = "memos.api.v2.MemoService";
+    impl<T: MarkdownService> tonic::server::NamedService for MarkdownServiceServer<T> {
+        const NAME: &'static str = "memos.api.v2.MarkdownService";
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MemoRelation {
+    #[prost(int32, tag = "1")]
+    pub memo_id: i32,
+    #[prost(int32, tag = "2")]
+    pub related_memo_id: i32,
+    #[prost(enumeration = "memo_relation::Type", tag = "3")]
+    pub r#type: i32,
+}
+/// Nested message and enum types in `MemoRelation`.
+pub mod memo_relation {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Type {
+        Unspecified = 0,
+        Reference = 1,
+        Comment = 2,
+    }
+    impl Type {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Type::Unspecified => "TYPE_UNSPECIFIED",
+                Type::Reference => "REFERENCE",
+                Type::Comment => "COMMENT",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                "REFERENCE" => Some(Self::Reference),
+                "COMMENT" => Some(Self::Comment),
+                _ => None,
+            }
+        }
+    }
+}
+#[derive(serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Resource {
@@ -2112,7 +2128,7 @@ pub struct Resource {
     pub id: i32,
     #[prost(message, optional, tag = "2")]
     #[serde(with = "crate::api::time_serde")]
-    pub created_ts: ::core::option::Option<::prost_types::Timestamp>,
+    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(string, tag = "3")]
     pub filename: ::prost::alloc::string::String,
     #[prost(string, tag = "4")]
@@ -2656,7 +2672,1254 @@ pub mod resource_service_server {
         const NAME: &'static str = "memos.api.v2.ResourceService";
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Memo {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+    #[prost(enumeration = "RowStatus", tag = "2")]
+    #[serde(with = "crate::api::status_serde")]
+    pub row_status: i32,
+    /// The name of the creator.
+    /// Format: users/{username}
+    #[prost(string, tag = "3")]
+    #[serde(default)]
+    pub creator: ::prost::alloc::string::String,
+    #[prost(int32, tag = "4")]
+    pub creator_id: i32,
+    #[prost(message, optional, tag = "5")]
+    #[serde(with = "crate::api::time_serde")]
+    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "6")]
+    #[serde(with = "crate::api::time_serde")]
+    pub update_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "7")]
+    #[serde(with = "crate::api::time_serde")]
+    #[serde(default)]
+    pub display_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(string, tag = "8")]
+    pub content: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "9")]
+    #[serde(skip)]
+    pub nodes: ::prost::alloc::vec::Vec<Node>,
+    #[prost(enumeration = "Visibility", tag = "10")]
+    #[serde(with = "crate::api::visibility_serde")]
+    pub visibility: i32,
+    #[prost(bool, tag = "11")]
+    #[serde(default)]
+    pub pinned: bool,
+    #[prost(message, repeated, tag = "12")]
+    #[serde(default)]
+    pub resources: ::prost::alloc::vec::Vec<Resource>,
+    #[prost(message, repeated, tag = "13")]
+    #[serde(default)]
+    pub relations: ::prost::alloc::vec::Vec<MemoRelation>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateMemoRequest {
+    #[prost(string, tag = "1")]
+    pub content: ::prost::alloc::string::String,
+    #[prost(enumeration = "Visibility", tag = "2")]
+    pub visibility: i32,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateMemoResponse {
+    #[prost(message, optional, tag = "1")]
+    pub memo: ::core::option::Option<Memo>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListMemosRequest {
+    /// offset is the offset of the first memo to return.
+    #[prost(int32, tag = "1")]
+    pub offset: i32,
+    /// limit is the maximum number of memos to return.
+    #[prost(int32, tag = "2")]
+    pub limit: i32,
+    /// Filter is used to filter memos returned in the list.
+    /// Format: "creator == users/{username} && visibilities == \['PUBLIC', 'PROTECTED'\]"
+    #[prost(string, tag = "3")]
+    pub filter: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListMemosResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub memos: ::prost::alloc::vec::Vec<Memo>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMemoRequest {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMemoResponse {
+    #[prost(message, optional, tag = "1")]
+    pub memo: ::core::option::Option<Memo>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateMemoRequest {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+    #[prost(message, optional, tag = "2")]
+    pub memo: ::core::option::Option<Memo>,
+    #[prost(message, optional, tag = "3")]
+    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateMemoResponse {
+    #[prost(message, optional, tag = "1")]
+    pub memo: ::core::option::Option<Memo>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteMemoRequest {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteMemoResponse {}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetMemoResourcesRequest {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+    #[prost(message, repeated, tag = "2")]
+    pub resources: ::prost::alloc::vec::Vec<Resource>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetMemoResourcesResponse {}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListMemoResourcesRequest {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListMemoResourcesResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub resources: ::prost::alloc::vec::Vec<Resource>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetMemoRelationsRequest {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+    #[prost(message, repeated, tag = "2")]
+    pub relations: ::prost::alloc::vec::Vec<MemoRelation>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetMemoRelationsResponse {}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListMemoRelationsRequest {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListMemoRelationsResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub relations: ::prost::alloc::vec::Vec<MemoRelation>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateMemoCommentRequest {
+    /// id is the memo id to create comment for.
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+    #[prost(message, optional, tag = "2")]
+    pub create: ::core::option::Option<CreateMemoRequest>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateMemoCommentResponse {
+    #[prost(message, optional, tag = "1")]
+    pub memo: ::core::option::Option<Memo>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListMemoCommentsRequest {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListMemoCommentsResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub memos: ::prost::alloc::vec::Vec<Memo>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetUserMemosStatsRequest {
+    /// name is the name of the user to get stats for.
+    /// Format: users/{username}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetUserMemosStatsResponse {
+    /// memo_creation_stats is the stats of memo creation.
+    /// key is the year-month-day string. e.g. "2020-01-01". value is the count of memos created.
+    #[prost(map = "string, int32", tag = "1")]
+    pub memo_creation_stats: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum Visibility {
+    Unspecified = 0,
+    Private = 1,
+    Protected = 2,
+    Public = 3,
+}
+impl Visibility {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Visibility::Unspecified => "VISIBILITY_UNSPECIFIED",
+            Visibility::Private => "PRIVATE",
+            Visibility::Protected => "PROTECTED",
+            Visibility::Public => "PUBLIC",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "VISIBILITY_UNSPECIFIED" => Some(Self::Unspecified),
+            "PRIVATE" => Some(Self::Private),
+            "PROTECTED" => Some(Self::Protected),
+            "PUBLIC" => Some(Self::Public),
+            _ => None,
+        }
+    }
+}
+/// Generated client implementations.
+pub mod memo_service_client {
+    #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
+    #[derive(Debug, Clone)]
+    pub struct MemoServiceClient<T> {
+        inner: tonic::client::Grpc<T>,
+    }
+    impl MemoServiceClient<tonic::transport::Channel> {
+        /// Attempt to create a new client by connecting to a given endpoint.
+        pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
+        where
+            D: TryInto<tonic::transport::Endpoint>,
+            D::Error: Into<StdError>,
+        {
+            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
+            Ok(Self::new(conn))
+        }
+    }
+    impl<T> MemoServiceClient<T>
+    where
+        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + Send + 'static,
+        <T::ResponseBody as Body>::Error: Into<StdError> + Send,
+    {
+        pub fn new(inner: T) -> Self {
+            let inner = tonic::client::Grpc::new(inner);
+            Self { inner }
+        }
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> MemoServiceClient<InterceptedService<T, F>>
+        where
+            F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
+            T: tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
+            >,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
+                Into<StdError> + Send + Sync,
+        {
+            MemoServiceClient::new(InterceptedService::new(inner, interceptor))
+        }
+        /// Compress requests with the given encoding.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
+            self
+        }
+        /// Enable decompressing responses.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
+        /// CreateMemo creates a memo.
+        pub async fn create_memo(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateMemoRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateMemoResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/CreateMemo");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v2.MemoService", "CreateMemo"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// ListMemos lists memos with pagination and filter.
+        pub async fn list_memos(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListMemosRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemosResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/ListMemos");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v2.MemoService", "ListMemos"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// GetMemo gets a memo by id.
+        pub async fn get_memo(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetMemoRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetMemoResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/GetMemo");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v2.MemoService", "GetMemo"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// UpdateMemo updates a memo.
+        pub async fn update_memo(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateMemoRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateMemoResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/UpdateMemo");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v2.MemoService", "UpdateMemo"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// DeleteMemo deletes a memo by id.
+        pub async fn delete_memo(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteMemoRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteMemoResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/DeleteMemo");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v2.MemoService", "DeleteMemo"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// SetMemoResources sets resources for a memo.
+        pub async fn set_memo_resources(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SetMemoResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::SetMemoResourcesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/SetMemoResources");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v2.MemoService",
+                "SetMemoResources",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// ListMemoResources lists resources for a memo.
+        pub async fn list_memo_resources(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListMemoResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemoResourcesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/ListMemoResources");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v2.MemoService",
+                "ListMemoResources",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// SetMemoRelations sets relations for a memo.
+        pub async fn set_memo_relations(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SetMemoRelationsRequest>,
+        ) -> std::result::Result<tonic::Response<super::SetMemoRelationsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/SetMemoRelations");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v2.MemoService",
+                "SetMemoRelations",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// ListMemoRelations lists relations for a memo.
+        pub async fn list_memo_relations(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListMemoRelationsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemoRelationsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/ListMemoRelations");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v2.MemoService",
+                "ListMemoRelations",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// CreateMemoComment creates a comment for a memo.
+        pub async fn create_memo_comment(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateMemoCommentRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateMemoCommentResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/CreateMemoComment");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v2.MemoService",
+                "CreateMemoComment",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// ListMemoComments lists comments for a memo.
+        pub async fn list_memo_comments(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListMemoCommentsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemoCommentsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/ListMemoComments");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v2.MemoService",
+                "ListMemoComments",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// GetUserMemosStats gets stats of memos for a user.
+        pub async fn get_user_memos_stats(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetUserMemosStatsRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetUserMemosStatsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::new(
+                    tonic::Code::Unknown,
+                    format!("Service was not ready: {}", e.into()),
+                )
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v2.MemoService/GetUserMemosStats");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v2.MemoService",
+                "GetUserMemosStats",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+    }
+}
+/// Generated server implementations.
+pub mod memo_service_server {
+    #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::*;
+    /// Generated trait containing gRPC methods that should be implemented for use with MemoServiceServer.
+    #[async_trait]
+    pub trait MemoService: Send + Sync + 'static {
+        /// CreateMemo creates a memo.
+        async fn create_memo(
+            &self,
+            request: tonic::Request<super::CreateMemoRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateMemoResponse>, tonic::Status>;
+        /// ListMemos lists memos with pagination and filter.
+        async fn list_memos(
+            &self,
+            request: tonic::Request<super::ListMemosRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemosResponse>, tonic::Status>;
+        /// GetMemo gets a memo by id.
+        async fn get_memo(
+            &self,
+            request: tonic::Request<super::GetMemoRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetMemoResponse>, tonic::Status>;
+        /// UpdateMemo updates a memo.
+        async fn update_memo(
+            &self,
+            request: tonic::Request<super::UpdateMemoRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateMemoResponse>, tonic::Status>;
+        /// DeleteMemo deletes a memo by id.
+        async fn delete_memo(
+            &self,
+            request: tonic::Request<super::DeleteMemoRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteMemoResponse>, tonic::Status>;
+        /// SetMemoResources sets resources for a memo.
+        async fn set_memo_resources(
+            &self,
+            request: tonic::Request<super::SetMemoResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::SetMemoResourcesResponse>, tonic::Status>;
+        /// ListMemoResources lists resources for a memo.
+        async fn list_memo_resources(
+            &self,
+            request: tonic::Request<super::ListMemoResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemoResourcesResponse>, tonic::Status>;
+        /// SetMemoRelations sets relations for a memo.
+        async fn set_memo_relations(
+            &self,
+            request: tonic::Request<super::SetMemoRelationsRequest>,
+        ) -> std::result::Result<tonic::Response<super::SetMemoRelationsResponse>, tonic::Status>;
+        /// ListMemoRelations lists relations for a memo.
+        async fn list_memo_relations(
+            &self,
+            request: tonic::Request<super::ListMemoRelationsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemoRelationsResponse>, tonic::Status>;
+        /// CreateMemoComment creates a comment for a memo.
+        async fn create_memo_comment(
+            &self,
+            request: tonic::Request<super::CreateMemoCommentRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateMemoCommentResponse>, tonic::Status>;
+        /// ListMemoComments lists comments for a memo.
+        async fn list_memo_comments(
+            &self,
+            request: tonic::Request<super::ListMemoCommentsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemoCommentsResponse>, tonic::Status>;
+        /// GetUserMemosStats gets stats of memos for a user.
+        async fn get_user_memos_stats(
+            &self,
+            request: tonic::Request<super::GetUserMemosStatsRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetUserMemosStatsResponse>, tonic::Status>;
+    }
+    #[derive(Debug)]
+    pub struct MemoServiceServer<T: MemoService> {
+        inner: _Inner<T>,
+        accept_compression_encodings: EnabledCompressionEncodings,
+        send_compression_encodings: EnabledCompressionEncodings,
+        max_decoding_message_size: Option<usize>,
+        max_encoding_message_size: Option<usize>,
+    }
+    struct _Inner<T>(Arc<T>);
+    impl<T: MemoService> MemoServiceServer<T> {
+        pub fn new(inner: T) -> Self {
+            Self::from_arc(Arc::new(inner))
+        }
+        pub fn from_arc(inner: Arc<T>) -> Self {
+            let inner = _Inner(inner);
+            Self {
+                inner,
+                accept_compression_encodings: Default::default(),
+                send_compression_encodings: Default::default(),
+                max_decoding_message_size: None,
+                max_encoding_message_size: None,
+            }
+        }
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
+        where
+            F: tonic::service::Interceptor,
+        {
+            InterceptedService::new(Self::new(inner), interceptor)
+        }
+        /// Enable decompressing requests with the given encoding.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.accept_compression_encodings.enable(encoding);
+            self
+        }
+        /// Compress responses with the given encoding, if the client supports it.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.send_compression_encodings.enable(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.max_decoding_message_size = Some(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.max_encoding_message_size = Some(limit);
+            self
+        }
+    }
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for MemoServiceServer<T>
+    where
+        T: MemoService,
+        B: Body + Send + 'static,
+        B::Error: Into<StdError> + Send + 'static,
+    {
+        type Response = http::Response<tonic::body::BoxBody>;
+        type Error = std::convert::Infallible;
+        type Future = BoxFuture<Self::Response, Self::Error>;
+        fn poll_ready(
+            &mut self,
+            _cx: &mut Context<'_>,
+        ) -> Poll<std::result::Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+        fn call(&mut self, req: http::Request<B>) -> Self::Future {
+            let inner = self.inner.clone();
+            match req.uri().path() {
+                "/memos.api.v2.MemoService/CreateMemo" => {
+                    #[allow(non_camel_case_types)]
+                    struct CreateMemoSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService> tonic::server::UnaryService<super::CreateMemoRequest> for CreateMemoSvc<T> {
+                        type Response = super::CreateMemoResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CreateMemoRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::create_memo(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = CreateMemoSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/ListMemos" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListMemosSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService> tonic::server::UnaryService<super::ListMemosRequest> for ListMemosSvc<T> {
+                        type Response = super::ListMemosResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListMemosRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::list_memos(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListMemosSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/GetMemo" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetMemoSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService> tonic::server::UnaryService<super::GetMemoRequest> for GetMemoSvc<T> {
+                        type Response = super::GetMemoResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetMemoRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut =
+                                async move { <T as MemoService>::get_memo(&inner, request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetMemoSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/UpdateMemo" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateMemoSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService> tonic::server::UnaryService<super::UpdateMemoRequest> for UpdateMemoSvc<T> {
+                        type Response = super::UpdateMemoResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateMemoRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::update_memo(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = UpdateMemoSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/DeleteMemo" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteMemoSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService> tonic::server::UnaryService<super::DeleteMemoRequest> for DeleteMemoSvc<T> {
+                        type Response = super::DeleteMemoResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteMemoRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::delete_memo(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = DeleteMemoSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/SetMemoResources" => {
+                    #[allow(non_camel_case_types)]
+                    struct SetMemoResourcesSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService> tonic::server::UnaryService<super::SetMemoResourcesRequest>
+                        for SetMemoResourcesSvc<T>
+                    {
+                        type Response = super::SetMemoResourcesResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SetMemoResourcesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::set_memo_resources(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SetMemoResourcesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/ListMemoResources" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListMemoResourcesSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService>
+                        tonic::server::UnaryService<super::ListMemoResourcesRequest>
+                        for ListMemoResourcesSvc<T>
+                    {
+                        type Response = super::ListMemoResourcesResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListMemoResourcesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::list_memo_resources(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListMemoResourcesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/SetMemoRelations" => {
+                    #[allow(non_camel_case_types)]
+                    struct SetMemoRelationsSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService> tonic::server::UnaryService<super::SetMemoRelationsRequest>
+                        for SetMemoRelationsSvc<T>
+                    {
+                        type Response = super::SetMemoRelationsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SetMemoRelationsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::set_memo_relations(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SetMemoRelationsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/ListMemoRelations" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListMemoRelationsSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService>
+                        tonic::server::UnaryService<super::ListMemoRelationsRequest>
+                        for ListMemoRelationsSvc<T>
+                    {
+                        type Response = super::ListMemoRelationsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListMemoRelationsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::list_memo_relations(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListMemoRelationsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/CreateMemoComment" => {
+                    #[allow(non_camel_case_types)]
+                    struct CreateMemoCommentSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService>
+                        tonic::server::UnaryService<super::CreateMemoCommentRequest>
+                        for CreateMemoCommentSvc<T>
+                    {
+                        type Response = super::CreateMemoCommentResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CreateMemoCommentRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::create_memo_comment(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = CreateMemoCommentSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/ListMemoComments" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListMemoCommentsSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService> tonic::server::UnaryService<super::ListMemoCommentsRequest>
+                        for ListMemoCommentsSvc<T>
+                    {
+                        type Response = super::ListMemoCommentsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListMemoCommentsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::list_memo_comments(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = ListMemoCommentsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v2.MemoService/GetUserMemosStats" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetUserMemosStatsSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService>
+                        tonic::server::UnaryService<super::GetUserMemosStatsRequest>
+                        for GetUserMemosStatsSvc<T>
+                    {
+                        type Response = super::GetUserMemosStatsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetUserMemosStatsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MemoService>::get_user_memos_stats(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetUserMemosStatsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                _ => Box::pin(async move {
+                    Ok(http::Response::builder()
+                        .status(200)
+                        .header("grpc-status", "12")
+                        .header("content-type", "application/grpc")
+                        .body(empty_body())
+                        .unwrap())
+                }),
+            }
+        }
+    }
+    impl<T: MemoService> Clone for MemoServiceServer<T> {
+        fn clone(&self) -> Self {
+            let inner = self.inner.clone();
+            Self {
+                inner,
+                accept_compression_encodings: self.accept_compression_encodings,
+                send_compression_encodings: self.send_compression_encodings,
+                max_decoding_message_size: self.max_decoding_message_size,
+                max_encoding_message_size: self.max_encoding_message_size,
+            }
+        }
+    }
+    impl<T: MemoService> Clone for _Inner<T> {
+        fn clone(&self) -> Self {
+            Self(Arc::clone(&self.0))
+        }
+    }
+    impl<T: std::fmt::Debug> std::fmt::Debug for _Inner<T> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{:?}", self.0)
+        }
+    }
+    impl<T: MemoService> tonic::server::NamedService for MemoServiceServer<T> {
+        const NAME: &'static str = "memos.api.v2.MemoService";
+    }
+}
+#[derive(serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Tag {
@@ -3170,7 +4433,7 @@ pub mod tag_service_server {
         const NAME: &'static str = "memos.api.v2.TagService";
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Activity {
@@ -3183,12 +4446,12 @@ pub struct Activity {
     #[prost(string, tag = "4")]
     pub level: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "5")]
-    #[serde(with = "crate::api::time_serde", rename = "created_ts")]
+    #[serde(with = "crate::api::time_serde")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "6")]
     pub payload: ::core::option::Option<ActivityPayload>,
 }
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActivityMemoCommentPayload {
@@ -3197,14 +4460,14 @@ pub struct ActivityMemoCommentPayload {
     #[prost(int32, tag = "2")]
     pub related_memo_id: i32,
 }
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActivityVersionUpdatePayload {
     #[prost(string, tag = "1")]
     pub version: ::prost::alloc::string::String,
 }
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActivityPayload {
@@ -3499,7 +4762,7 @@ pub mod activity_service_server {
         const NAME: &'static str = "memos.api.v2.ActivityService";
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Inbox {
@@ -3516,7 +4779,7 @@ pub struct Inbox {
     #[prost(enumeration = "inbox::Status", tag = "4")]
     pub status: i32,
     #[prost(message, optional, tag = "5")]
-    #[serde(with = "crate::api::time_serde", rename = "created_ts")]
+    #[serde(with = "crate::api::time_serde")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(enumeration = "inbox::Type", tag = "6")]
     pub r#type: i32,

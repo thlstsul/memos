@@ -14,9 +14,9 @@ impl Inbox {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Invalid request"), context(suffix(false)))]
+    #[snafu(display("Invalid request: {source}"), context(suffix(false)))]
     InvalidRequest { source: super::Error },
-    #[snafu(display("Invalid inbox id : {name}"), context(suffix(false)))]
+    #[snafu(display("Invalid inbox id: {name}, {source}"), context(suffix(false)))]
     InvalidInboxId {
         name: String,
         source: std::num::ParseIntError,

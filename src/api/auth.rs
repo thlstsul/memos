@@ -6,7 +6,7 @@ use super::{
 impl From<User> for GetAuthStatusResponse {
     fn from(value: User) -> Self {
         let mut user = value;
-        user.name = format!("{}/{}", USER_NAME_PREFIX, user.name);
+        user.name = format!("{}/{}", USER_NAME_PREFIX, user.username);
         Self { user: Some(user) }
     }
 }

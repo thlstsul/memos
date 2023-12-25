@@ -40,7 +40,7 @@ impl SystemSettingDao {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Execute failed"), context(suffix(false)))]
+    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
     Database { source: anyhow::Error },
     #[snafu(display("Data does not exsit"), context(suffix(false)))]
     Inexistent,

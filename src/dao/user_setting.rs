@@ -3,7 +3,7 @@ use std::sync::Arc;
 use libsql_client::{Client, Statement};
 use snafu::{ResultExt, Snafu};
 
-use crate::api::v1::user_setting::UserSetting;
+use crate::api::user::UserSetting;
 
 use super::Dao;
 
@@ -27,6 +27,6 @@ impl UserSettingDao {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Execute failed"), context(suffix(false)))]
+    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
     Database { source: anyhow::Error },
 }

@@ -27,22 +27,22 @@ impl UserDao {
     ) -> Result<User, Error> {
         let stmt = if let Some(password_hash) = password_hash {
             Statement::with_args(
-                "select * from user where username = ? and password_hash = ?",
+                "select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where username = ? and password_hash = ?",
                 &[name, password_hash],
             )
         } else {
-            Statement::with_args("select * from user where username = ?", &[name])
+            Statement::with_args("select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where username = ?", &[name])
         };
-        let users: Vec<User> = self.execute(stmt).await.context(Database)?;
-        if let Some(user) = users.first() {
-            Ok(user.clone())
+        let mut users: Vec<User> = self.execute(stmt).await.context(Database)?;
+        if let Some(user) = users.pop() {
+            Ok(user)
         } else {
             Err(Error::Inexistent)
         }
     }
 
     pub async fn petch_user(&self, id: i32) -> Result<User, Error> {
-        let stmt = Statement::with_args("select * from user where id = ?", &[id]);
+        let stmt = Statement::with_args("select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where id = ?", &[id]);
         let users: Vec<User> = self.execute(stmt).await.context(Database)?;
         if let Some(user) = users.first() {
             Ok(user.clone())
@@ -53,12 +53,12 @@ impl UserDao {
 
     pub async fn host_user(&self) -> Result<User, Error> {
         let stmt = Statement::with_args(
-            "select * from user where role = ?",
+            "select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where role = ?",
             &[user::Role::Host.as_str_name()],
         );
-        let users: Vec<User> = self.execute(stmt).await.context(Database)?;
-        if let Some(user) = users.first() {
-            Ok(user.clone())
+        let mut users: Vec<User> = self.execute(stmt).await.context(Database)?;
+        if let Some(user) = users.pop() {
+            Ok(user)
         } else {
             Err(Error::Inexistent)
         }
@@ -67,7 +67,7 @@ impl UserDao {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Execute failed"), context(suffix(false)))]
+    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
     Database { source: anyhow::Error },
     #[snafu(display("Data does not exsit"), context(suffix(false)))]
     Inexistent,

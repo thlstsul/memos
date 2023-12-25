@@ -38,12 +38,15 @@ impl SystemService {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Failed to get system setting list"), context(suffix(false)))]
+    #[snafu(
+        display("Failed to get system setting list: {source}"),
+        context(suffix(false))
+    )]
     ListSettingFailed {
         source: crate::dao::system_setting::Error,
     },
     #[snafu(
-        display("Failed to find system setting with: {key}"),
+        display("Failed to find system setting with: {key}, {source}"),
         context(suffix(false))
     )]
     FindSettingFailed {

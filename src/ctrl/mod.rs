@@ -4,17 +4,9 @@ use hyper::header;
 use tracing::error;
 
 pub mod auth;
-pub mod memo;
 pub mod system;
-pub mod user;
 
 impl IntoResponse for crate::api::Error {
-    fn into_response(self) -> Response {
-        error_response(StatusCode::BAD_REQUEST, self)
-    }
-}
-
-impl IntoResponse for memo::Error {
     fn into_response(self) -> Response {
         error_response(StatusCode::BAD_REQUEST, self)
     }

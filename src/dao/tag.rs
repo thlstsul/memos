@@ -53,6 +53,6 @@ impl TagDao {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Execute failed"), context(suffix(false)))]
+    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
     Database { source: anyhow::Error },
 }

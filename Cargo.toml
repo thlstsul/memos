@@ -30,6 +30,7 @@ axum-login = "0.9.0"
 pin-project-lite = "0.2.13"
 bytes = "1.5.0"
 tower-cookies = "0.9.0"
+serde_urlencoded = "0.7.1"
 
 [build-dependencies]
 protoc-bin-vendored = "3.0.0"

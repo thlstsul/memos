@@ -1,6 +1,9 @@
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use snafu::{ensure, Snafu};
 use tonic::Status;
 use tracing::error;
+
+use self::v2::{RowStatus, Visibility};
 
 pub mod auth;
 pub mod inbox;
@@ -67,6 +70,32 @@ mod time_serde {
 }
 
 /// enmu RowStatus serialize
+impl Serialize for RowStatus {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let row_status = if self == &RowStatus::Unspecified {
+            "NORMAL"
+        } else {
+            self.as_str_name()
+        };
+        serializer.serialize_str(row_status)
+    }
+}
+
+impl<'de> Deserialize<'de> for RowStatus {
+    fn deserialize<D>(deserializer: D) -> Result<RowStatus, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let status = String::deserialize(deserializer)?;
+        let row_status = RowStatus::from_str_name(&status);
+        let row_status = row_status.unwrap_or(RowStatus::Unspecified);
+        Ok(row_status.into())
+    }
+}
+
 mod status_serde {
     use serde::{self, Deserialize, Deserializer, Serializer};
 
@@ -121,5 +150,53 @@ mod role_serde {
         let role = Role::from_str_name(&role);
         let role = role.unwrap_or(Role::Unspecified);
         Ok(role.into())
+    }
+}
+
+impl Serialize for Visibility {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let visibility = self.as_str_name();
+        serializer.serialize_str(visibility)
+    }
+}
+
+impl<'de> Deserialize<'de> for Visibility {
+    fn deserialize<D>(deserializer: D) -> Result<Visibility, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let visibility = String::deserialize(deserializer)?;
+        let visibility = Visibility::from_str_name(&visibility);
+        let visibility = visibility.unwrap_or(Visibility::Unspecified);
+        Ok(visibility.into())
+    }
+}
+
+mod visibility_serde {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    use super::v2::Visibility;
+
+    pub fn serialize<S>(visibility: &i32, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let visibility = Visibility::try_from(*visibility);
+        let visibility = visibility.unwrap_or(Visibility::Unspecified);
+        let visibility = visibility.as_str_name();
+        serializer.serialize_str(visibility)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<i32, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let visibility = String::deserialize(deserializer)?;
+        let visibility = Visibility::from_str_name(&visibility);
+        let visibility = visibility.unwrap_or(Visibility::Unspecified);
+        Ok(visibility.into())
     }
 }

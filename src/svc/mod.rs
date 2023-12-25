@@ -6,13 +6,13 @@ use tonic::{Request, Status};
 
 use crate::{
     api::v2::{
-        auth_service_server::AuthServiceServer, tag_service_server::TagServiceServer,
-        user_service_server::UserServiceServer, User,
+        auth_service_server::AuthServiceServer, memo_service_server::MemoServiceServer,
+        tag_service_server::TagServiceServer, user_service_server::UserServiceServer, User,
     },
     ctrl::auth::AuthSession,
 };
 
-use self::{auth::AuthService, tag::TagService, user::UserService};
+use self::{auth::AuthService, memo::MemoService, tag::TagService, user::UserService};
 
 pub mod auth;
 pub mod memo;
@@ -35,6 +35,11 @@ impl ServiceFactory {
 
     pub fn get_auth() -> AuthServiceServer<AuthService> {
         AuthServiceServer::new(AuthService)
+    }
+
+    pub fn get_memo(client: &Arc<Client>) -> MemoServiceServer<MemoService> {
+        let memo = MemoService::new(client);
+        MemoServiceServer::new(memo)
     }
 }
 

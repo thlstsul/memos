@@ -4,19 +4,21 @@ use libsql_client::Client;
 use sm3::{Digest, Sm3};
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
+use tracing::error;
 
-use crate::api::v1::user_setting::UserSetting;
 use crate::api::v2::{
     user_service_server, CreateUserAccessTokenRequest, CreateUserAccessTokenResponse,
     CreateUserRequest, CreateUserResponse, DeleteUserAccessTokenRequest,
     DeleteUserAccessTokenResponse, DeleteUserRequest, DeleteUserResponse, GetUserRequest,
     GetUserResponse, GetUserSettingRequest, GetUserSettingResponse, ListUserAccessTokensRequest,
-    ListUserAccessTokensResponse, UpdateUserRequest, UpdateUserResponse, UpdateUserSettingRequest,
-    UpdateUserSettingResponse, User,
+    ListUserAccessTokensResponse, ListUsersRequest, ListUsersResponse, UpdateUserRequest,
+    UpdateUserResponse, UpdateUserSettingRequest, UpdateUserSettingResponse, User,
 };
 use crate::dao::user::Error as DaoErr;
 use crate::dao::user::UserDao;
 use crate::dao::user_setting::UserSettingDao;
+
+use super::get_current_user;
 
 #[derive(Debug, Clone)]
 pub struct UserService {
@@ -77,17 +79,16 @@ impl UserService {
             rs.context(QueryUserFailed)
         }
     }
-
-    pub async fn find_setting(&self, user_id: i32) -> Result<Vec<UserSetting>, Error> {
-        self.setting_dao
-            .find_setting(user_id)
-            .await
-            .context(QuerySettingFailed)
-    }
 }
 
 #[tonic::async_trait]
 impl user_service_server::UserService for UserService {
+    async fn list_users(
+        &self,
+        request: Request<ListUsersRequest>,
+    ) -> Result<Response<ListUsersResponse>, Status> {
+        todo!()
+    }
     async fn get_user(
         &self,
         request: Request<GetUserRequest>,
@@ -139,7 +140,9 @@ impl user_service_server::UserService for UserService {
         &self,
         request: Request<GetUserSettingRequest>,
     ) -> Result<Response<GetUserSettingResponse>, Status> {
-        todo!()
+        let user = get_current_user(&request)?;
+        let settings = self.setting_dao.find_setting(user.id).await?;
+        Ok(Response::new(settings.into()))
     }
     async fn update_user_setting(
         &self,
@@ -152,19 +155,29 @@ impl user_service_server::UserService for UserService {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(
-        display("Incorrect login credentials, please try again"),
+        display("Incorrect login credentials, please try again: {source}"),
         context(suffix(false))
     )]
     Login { source: crate::dao::user::Error },
-    #[snafu(display("User not found: {ident}"), context(suffix(false)))]
+    #[snafu(display("User not found: {ident}, {source}"), context(suffix(false)))]
     UserNotFound {
         ident: String,
         source: crate::dao::user::Error,
     },
-    #[snafu(display("Failed to find user"), context(suffix(false)))]
+    #[snafu(display("Failed to find user: {source}"), context(suffix(false)))]
     QueryUserFailed { source: crate::dao::user::Error },
-    #[snafu(display("Failed to find userSettingList"), context(suffix(false)))]
+    #[snafu(
+        display("Failed to find userSettingList: {source}"),
+        context(suffix(false))
+    )]
     QuerySettingFailed {
         source: crate::dao::user_setting::Error,
     },
+}
+
+impl From<crate::dao::user_setting::Error> for Status {
+    fn from(value: crate::dao::user_setting::Error) -> Self {
+        error!("{value}");
+        Status::internal(value.to_string())
+    }
 }

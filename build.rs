@@ -12,7 +12,6 @@ fn main() {
         .out_dir("src/api/v2")
         .with_serde(
             &[
-                "memos.api.v2.User",
                 "memos.api.v2.Memo",
                 "memos.api.v2.Resource",
                 "memos.api.v2.Tag",
@@ -21,8 +20,10 @@ fn main() {
                 "memos.api.v2.ActivityMemoCommentPayload",
                 "memos.api.v2.ActivityVersionUpdatePayload",
                 "memos.api.v2.Inbox",
+                "memos.api.v2.MemoRelation",
+                // "memos.api.v2.Node",
             ],
-            true,
+            false,
             true,
             None,
         )
@@ -30,18 +31,43 @@ fn main() {
             &[
                 "memos.api.v2.Activity.create_time",
                 "memos.api.v2.Inbox.create_time",
+                "memos.api.v2.Resource.create_time",
+                "memos.api.v2.Memo.create_time",
+                "memos.api.v2.Memo.update_time",
+                "memos.api.v2.Memo.display_time",
             ],
-            &[r#"#[serde(with = "crate::api::time_serde", rename = "created_ts")]"#],
+            &[r#"#[serde(with = "crate::api::time_serde")]"#],
+        )
+        .with_field_attributes(
+            &[
+                "memos.api.v2.User.password",
+                "memos.api.v2.User.name",
+                "memos.api.v2.Memo.nodes",
+            ],
+            &[r#"#[serde(skip)]"#],
+        )
+        .with_field_attributes(
+            &[
+                "memos.api.v2.Memo.creator",
+                "memos.api.v2.Memo.display_time",
+                "memos.api.v2.Memo.pinned",
+                "memos.api.v2.Memo.resources",
+                "memos.api.v2.Memo.relations",
+            ],
+            &["#[serde(default)]"],
+        )
+        .type_attribute(
+            "memos.api.v2.User",
+            r"#[derive(serde::Serialize, serde::Deserialize)]",
         )
         .field_attribute(
             "memos.api.v2.Memo.row_status",
             r#"#[serde(with = "crate::api::status_serde")]"#,
         )
         .field_attribute(
-            "memos.api.v2.Resource.created_ts",
-            r#"#[serde(with = "crate::api::time_serde")]"#,
+            "memos.api.v2.Memo.visibility",
+            r#"#[serde(with = "crate::api::visibility_serde")]"#,
         )
-        .field_attribute("memos.api.v2.User.name", r#"#[serde(rename = "username")]"#)
         .field_attribute(
             "memos.api.v2.User.row_status",
             r#"#[serde(with = "crate::api::status_serde", rename(serialize = "rowStatus"))]"#,
@@ -51,20 +77,16 @@ fn main() {
             r#"#[serde(with = "crate::api::role_serde")]"#,
         )
         .field_attribute(
-            "memos.api.v2.User.create_time", 
-            r#"#[serde(with = "crate::api::time_serde", rename(serialize = "createdTs", deserialize = "created_ts"))]"#
+            "memos.api.v2.User.create_time",
+            r#"#[serde(with = "crate::api::time_serde", rename(serialize = "createdTs"))]"#,
         )
         .field_attribute(
             "memos.api.v2.User.update_time",
-            r#"#[serde(with = "crate::api::time_serde", rename(serialize = "updatedTs", deserialize = "updated_ts"))]"#,
+            r#"#[serde(with = "crate::api::time_serde", rename(serialize = "updatedTs"))]"#,
         )
         .field_attribute(
             "memos.api.v2.User.avatar_url",
             r#"#[serde(rename(serialize = "avatarUrl"))]"#,
-        )
-        .field_attribute(
-            "memos.api.v2.User.password",
-            r#"#[serde(skip)]"#,
         )
         .compile(
             &[
@@ -77,6 +99,8 @@ fn main() {
                 "proto/api/v2/inbox_service.proto",
                 "proto/api/v2/auth_service.proto",
                 "proto/api/v2/webhook_service.proto",
+                "proto/api/v2/markdown_service.proto",
+                "proto/api/v2/memo_relation_service.proto",
             ],
             // https://github.com/googleapis/googleapis.git
             &["proto", "googleapis"],

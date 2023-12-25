@@ -9,7 +9,6 @@ use axum_login::{
 };
 use ctrl::auth::{self, Backend};
 use ctrl::system;
-use ctrl::user;
 use hybrid::{GrpcWebService, ShuttleGrpcWeb};
 use hyper::StatusCode;
 use libsql_client::client::Client;
@@ -23,10 +22,7 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use crate::{
-    ctrl::{auth::AuthLayer, memo},
-    svc::ServiceFactory,
-};
+use crate::{ctrl::auth::AuthLayer, svc::ServiceFactory};
 
 mod api;
 mod ctrl;
@@ -36,7 +32,11 @@ mod svc;
 
 #[shuttle_runtime::main]
 async fn grpc_web(
-    #[shuttle_turso::Turso(addr = "{secrets.TURSO_URL}", token = "{secrets.TURSO_TOKEN}")]
+    #[shuttle_turso::Turso(
+        addr = "{secrets.TURSO_URL}",
+        token = "{secrets.TURSO_TOKEN}",
+        local_addr = "{secrets.TURSO_URL}"
+    )]
     client: Client,
     #[shuttle_secrets::Secrets] secrets: SecretStore,
 ) -> ShuttleGrpcWeb {
@@ -54,16 +54,9 @@ async fn grpc_web(
         }))
         .layer(auth_manager_layer.clone());
 
-    let protected = Router::new()
-        .merge(user::router())
-        .route_layer(login_required!(Backend));
+    let public = Router::new().merge(auth::router()).merge(system::router());
 
-    let public = Router::new()
-        .merge(auth::router())
-        .merge(system::router())
-        .merge(memo::router());
-
-    let api_v1 = Router::new().merge(protected).merge(public);
+    let api_v1 = Router::new().merge(public);
 
     let axum_router = Router::new()
         .nest("/api/v1", api_v1)
@@ -80,6 +73,7 @@ async fn grpc_web(
     let user = ServiceFactory::get_user(&client);
     let tag = ServiceFactory::get_tag(&client);
     let auth = ServiceFactory::get_auth();
+    let memo = ServiceFactory::get_memo(&client);
 
     let public_path = vec![
         "/memos.api.v2.AuthService/GetAuthStatus",
@@ -97,7 +91,8 @@ async fn grpc_web(
         .layer(AuthLayer::new(auth_manager_layer, public_path))
         .add_service(user)
         .add_service(tag)
-        .add_service(auth);
+        .add_service(auth)
+        .add_service(memo);
 
     Ok(GrpcWebService {
         axum_router,
