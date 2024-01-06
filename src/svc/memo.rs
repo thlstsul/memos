@@ -1,13 +1,14 @@
 use snafu::Snafu;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tonic::{Request, Response, Status};
-use tracing::error;
+use tracing::info;
 
 use libsql_client::Client;
 
 use crate::{
     api::{
-        memo::CreateMemo,
+        memo::{CreateMemo, FindMemo},
+        system::{SystemSetting, SystemSettingKey},
         v2::{
             memo_service_server, CreateMemoCommentRequest, CreateMemoCommentResponse,
             CreateMemoRequest, CreateMemoResponse, DeleteMemoRequest, DeleteMemoResponse,
@@ -16,22 +17,30 @@ use crate::{
             ListMemoRelationsResponse, ListMemoResourcesRequest, ListMemoResourcesResponse,
             ListMemosRequest, ListMemosResponse, SetMemoRelationsRequest, SetMemoRelationsResponse,
             SetMemoResourcesRequest, SetMemoResourcesResponse, UpdateMemoRequest,
-            UpdateMemoResponse,
+            UpdateMemoResponse, Visibility,
         },
     },
-    dao::memo::MemoDao,
+    dao::{memo::MemoDao, system_setting::SystemSettingDao, user::UserDao},
 };
 
 use super::get_current_user;
 
 pub struct MemoService {
-    dao: MemoDao,
+    memo_dao: MemoDao,
+    user_dao: UserDao,
+    sys_dao: SystemSettingDao,
 }
 
 impl MemoService {
     pub fn new(client: &Arc<Client>) -> Self {
         Self {
-            dao: MemoDao {
+            memo_dao: MemoDao {
+                client: Arc::clone(client),
+            },
+            user_dao: UserDao {
+                client: Arc::clone(client),
+            },
+            sys_dao: SystemSettingDao {
                 client: Arc::clone(client),
             },
         }
@@ -51,15 +60,45 @@ impl memo_service_server::MemoService for MemoService {
             content: req.content.clone(),
             visibility: req.visibility(),
         };
-        let memo = self.dao.create_memo(create).await?;
+        let memo = self.memo_dao.create_memo(create).await?;
         Ok(Response::new(memo.into()))
     }
+
     async fn list_memos(
         &self,
         request: Request<ListMemosRequest>,
     ) -> Result<Response<ListMemosResponse>, Status> {
-        todo!()
+        let user = get_current_user(&request);
+        let mut find: FindMemo = request.get_ref().try_into()?;
+        if let Some(creator) = find.creator.clone() {
+            let user = self.user_dao.find_user(creator, None).await?;
+            find.creator_id = Some(user.id);
+        }
+        if let Ok(user) = user {
+            if find.creator_id.is_some() {
+                if Some(user.id) != find.creator_id {
+                    find.visibility_list = vec![Visibility::Public, Visibility::Protected];
+                }
+            } else {
+                find.creator_id = Some(user.id);
+            }
+        } else {
+            find.visibility_list = vec![Visibility::Public];
+        }
+        if let Some(SystemSetting { value, .. }) = self
+            .sys_dao
+            .find_setting(SystemSettingKey::MemoDisplayWithUpdatedTs)
+            .await?
+        {
+            find.order_by_updated_ts = value == "true";
+        }
+        let memos = self.memo_dao.list_memos(find).await?;
+        // TODO relate,resource
+
+        info!("{memos:?}");
+        Ok(Response::new(memos.into()))
     }
+
     async fn get_memo(
         &self,
         request: Request<GetMemoRequest>,
@@ -85,7 +124,8 @@ impl memo_service_server::MemoService for MemoService {
         &self,
         request: Request<SetMemoResourcesRequest>,
     ) -> Result<Response<SetMemoResourcesResponse>, Status> {
-        todo!()
+        // TODO
+        Ok(Response::new(SetMemoResourcesResponse {}))
     }
     /// ListMemoResources lists resources for a memo.
     async fn list_memo_resources(
@@ -99,7 +139,8 @@ impl memo_service_server::MemoService for MemoService {
         &self,
         request: Request<SetMemoRelationsRequest>,
     ) -> Result<Response<SetMemoRelationsResponse>, Status> {
-        todo!()
+        // TODO
+        Ok(Response::new(SetMemoRelationsResponse {}))
     }
     /// ListMemoRelations lists relations for a memo.
     async fn list_memo_relations(
@@ -127,7 +168,12 @@ impl memo_service_server::MemoService for MemoService {
         &self,
         request: Request<GetUserMemosStatsRequest>,
     ) -> Result<Response<GetUserMemosStatsResponse>, Status> {
-        todo!()
+        let user = get_current_user(&request)?;
+        let count = self.memo_dao.count_memos(user.id).await?;
+        Ok(Response::new(GetUserMemosStatsResponse {
+            // 简化，后面这个api一定会改
+            memo_creation_stats: HashMap::from([("2024-01-01".to_owned(), count.count)]),
+        }))
     }
 }
 
@@ -135,11 +181,4 @@ impl memo_service_server::MemoService for MemoService {
 pub enum Error {
     #[snafu(display("Failed to find memo list: {source}"), context(suffix(false)))]
     ListMemoFailed { source: crate::dao::memo::Error },
-}
-
-impl From<crate::dao::memo::Error> for Status {
-    fn from(value: crate::dao::memo::Error) -> Self {
-        error!("{value}");
-        Status::internal(value.to_string())
-    }
 }

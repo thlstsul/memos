@@ -6,16 +6,17 @@ use super::{
     Error, USER_NAME_PREFIX,
 };
 
+use prost_types::FieldMask;
 use serde::{Deserialize, Deserializer};
 
 use crate::api::v2::GetUserSettingResponse;
 
 #[derive(Deserialize)]
 pub struct UserSetting {
-    user_id: i32,
+    pub user_id: i32,
     #[serde(deserialize_with = "deserialize_key")]
-    key: UserSettingKey,
-    value: String,
+    pub key: UserSettingKey,
+    pub value: String,
 }
 
 pub enum UserSettingKey {

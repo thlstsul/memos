@@ -7,6 +7,7 @@ use libsql_client::{Client, Statement};
 use crate::api::{
     memo::{CreateMemo, FindMemo},
     v2::Memo,
+    Count,
 };
 
 use super::Dao;
@@ -24,7 +25,7 @@ impl Dao for MemoDao {
 impl MemoDao {
     pub async fn create_memo(&self, create: CreateMemo) -> Result<Memo, Error> {
         let stmt = Statement::with_args(
-            "INSERT INTO memo (creator_id, content, visibility) VALUES (?, ?, ?) RETURNING id, creator_id, created_ts as create_time, updated_ts as update_time, row_status, content, visibility",
+            "INSERT INTO memo (creator_id, content, visibility) VALUES (?, ?, ?) RETURNING id, creator_id, created_ts as create_time, created_ts as display_time, updated_ts as update_time, row_status, content, visibility",
             &[
                 create.creator_id.to_string(),
                 create.content,
@@ -45,6 +46,15 @@ impl MemoDao {
         info!("{stmt}");
         self.execute(stmt).await.context(Database)
     }
+
+    pub async fn count_memos(&self, creator_id: i32) -> Result<Count, Error> {
+        let stmt = Statement::with_args(
+            "select count(1) as count from memo where creator_id = ?",
+            &[creator_id],
+        );
+        let mut rs: Vec<Count> = self.execute(stmt).await.context(Database)?;
+        Ok(rs.pop().unwrap_or(Count { count: 0 }))
+    }
 }
 
 impl FindMemo {
@@ -62,7 +72,7 @@ impl FindMemo {
         }
         if let Some(row_status) = &self.row_status {
             wheres.push("memo.row_status = ?");
-            args.push(row_status.clone());
+            args.push(row_status.to_string());
         }
         if let Some(created_ts_before) = self.created_ts_before {
             wheres.push("memo.created_ts < ?");
@@ -85,7 +95,7 @@ impl FindMemo {
         if !self.visibility_list.is_empty() {
             let mut l = Vec::new();
             for visibility in self.visibility_list.iter() {
-                args.push(visibility.as_str_name().to_string());
+                args.push(visibility.as_str_name().to_owned());
                 l.push("?");
             }
             wheres.push(format!("memo.visibility in ({})", l.join(", ")));
@@ -96,14 +106,15 @@ impl FindMemo {
             orders.push("pinned DESC");
         }
         if self.order_by_updated_ts {
-            orders.push("updated_ts DESC");
+            orders.push("memo.updated_ts DESC");
         } else {
-            orders.push("created_ts DESC");
+            orders.push("memo.created_ts DESC");
         }
-        orders.push("id DESC");
+        orders.push("memo.id DESC");
 
         let mut fields = vec![
             "memo.id AS id",
+            "user.username AS creator",
             "memo.creator_id AS creator_id",
             "memo.created_ts AS create_time",
             "memo.updated_ts AS update_time",
@@ -116,11 +127,18 @@ impl FindMemo {
             fields.push("memo.content AS content");
         }
 
+        if self.order_by_updated_ts {
+            fields.push("memo.updated_ts AS display_time");
+        } else {
+            fields.push("memo.created_ts AS display_time");
+        }
+
         let mut query = format!(
             "SELECT
             {}
             FROM memo
 		    LEFT JOIN memo_organizer ON memo.id = memo_organizer.memo_id
+            LEFT JOIN user ON memo.creator_id = user.id
             WHERE {}
             GROUP BY memo.id
             ORDER BY {}",

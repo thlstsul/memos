@@ -23,6 +23,26 @@ impl UserSettingDao {
         let stmt = Statement::with_args("select * from user_setting where user_id = ?", &[user_id]);
         self.execute(stmt).await.context(Database)
     }
+
+    pub async fn upsert_setting(&self, setting: UserSetting) -> Result<(), Error> {
+        let stmt = Statement::with_args(
+            "
+        INSERT INTO user_setting (
+			user_id, key, value
+		)
+		VALUES (?, ?, ?)
+		ON CONFLICT(user_id, key) DO UPDATE 
+		SET value = EXCLUDED.value
+        ",
+            &[
+                setting.user_id.to_string(),
+                setting.key.to_string(),
+                setting.value,
+            ],
+        );
+        self.client.execute(stmt).await.context(Database)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Snafu)]

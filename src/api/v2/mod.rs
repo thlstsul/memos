@@ -2708,6 +2708,7 @@ pub struct Memo {
     pub visibility: i32,
     #[prost(bool, tag = "11")]
     #[serde(default)]
+    #[serde(with = "crate::api::bool_serde")]
     pub pinned: bool,
     #[prost(message, repeated, tag = "12")]
     #[serde(default)]

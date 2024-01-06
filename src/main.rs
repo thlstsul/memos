@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use axum::{error_handling::HandleErrorLayer, BoxError, Router};
 use axum_login::{
-    login_required,
     tower_sessions::{cookie::time::Duration, Expiry, MemoryStore, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
@@ -29,6 +28,7 @@ mod ctrl;
 mod dao;
 mod hybrid;
 mod svc;
+mod util;
 
 #[shuttle_runtime::main]
 async fn grpc_web(
@@ -63,6 +63,7 @@ async fn grpc_web(
         .layer(auth_service)
         .layer(TraceLayer::new_for_http())
         .route_service("/auth", ServeFile::new("web/dist/index.html"))
+        .route_service("/explore", ServeFile::new("web/dist/index.html"))
         .nest_service(
             "/",
             ServeDir::new("web/dist").append_index_html_on_directories(true),

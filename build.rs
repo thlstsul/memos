@@ -69,6 +69,10 @@ fn main() {
             r#"#[serde(with = "crate::api::visibility_serde")]"#,
         )
         .field_attribute(
+            "memos.api.v2.Memo.pinned",
+            r#"#[serde(with = "crate::api::bool_serde")]"#,
+        )
+        .field_attribute(
             "memos.api.v2.User.row_status",
             r#"#[serde(with = "crate::api::status_serde", rename(serialize = "rowStatus"))]"#,
         )

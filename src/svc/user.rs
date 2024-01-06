@@ -4,8 +4,8 @@ use libsql_client::Client;
 use sm3::{Digest, Sm3};
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
-use tracing::error;
 
+use crate::api::user::{UserSetting, UserSettingKey};
 use crate::api::v2::{
     user_service_server, CreateUserAccessTokenRequest, CreateUserAccessTokenResponse,
     CreateUserRequest, CreateUserResponse, DeleteUserAccessTokenRequest,
@@ -114,7 +114,10 @@ impl user_service_server::UserService for UserService {
         &self,
         request: Request<ListUserAccessTokensRequest>,
     ) -> Result<Response<ListUserAccessTokensResponse>, Status> {
-        todo!()
+        // TODO
+        Ok(Response::new(ListUserAccessTokensResponse {
+            access_tokens: vec![],
+        }))
     }
     /// CreateUserAccessToken creates a new access token for a user.
     async fn create_user_access_token(
@@ -148,7 +151,32 @@ impl user_service_server::UserService for UserService {
         &self,
         request: Request<UpdateUserSettingRequest>,
     ) -> Result<Response<UpdateUserSettingResponse>, Status> {
-        todo!()
+        let user = get_current_user(&request)?;
+        let req = request.get_ref();
+        if let Some(field_mask) = &req.update_mask {
+            if let Some(settings) = &req.setting {
+                for path in &field_mask.paths {
+                    let key = match path.as_str() {
+                        "local" => UserSettingKey::Locale,
+                        "appearance" => UserSettingKey::Appearance,
+                        "memo_visibility" => UserSettingKey::Visibility,
+                        "telegram_user_id" => UserSettingKey::TelegramUserId,
+                        _ => continue,
+                    };
+                    self.setting_dao
+                        .upsert_setting(UserSetting {
+                            user_id: user.id,
+                            key,
+                            value: settings.locale.clone(),
+                        })
+                        .await?;
+                }
+            }
+        }
+
+        Ok(Response::new(UpdateUserSettingResponse {
+            setting: req.setting.clone(),
+        }))
     }
 }
 
@@ -173,11 +201,4 @@ pub enum Error {
     QuerySettingFailed {
         source: crate::dao::user_setting::Error,
     },
-}
-
-impl From<crate::dao::user_setting::Error> for Status {
-    fn from(value: crate::dao::user_setting::Error) -> Self {
-        error!("{value}");
-        Status::internal(value.to_string())
-    }
 }

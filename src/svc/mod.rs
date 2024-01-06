@@ -3,6 +3,7 @@ use std::sync::Arc;
 use libsql_client::Client;
 use snafu::Snafu;
 use tonic::{Request, Status};
+use tracing::error;
 
 use crate::{
     api::v2::{
@@ -62,6 +63,28 @@ pub enum Error {
 
 impl From<Error> for Status {
     fn from(value: Error) -> Self {
+        error!("{value}");
+        Status::internal(value.to_string())
+    }
+}
+
+impl From<crate::dao::system_setting::Error> for Status {
+    fn from(value: crate::dao::system_setting::Error) -> Self {
+        error!("{value}");
+        Status::internal(value.to_string())
+    }
+}
+
+impl From<crate::dao::user_setting::Error> for Status {
+    fn from(value: crate::dao::user_setting::Error) -> Self {
+        error!("{value}");
+        Status::internal(value.to_string())
+    }
+}
+
+impl From<crate::dao::memo::Error> for Status {
+    fn from(value: crate::dao::memo::Error) -> Self {
+        error!("{value}");
         Status::internal(value.to_string())
     }
 }

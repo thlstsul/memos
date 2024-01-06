@@ -1,6 +1,6 @@
 [package]
 name = "memos"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -30,7 +30,9 @@ axum-login = "0.9.0"
 pin-project-lite = "0.2.13"
 bytes = "1.5.0"
 tower-cookies = "0.9.0"
-serde_urlencoded = "0.7.1"
+syn = { version = "2.0.43", features = ["full", "extra-traits"] }
+comrak = { version = "0.20.0", default-features = false, features = ["syntect"] }
+regex = "1.10.2"
 
 [build-dependencies]
 protoc-bin-vendored = "3.0.0"
