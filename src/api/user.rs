@@ -11,7 +11,7 @@ use serde::{Deserialize, Deserializer};
 
 use crate::api::v2::GetUserSettingResponse;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct UserSetting {
     pub user_id: i32,
     #[serde(deserialize_with = "deserialize_key")]
@@ -19,6 +19,7 @@ pub struct UserSetting {
     pub value: String,
 }
 
+#[derive(Debug)]
 pub enum UserSettingKey {
     Unspecified,
     AccessTokens,

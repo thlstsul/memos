@@ -4,6 +4,7 @@ use libsql_client::Client;
 use sm3::{Digest, Sm3};
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
+use tracing::info;
 
 use crate::api::user::{UserSetting, UserSettingKey};
 use crate::api::v2::{
@@ -157,7 +158,7 @@ impl user_service_server::UserService for UserService {
             if let Some(settings) = &req.setting {
                 for path in &field_mask.paths {
                     let setting = match path.as_str() {
-                        "local" => UserSetting {
+                        "locale" => UserSetting {
                             user_id: user.id,
                             key: UserSettingKey::Locale,
                             value: settings.locale.clone(),
