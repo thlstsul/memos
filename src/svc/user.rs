@@ -156,20 +156,30 @@ impl user_service_server::UserService for UserService {
         if let Some(field_mask) = &req.update_mask {
             if let Some(settings) = &req.setting {
                 for path in &field_mask.paths {
-                    let key = match path.as_str() {
-                        "local" => UserSettingKey::Locale,
-                        "appearance" => UserSettingKey::Appearance,
-                        "memo_visibility" => UserSettingKey::Visibility,
-                        "telegram_user_id" => UserSettingKey::TelegramUserId,
+                    let setting = match path.as_str() {
+                        "local" => UserSetting {
+                            user_id: user.id,
+                            key: UserSettingKey::Locale,
+                            value: settings.locale.clone(),
+                        },
+                        "appearance" => UserSetting {
+                            user_id: user.id,
+                            key: UserSettingKey::Appearance,
+                            value: settings.appearance.clone(),
+                        },
+                        "memo_visibility" => UserSetting {
+                            user_id: user.id,
+                            key: UserSettingKey::Visibility,
+                            value: settings.memo_visibility.clone(),
+                        },
+                        "telegram_user_id" => UserSetting {
+                            user_id: user.id,
+                            key: UserSettingKey::TelegramUserId,
+                            value: settings.telegram_user_id.clone(),
+                        },
                         _ => continue,
                     };
-                    self.setting_dao
-                        .upsert_setting(UserSetting {
-                            user_id: user.id,
-                            key,
-                            value: settings.locale.clone(),
-                        })
-                        .await?;
+                    self.setting_dao.upsert_setting(setting).await?;
                 }
             }
         }
