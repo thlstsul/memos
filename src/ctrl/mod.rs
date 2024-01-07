@@ -4,6 +4,7 @@ use hyper::header;
 use tracing::error;
 
 pub mod auth;
+pub mod store;
 pub mod system;
 
 impl IntoResponse for crate::api::Error {

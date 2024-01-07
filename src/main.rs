@@ -20,8 +20,12 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
+use tracing::error;
 
-use crate::{ctrl::auth::AuthLayer, svc::ServiceFactory};
+use crate::{
+    ctrl::{auth::AuthLayer, store::TursoStore},
+    svc::ServiceFactory,
+};
 
 mod api;
 mod ctrl;
@@ -41,7 +45,7 @@ async fn grpc_web(
     #[shuttle_secrets::Secrets] secrets: SecretStore,
 ) -> ShuttleGrpcWeb {
     let client = Arc::new(client);
-    let session_store = MemoryStore::default();
+    let session_store = TursoStore::new(&client);
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
         .with_expiry(Expiry::OnInactivity(Duration::days(30)));
@@ -49,7 +53,8 @@ async fn grpc_web(
     let backend = Backend::new(UserService::new(&client));
     let auth_manager_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
     let auth_service = ServiceBuilder::new()
-        .layer(HandleErrorLayer::new(|_: BoxError| async {
+        .layer(HandleErrorLayer::new(|e: BoxError| async move {
+            error!("{e}");
             StatusCode::BAD_REQUEST
         }))
         .layer(auth_manager_layer.clone());
@@ -58,12 +63,14 @@ async fn grpc_web(
 
     let api_v1 = Router::new().merge(public);
 
+    let index_file = ServeFile::new("web/dist/index.html");
     let axum_router = Router::new()
         .nest("/api/v1", api_v1)
         .layer(auth_service)
         .layer(TraceLayer::new_for_http())
-        .route_service("/auth", ServeFile::new("web/dist/index.html"))
-        .route_service("/explore", ServeFile::new("web/dist/index.html"))
+        .route_service("/auth", index_file.clone())
+        .route_service("/explore", index_file.clone())
+        .route_service("/setting", index_file)
         .nest_service(
             "/",
             ServeDir::new("web/dist").append_index_html_on_directories(true),
@@ -75,6 +82,7 @@ async fn grpc_web(
     let tag = ServiceFactory::get_tag(&client);
     let auth = ServiceFactory::get_auth();
     let memo = ServiceFactory::get_memo(&client);
+    let inbox = ServiceFactory::get_inbox();
 
     let public_path = vec![
         "/memos.api.v2.AuthService/GetAuthStatus",
@@ -93,7 +101,8 @@ async fn grpc_web(
         .add_service(user)
         .add_service(tag)
         .add_service(auth)
-        .add_service(memo);
+        .add_service(memo)
+        .add_service(inbox);
 
     Ok(GrpcWebService {
         axum_router,

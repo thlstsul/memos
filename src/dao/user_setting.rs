@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use libsql_client::{Client, Statement};
+use libsql_client::{Client, Statement, Value};
 use snafu::{ResultExt, Snafu};
 
 use crate::api::user::UserSetting;
@@ -24,23 +24,23 @@ impl UserSettingDao {
         self.execute(stmt).await.context(Database)
     }
 
-    pub async fn upsert_setting(&self, setting: UserSetting) -> Result<(), Error> {
-        let stmt = Statement::with_args(
-            "
-        INSERT INTO user_setting (
-			user_id, key, value
-		)
-		VALUES (?, ?, ?)
-		ON CONFLICT(user_id, key) DO UPDATE 
-		SET value = EXCLUDED.value
-        ",
-            &[
-                setting.user_id.to_string(),
-                setting.key.to_string(),
-                setting.value,
-            ],
-        );
-        self.client.execute(stmt).await.context(Database)?;
+    pub async fn upsert_setting(&self, settings: Vec<UserSetting>) -> Result<(), Error> {
+        let stmts: Vec<Statement> = settings
+            .into_iter()
+            .map(|setting| {
+                Statement::with_args(
+                    "insert into user_setting (user_id, key, value) values (?, ?, ?) 
+                    on conflict(user_id, key) do update set value = excluded.value",
+                    &[
+                        Value::from(setting.user_id),
+                        Value::from(setting.key.to_string()),
+                        Value::from(setting.value),
+                    ],
+                )
+            })
+            .collect();
+
+        self.client.batch(stmts).await.context(Database)?;
         Ok(())
     }
 }

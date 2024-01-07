@@ -11,8 +11,8 @@ use axum::{
     response::{IntoResponse, Result},
 };
 use axum::{Json, Router};
-use axum_login::tower_sessions::{MemoryStore, SessionManager};
-use axum_login::{AuthManager, AuthUser, AuthnBackend, UserId};
+use axum_login::tower_sessions::SessionManager;
+use axum_login::{AuthManager, AuthManagerLayer, AuthUser, AuthnBackend, UserId};
 use hyper::{header, Request, Response};
 use libsql_client::Client;
 use pin_project_lite::pin_project;
@@ -24,6 +24,8 @@ use crate::{
     api::{v1::sign::SignRequest, v2::User},
     svc::user::{Error, UserService},
 };
+
+use super::store::TursoStore;
 
 pub fn router() -> Router<Arc<Client>> {
     Router::new()
@@ -125,13 +127,13 @@ pub type AuthSession = axum_login::AuthSession<Backend>;
 
 #[derive(Debug, Clone)]
 pub struct AuthLayer {
-    auth_manager_layer: axum_login::AuthManagerLayer<Backend, MemoryStore>,
+    auth_manager_layer: AuthManagerLayer<Backend, TursoStore>,
     public_path: Vec<String>,
 }
 
 impl AuthLayer {
     pub fn new(
-        auth_manager_layer: axum_login::AuthManagerLayer<Backend, MemoryStore>,
+        auth_manager_layer: AuthManagerLayer<Backend, TursoStore>,
         public_path: Vec<String>,
     ) -> Self {
         Self {
@@ -142,7 +144,7 @@ impl AuthLayer {
 }
 
 impl<S> Layer<S> for AuthLayer {
-    type Service = CookieManager<SessionManager<AuthManager<AuthService<S>, Backend>, MemoryStore>>;
+    type Service = CookieManager<SessionManager<AuthManager<AuthService<S>, Backend>, TursoStore>>;
 
     fn layer(&self, inner: S) -> Self::Service {
         let auth_service = AuthService {

@@ -117,7 +117,8 @@ impl memo_service_server::MemoService for MemoService {
         &self,
         request: Request<DeleteMemoRequest>,
     ) -> Result<Response<DeleteMemoResponse>, Status> {
-        todo!()
+        self.memo_dao.delete_memo(request.get_ref().id).await?;
+        Ok(Response::new(DeleteMemoResponse {}))
     }
     /// SetMemoResources sets resources for a memo.
     async fn set_memo_resources(

@@ -7,15 +7,19 @@ use tracing::error;
 
 use crate::{
     api::v2::{
-        auth_service_server::AuthServiceServer, memo_service_server::MemoServiceServer,
-        tag_service_server::TagServiceServer, user_service_server::UserServiceServer, User,
+        auth_service_server::AuthServiceServer, inbox_service_server::InboxServiceServer,
+        memo_service_server::MemoServiceServer, tag_service_server::TagServiceServer,
+        user_service_server::UserServiceServer, User,
     },
     ctrl::auth::AuthSession,
 };
 
-use self::{auth::AuthService, memo::MemoService, tag::TagService, user::UserService};
+use self::{
+    auth::AuthService, inbox::InboxService, memo::MemoService, tag::TagService, user::UserService,
+};
 
 pub mod auth;
+pub mod inbox;
 pub mod memo;
 pub mod system;
 pub mod tag;
@@ -41,6 +45,10 @@ impl ServiceFactory {
     pub fn get_memo(client: &Arc<Client>) -> MemoServiceServer<MemoService> {
         let memo = MemoService::new(client);
         MemoServiceServer::new(memo)
+    }
+
+    pub fn get_inbox() -> InboxServiceServer<InboxService> {
+        InboxServiceServer::new(InboxService {})
     }
 }
 

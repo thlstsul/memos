@@ -4,7 +4,6 @@ use libsql_client::Client;
 use sm3::{Digest, Sm3};
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
-use tracing::info;
 
 use crate::api::user::{UserSetting, UserSettingKey};
 use crate::api::v2::{
@@ -153,40 +152,11 @@ impl user_service_server::UserService for UserService {
         request: Request<UpdateUserSettingRequest>,
     ) -> Result<Response<UpdateUserSettingResponse>, Status> {
         let user = get_current_user(&request)?;
-        let req = request.get_ref();
-        if let Some(field_mask) = &req.update_mask {
-            if let Some(settings) = &req.setting {
-                for path in &field_mask.paths {
-                    let setting = match path.as_str() {
-                        "locale" => UserSetting {
-                            user_id: user.id,
-                            key: UserSettingKey::Locale,
-                            value: settings.locale.clone(),
-                        },
-                        "appearance" => UserSetting {
-                            user_id: user.id,
-                            key: UserSettingKey::Appearance,
-                            value: settings.appearance.clone(),
-                        },
-                        "memo_visibility" => UserSetting {
-                            user_id: user.id,
-                            key: UserSettingKey::Visibility,
-                            value: settings.memo_visibility.clone(),
-                        },
-                        "telegram_user_id" => UserSetting {
-                            user_id: user.id,
-                            key: UserSettingKey::TelegramUserId,
-                            value: settings.telegram_user_id.clone(),
-                        },
-                        _ => continue,
-                    };
-                    self.setting_dao.upsert_setting(setting).await?;
-                }
-            }
-        }
+        let settings = request.get_ref().into_settings(user.id);
+        self.setting_dao.upsert_setting(settings).await?;
 
         Ok(Response::new(UpdateUserSettingResponse {
-            setting: req.setting.clone(),
+            setting: request.get_ref().setting.clone(),
         }))
     }
 }

@@ -43,9 +43,9 @@ impl UserDao {
 
     pub async fn petch_user(&self, id: i32) -> Result<User, Error> {
         let stmt = Statement::with_args("select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where id = ?", &[id]);
-        let users: Vec<User> = self.execute(stmt).await.context(Database)?;
-        if let Some(user) = users.first() {
-            Ok(user.clone())
+        let mut users: Vec<User> = self.execute(stmt).await.context(Database)?;
+        if let Some(user) = users.pop() {
+            Ok(user)
         } else {
             Err(Error::Inexistent)
         }

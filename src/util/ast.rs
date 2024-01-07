@@ -75,7 +75,26 @@ pub fn get_visibilities(lit: Expr) -> Option<Vec<Visibility>> {
 }
 
 static TAG_REGEX: OnceLock<Regex> = OnceLock::new();
-pub fn parse_document(buffer: &str) -> Vec<Node> {
+pub fn parse_tag(content: &str) -> Vec<&str> {
+    let mut rtn = Vec::new();
+    let re = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+$|#\S+\s").unwrap());
+    let matches = re.find_iter(content);
+    let mut i;
+    for mat in matches {
+        i = if mat.end() == content.len() {
+            mat.end()
+        } else {
+            mat.end() - 1
+        };
+        if let Some(tag) = content.get(mat.start() + 1..i) {
+            rtn.push(tag);
+        }
+    }
+    rtn
+}
+
+pub fn parse_document(buffer: impl AsRef<str>) -> Vec<Node> {
+    let buffer = buffer.as_ref();
     let arena = Arena::new();
     let mut options = comrak::Options::default();
     options.extension.tasklist = true;
@@ -125,7 +144,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
         }],
         NodeValue::Text(content) => {
             let mut nodes = Vec::new();
-            let re = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+\s").unwrap());
+            let re = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+$|#\S+\s").unwrap());
             let matches = re.find_iter(&content);
             let mut i = 0;
             for mat in matches {
@@ -139,7 +158,11 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
                         }),
                     });
                 }
-                i = mat.end() - 1;
+                i = if mat.end() == content.len() {
+                    mat.end()
+                } else {
+                    mat.end() - 1
+                };
                 nodes.push(Node {
                     r#type: NodeType::Tag.into(),
                     node: content.get(mat.start() + 1..i).map(|c| {
@@ -149,14 +172,17 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
                     }),
                 });
             }
-            nodes.push(Node {
-                r#type: NodeType::Text.into(),
-                node: content.get(i..content.len()).map(|c| {
-                    node::Node::TextNode(TextNode {
-                        content: c.to_owned(),
-                    })
-                }),
-            });
+            if i != content.len() {
+                nodes.push(Node {
+                    r#type: NodeType::Text.into(),
+                    node: content.get(i..content.len()).map(|c| {
+                        node::Node::TextNode(TextNode {
+                            content: c.to_owned(),
+                        })
+                    }),
+                });
+            }
+
             nodes
         }
         NodeValue::Heading(head) => vec![Node {
@@ -287,41 +313,37 @@ fn append_text<'a>(node: &'a AstNode<'a>) -> String {
     rtn
 }
 
-// fn tight_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
-//     let mut nodes = Vec::new();
-//     for n in node.children() {
-//         if n.data.borrow().value == NodeValue::Paragraph {
-//             for nn in n.children() {
-//                 nodes.append(&mut parse_node(nn));
-//             }
-//         } else {
-//             nodes.append(&mut parse_node(n));
-//         }
-//     }
-//     nodes
-// }
-
 mod test {
     #[test]
     fn parse_tag() {
-        let re = regex::Regex::new(r"#\S+\s").unwrap();
-        let hay = "#TEST 你好，世界！ #test ";
+        let re = regex::Regex::new(r"#\S+$|#\S+\s").unwrap();
+        let hay = "#TEST 你好，世界！ #test";
         let matches = re.find_iter(hay);
         let mut i = 0;
         for mat in matches {
             if i < mat.start() {
                 println!("text: {:?}", hay.get(i..mat.start()));
             }
-            i = mat.end() - 1;
+            i = if mat.end() == hay.len() {
+                mat.end()
+            } else {
+                mat.end() - 1
+            };
             println!("tag: {:?}", hay.get(mat.start() + 1..i));
         }
-        println!("text: {:?}", hay.get(i..hay.len()))
+        println!("text: {:?}", hay.get(i..hay.len()));
+
+        let tags = super::parse_tag(hay);
+        println!("tags: {tags:?}")
     }
 
     #[test]
     fn parse_ast() {
         let buffer = r#"
-~~hello~~
+#LIST 
+- a
+- b
+- c
         "#;
         let arena = comrak::Arena::new();
         let mut options = comrak::Options::default();

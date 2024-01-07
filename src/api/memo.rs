@@ -2,7 +2,10 @@ use crate::util::ast::{self, parse_document};
 
 use super::{
     get_name_parent_token,
-    v2::{CreateMemoResponse, ListMemosRequest, ListMemosResponse, Memo, Visibility},
+    v2::{
+        CreateMemoResponse, ListMemosRequest, ListMemosResponse, Memo, RowStatus,
+        UpdateMemoRequest, Visibility,
+    },
     USER_NAME_PREFIX,
 };
 use snafu::{ResultExt, Snafu};
@@ -10,6 +13,7 @@ use syn::{
     parse::{Parse, ParseStream},
     parse_quote, BinOp, Expr,
 };
+use time::OffsetDateTime;
 
 #[derive(Debug)]
 pub struct FindMemo {
@@ -41,6 +45,16 @@ pub struct CreateMemo {
     pub creator_id: i32,
     pub content: String,
     pub visibility: Visibility,
+}
+
+#[derive(Debug, Default)]
+pub struct UpdateMemo {
+    pub creator_id: i32,
+    pub updated_ts: i64,
+    pub content: Option<String>,
+    pub visibility: Option<Visibility>,
+    pub row_status: Option<RowStatus>,
+    pub pinned: Option<bool>,
 }
 
 #[derive(Debug, Default)]
@@ -139,7 +153,9 @@ impl TryInto<FindMemo> for &ListMemosRequest {
 
 impl Into<CreateMemoResponse> for Memo {
     fn into(self) -> CreateMemoResponse {
-        CreateMemoResponse { memo: Some(self) }
+        let mut memo = self;
+        convert_memo(&mut memo);
+        CreateMemoResponse { memo: Some(memo) }
     }
 }
 
@@ -147,10 +163,42 @@ impl Into<ListMemosResponse> for Vec<Memo> {
     fn into(self) -> ListMemosResponse {
         let mut memos = self;
         for memo in memos.iter_mut() {
-            memo.creator = format!("{}/{}", USER_NAME_PREFIX, memo.creator);
-            memo.nodes = parse_document(&memo.content);
+            convert_memo(memo)
         }
         ListMemosResponse { memos }
+    }
+}
+
+fn convert_memo(memo: &mut Memo) {
+    memo.creator = format!("{}/{}", USER_NAME_PREFIX, memo.creator);
+    memo.nodes = parse_document(&memo.content);
+}
+
+impl From<UpdateMemoRequest> for UpdateMemo {
+    fn from(value: UpdateMemoRequest) -> Self {
+        let mut update = UpdateMemo {
+            creator_id: value.id,
+            updated_ts: OffsetDateTime::now_utc().microsecond() as i64,
+            ..Default::default()
+        };
+
+        if let UpdateMemoRequest {
+            id,
+            memo: Some(memo),
+            update_mask: Some(field_mask),
+        } = value
+        {
+            for path in field_mask.paths {
+                match path.as_str() {
+                    "content" => update.content = Some(memo.content.clone()),
+                    "visibility" => update.visibility = Visibility::try_from(memo.visibility).ok(),
+                    "row_status" => update.row_status = RowStatus::try_from(memo.row_status).ok(),
+                    "pinned" => update.pinned = Some(memo.pinned),
+                    _ => (),
+                }
+            }
+        }
+        update
     }
 }
 

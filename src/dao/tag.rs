@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use libsql_client::{Client, Statement};
+use libsql_client::{Client, Statement, Value};
 use snafu::{ResultExt, Snafu};
 
 use crate::api::v2::Tag;
@@ -35,16 +35,15 @@ impl TagDao {
 
     pub async fn upsert_tag(&self, name: String, creator_id: i32) -> Result<(), Error> {
         let stmt = Statement::with_args(
-            r"
+            "
             INSERT INTO tag (
                 name, creator_id
             )
             VALUES (?, ?)
             ON CONFLICT(name, creator_id) DO UPDATE 
             SET
-                name = EXCLUDED.name
-        ",
-            &[name, creator_id.to_string()],
+                name = EXCLUDED.name",
+            &[Value::from(name), Value::from(creator_id)],
         );
         self.client.execute(stmt).await.context(Database)?;
         Ok(())

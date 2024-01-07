@@ -2,12 +2,15 @@ use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
 use tracing::info;
 
-use libsql_client::{Client, Statement};
+use libsql_client::{de, Client, Statement, Value};
 
-use crate::api::{
-    memo::{CreateMemo, FindMemo},
-    v2::Memo,
-    Count,
+use crate::{
+    api::{
+        memo::{CreateMemo, FindMemo},
+        v2::Memo,
+        Count,
+    },
+    util::ast::parse_tag,
 };
 
 use super::Dao;
@@ -24,18 +27,44 @@ impl Dao for MemoDao {
 
 impl MemoDao {
     pub async fn create_memo(&self, create: CreateMemo) -> Result<Memo, Error> {
-        let stmt = Statement::with_args(
+        let mut stmts = vec![Statement::with_args(
             "INSERT INTO memo (creator_id, content, visibility) VALUES (?, ?, ?) RETURNING id, creator_id, created_ts as create_time, created_ts as display_time, updated_ts as update_time, row_status, content, visibility",
             &[
-                create.creator_id.to_string(),
-                create.content,
-                create.visibility.as_str_name().to_owned(),
+                Value::from(create.creator_id),
+                Value::from(create.content.clone()),
+                Value::from(create.visibility.as_str_name().to_owned()),
             ],
-        );
+        )];
 
-        let mut memos: Vec<Memo> = self.execute(stmt).await.context(Database)?;
-        if let Some(memo) = memos.pop() {
-            Ok(memo)
+        let tags = parse_tag(&create.content);
+        for tag in tags {
+            stmts.push(Statement::with_args(
+                "
+            insert into tag (
+                name, creator_id
+            )
+            values (?, ?)
+            on conflict(name, creator_id) do update 
+            set
+                name = excluded.name",
+                &[tag.to_owned(), create.creator_id.to_string()],
+            ));
+        }
+
+        let rss = self.client.batch(stmts).await.context(Database)?;
+        let rs = rss.first();
+        if let Some(rs) = rs {
+            let mut memos = rs
+                .rows
+                .iter()
+                .map(de::from_row)
+                .collect::<Result<Vec<Memo>, _>>()
+                .context(Database)?;
+            if let Some(memo) = memos.pop() {
+                Ok(memo)
+            } else {
+                Err(Error::CreateMemoFailed)
+            }
         } else {
             Err(Error::CreateMemoFailed)
         }
@@ -55,6 +84,12 @@ impl MemoDao {
         let mut rs: Vec<Count> = self.execute(stmt).await.context(Database)?;
         Ok(rs.pop().unwrap_or(Count { count: 0 }))
     }
+
+    pub async fn delete_memo(&self, memo_id: i32) -> Result<(), Error> {
+        let stmt = Statement::with_args("delete from memo where id = ?", &[memo_id]);
+        self.client.execute(stmt).await.context(Database)?;
+        Ok(())
+    }
 }
 
 impl FindMemo {
@@ -64,27 +99,27 @@ impl FindMemo {
 
         if let Some(id) = self.id {
             wheres.push("memo.id = ?");
-            args.push(id.to_string());
+            args.push(Value::from(id));
         }
         if let Some(creator_id) = self.creator_id {
             wheres.push("memo.creator_id = ?");
-            args.push(creator_id.to_string());
+            args.push(Value::from(creator_id));
         }
         if let Some(row_status) = &self.row_status {
             wheres.push("memo.row_status = ?");
-            args.push(row_status.to_string());
+            args.push(Value::from(row_status));
         }
         if let Some(created_ts_before) = self.created_ts_before {
             wheres.push("memo.created_ts < ?");
-            args.push(created_ts_before.to_string());
+            args.push(Value::from(created_ts_before));
         }
         if let Some(created_ts_after) = self.created_ts_after {
             wheres.push("memo.created_ts > ?");
-            args.push(created_ts_after.to_string());
+            args.push(Value::from(created_ts_after));
         }
         for content_search in self.content_search.iter() {
             wheres.push("memo.content LIKE ?");
-            args.push(format!("%{content_search}%"));
+            args.push(Value::from(format!("%{content_search}%")));
         }
         if self.pinned {
             wheres.push("memo_organizer.pinned = 1");
@@ -95,7 +130,7 @@ impl FindMemo {
         if !self.visibility_list.is_empty() {
             let mut l = Vec::new();
             for visibility in self.visibility_list.iter() {
-                args.push(visibility.as_str_name().to_owned());
+                args.push(Value::from(visibility.as_str_name().to_owned()));
                 l.push("?");
             }
             wheres.push(format!("memo.visibility in ({})", l.join(", ")));
@@ -134,14 +169,14 @@ impl FindMemo {
         }
 
         let mut query = format!(
-            "SELECT
+            "select
             {}
-            FROM memo
-		    LEFT JOIN memo_organizer ON memo.id = memo_organizer.memo_id
-            LEFT JOIN user ON memo.creator_id = user.id
-            WHERE {}
-            GROUP BY memo.id
-            ORDER BY {}",
+            from memo
+		    left join memo_organizer on memo.id = memo_organizer.memo_id
+            left join user on memo.creator_id = user.id
+            where {}
+            group by memo.id
+            order by {}",
             fields.join(",\n"),
             wheres.join(" AND "),
             orders.join(", ")

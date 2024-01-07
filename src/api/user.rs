@@ -2,11 +2,10 @@ use std::str::FromStr;
 
 use super::{
     get_name_parent_token,
-    v2::{GetUserRequest, GetUserResponse, User},
+    v2::{GetUserRequest, GetUserResponse, UpdateUserSettingRequest, User},
     Error, USER_NAME_PREFIX,
 };
 
-use prost_types::FieldMask;
 use serde::{Deserialize, Deserializer};
 
 use crate::api::v2::GetUserSettingResponse;
@@ -81,6 +80,45 @@ impl From<Vec<UserSetting>> for GetUserSettingResponse {
         Self {
             setting: Some(setting),
         }
+    }
+}
+
+impl UpdateUserSettingRequest {
+    pub fn into_settings(&self, user_id: i32) -> Vec<UserSetting> {
+        let mut rtn = Vec::new();
+        if let UpdateUserSettingRequest {
+            update_mask: Some(field_mask),
+            setting: Some(settings),
+        } = self
+        {
+            for path in &field_mask.paths {
+                let setting = match path.as_str() {
+                    "locale" => UserSetting {
+                        user_id,
+                        key: UserSettingKey::Locale,
+                        value: settings.locale.clone(),
+                    },
+                    "appearance" => UserSetting {
+                        user_id,
+                        key: UserSettingKey::Appearance,
+                        value: settings.appearance.clone(),
+                    },
+                    "memo_visibility" => UserSetting {
+                        user_id,
+                        key: UserSettingKey::Visibility,
+                        value: settings.memo_visibility.clone(),
+                    },
+                    "telegram_user_id" => UserSetting {
+                        user_id,
+                        key: UserSettingKey::TelegramUserId,
+                        value: settings.telegram_user_id.clone(),
+                    },
+                    _ => continue,
+                };
+                rtn.push(setting);
+            }
+        }
+        rtn
     }
 }
 
