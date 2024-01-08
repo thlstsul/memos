@@ -1,7 +1,4 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use snafu::{ensure, Snafu};
-use tonic::Status;
-use tracing::error;
 
 use self::v2::{RowStatus, Visibility};
 
@@ -21,13 +18,6 @@ pub struct Count {
 
 pub const INBOX_NAME_PREFIX: &str = "inboxes";
 pub const USER_NAME_PREFIX: &str = "users";
-
-fn get_name_parent_token(name: String, token: &str) -> Result<String, Error> {
-    let parts: Vec<&str> = name.split("/").collect();
-    ensure!(parts.len() == 2, InvalidRequest { name });
-    ensure!(token == parts[0], InvalidPrefix { name });
-    Ok(parts[1].to_owned())
-}
 
 mod bool_serde {
     use serde::{self, Deserialize, Deserializer, Serializer};
@@ -208,27 +198,5 @@ mod visibility_serde {
         let visibility = Visibility::from_str_name(&visibility);
         let visibility = visibility.unwrap_or(Visibility::Unspecified);
         Ok(visibility.into())
-    }
-}
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Invalid request : {name}"), context(suffix(false)))]
-    InvalidRequest { name: String },
-    #[snafu(display("Invalid prefix in request : {name}"), context(suffix(false)))]
-    InvalidPrefix { name: String },
-}
-
-impl From<Error> for Status {
-    fn from(value: Error) -> Self {
-        error!("{value}");
-        Status::invalid_argument(value.to_string())
-    }
-}
-
-impl From<memo::Error> for Status {
-    fn from(value: memo::Error) -> Self {
-        error!("{value}");
-        Status::invalid_argument(value.to_string())
     }
 }

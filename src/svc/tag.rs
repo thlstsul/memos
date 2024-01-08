@@ -49,16 +49,17 @@ impl tag_service_server::TagService for TagService {
         &self,
         request: Request<ListTagsRequest>,
     ) -> Result<Response<ListTagsResponse>, Status> {
-        let creator = request.into_inner().get_creator()?;
-        let tags = self.dao.list_tags(creator).await?;
+        let user = get_current_user(&request)?;
+        let tags = self.dao.list_tags(user.id).await?;
         Ok(Response::new(tags.into()))
     }
     async fn delete_tag(
         &self,
         request: Request<DeleteTagRequest>,
     ) -> Result<Response<DeleteTagResponse>, Status> {
-        if let Some(tag) = request.into_inner().tag {
-            self.dao.delete_tag(tag).await?;
+        if let Some(tag) = &request.get_ref().tag {
+            let user = get_current_user(&request)?;
+            self.dao.delete_tag(tag.name.clone(), user.id).await?;
         }
 
         Ok(Response::new(DeleteTagResponse {}))

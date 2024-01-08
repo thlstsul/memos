@@ -96,3 +96,24 @@ impl From<crate::dao::memo::Error> for Status {
         Status::internal(value.to_string())
     }
 }
+
+impl From<crate::util::Error> for Status {
+    fn from(value: crate::util::Error) -> Self {
+        error!("{value}");
+        Status::invalid_argument(value.to_string())
+    }
+}
+
+impl From<crate::api::memo::Error> for Status {
+    fn from(value: crate::api::memo::Error) -> Self {
+        error!("{value}");
+        Status::invalid_argument(value.to_string())
+    }
+}
+
+impl From<crate::api::user::Error> for Status {
+    fn from(value: crate::api::user::Error) -> Self {
+        error!("{value}");
+        Status::invalid_argument(value.to_string())
+    }
+}

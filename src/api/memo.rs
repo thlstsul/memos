@@ -1,10 +1,12 @@
-use crate::util::ast::{self, parse_document};
+use crate::util::{
+    ast::{self, parse_document},
+    get_name_parent_token,
+};
 
 use super::{
-    get_name_parent_token,
     v2::{
         CreateMemoResponse, ListMemosRequest, ListMemosResponse, Memo, RowStatus,
-        UpdateMemoRequest, Visibility,
+        UpdateMemoRequest, UpdateMemoResponse, Visibility,
     },
     USER_NAME_PREFIX,
 };
@@ -13,9 +15,8 @@ use syn::{
     parse::{Parse, ParseStream},
     parse_quote, BinOp, Expr,
 };
-use time::OffsetDateTime;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct FindMemo {
     pub id: Option<i32>,
 
@@ -49,8 +50,7 @@ pub struct CreateMemo {
 
 #[derive(Debug, Default)]
 pub struct UpdateMemo {
-    pub creator_id: i32,
-    pub updated_ts: i64,
+    pub id: i32,
     pub content: Option<String>,
     pub visibility: Option<Visibility>,
     pub row_status: Option<RowStatus>,
@@ -169,16 +169,28 @@ impl Into<ListMemosResponse> for Vec<Memo> {
     }
 }
 
+impl Into<UpdateMemoResponse> for Option<Memo> {
+    fn into(self) -> UpdateMemoResponse {
+        UpdateMemoResponse {
+            memo: if let Some(mut memo) = self {
+                convert_memo(&mut memo);
+                Some(memo)
+            } else {
+                None
+            },
+        }
+    }
+}
+
 fn convert_memo(memo: &mut Memo) {
     memo.creator = format!("{}/{}", USER_NAME_PREFIX, memo.creator);
     memo.nodes = parse_document(&memo.content);
 }
 
-impl From<UpdateMemoRequest> for UpdateMemo {
-    fn from(value: UpdateMemoRequest) -> Self {
+impl From<&UpdateMemoRequest> for UpdateMemo {
+    fn from(value: &UpdateMemoRequest) -> Self {
         let mut update = UpdateMemo {
-            creator_id: value.id,
-            updated_ts: OffsetDateTime::now_utc().microsecond() as i64,
+            id: value.id,
             ..Default::default()
         };
 
@@ -188,7 +200,7 @@ impl From<UpdateMemoRequest> for UpdateMemo {
             update_mask: Some(field_mask),
         } = value
         {
-            for path in field_mask.paths {
+            for path in &field_mask.paths {
                 match path.as_str() {
                     "content" => update.content = Some(memo.content.clone()),
                     "visibility" => update.visibility = Visibility::try_from(memo.visibility).ok(),
@@ -205,7 +217,7 @@ impl From<UpdateMemoRequest> for UpdateMemo {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Invalid username : {source}"), context(suffix(false)))]
-    InvalidUsername { source: super::Error },
+    InvalidUsername { source: crate::util::Error },
     #[snafu(display("Invalid username : {source}"), context(suffix(false)))]
     FilterDecodeFailed { source: syn::Error },
 }

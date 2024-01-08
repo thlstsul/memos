@@ -132,7 +132,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
                 children: parse_child(node),
             })),
         }],
-        NodeValue::LineBreak => vec![Node {
+        NodeValue::LineBreak | NodeValue::SoftBreak => vec![Node {
             r#type: NodeType::LineBreak.into(),
             node: Some(node::Node::LineBreakNode(LineBreakNode {})),
         }],
@@ -182,7 +182,6 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
                     }),
                 });
             }
-
             nodes
         }
         NodeValue::Heading(head) => vec![Node {
@@ -225,20 +224,29 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
                 children: parse_child(node),
             })),
         }],
-        NodeValue::Link(link) => vec![Node {
-            r#type: NodeType::Link.into(),
-            node: Some(node::Node::LinkNode(LinkNode {
-                text: link.title.clone(),
-                url: link.url.clone(),
-            })),
-        }],
-        NodeValue::Image(link) => vec![Node {
-            r#type: NodeType::Image.into(),
-            node: Some(node::Node::ImageNode(ImageNode {
-                alt_text: link.title.clone(),
-                url: link.url.clone(),
-            })),
-        }],
+        NodeValue::Link(link) => {
+            let mut title = append_text(node);
+            if title.is_empty() {
+                title = link.url.clone();
+            }
+            vec![Node {
+                r#type: NodeType::Link.into(),
+                node: Some(node::Node::LinkNode(LinkNode {
+                    text: title,
+                    url: link.url.clone(),
+                })),
+            }]
+        }
+        NodeValue::Image(link) => {
+            let alt_text = append_text(node);
+            vec![Node {
+                r#type: NodeType::Image.into(),
+                node: Some(node::Node::ImageNode(ImageNode {
+                    alt_text,
+                    url: link.url.clone(),
+                })),
+            }]
+        }
         NodeValue::Emph => {
             let mut nodes = Vec::new();
             for n in node.children() {
@@ -341,16 +349,8 @@ mod test {
     fn parse_ast() {
         let buffer = r#"
 #LIST 
-- a
-- b
-- c
-        "#;
-        let arena = comrak::Arena::new();
-        let mut options = comrak::Options::default();
-        options.extension.tasklist = true;
-        options.extension.strikethrough = true;
-        options.render.unsafe_ = true;
-        let root = comrak::parse_document(&arena, buffer, &options);
-        println!("{root:?}");
+aaaaaa"#;
+        let nodes = super::parse_document(buffer);
+        println!("{nodes:?}");
     }
 }

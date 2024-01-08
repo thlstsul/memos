@@ -1,14 +1,14 @@
 use std::str::FromStr;
 
 use super::{
-    get_name_parent_token,
     v2::{GetUserRequest, GetUserResponse, UpdateUserSettingRequest, User},
-    Error, USER_NAME_PREFIX,
+    USER_NAME_PREFIX,
 };
 
 use serde::{Deserialize, Deserializer};
+use snafu::{ResultExt, Snafu};
 
-use crate::api::v2::GetUserSettingResponse;
+use crate::{api::v2::GetUserSettingResponse, util::get_name_parent_token};
 
 #[derive(Debug, Deserialize)]
 pub struct UserSetting {
@@ -124,7 +124,7 @@ impl UpdateUserSettingRequest {
 
 impl GetUserRequest {
     pub fn get_name(&self) -> Result<String, Error> {
-        get_name_parent_token(self.name.clone(), USER_NAME_PREFIX)
+        get_name_parent_token(self.name.clone(), USER_NAME_PREFIX).context(InvalidUsername)
     }
 }
 
@@ -143,4 +143,10 @@ where
     let key = String::deserialize(deserializer)?;
     let key = UserSettingKey::from_str(&key).unwrap();
     Ok(key)
+}
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Invalid username : {source}"), context(suffix(false)))]
+    InvalidUsername { source: crate::util::Error },
 }

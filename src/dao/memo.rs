@@ -6,7 +6,7 @@ use libsql_client::{de, Client, Statement, Value};
 
 use crate::{
     api::{
-        memo::{CreateMemo, FindMemo},
+        memo::{CreateMemo, FindMemo, UpdateMemo},
         v2::Memo,
         Count,
     },
@@ -36,20 +36,7 @@ impl MemoDao {
             ],
         )];
 
-        let tags = parse_tag(&create.content);
-        for tag in tags {
-            stmts.push(Statement::with_args(
-                "
-            insert into tag (
-                name, creator_id
-            )
-            values (?, ?)
-            on conflict(name, creator_id) do update 
-            set
-                name = excluded.name",
-                &[tag.to_owned(), create.creator_id.to_string()],
-            ));
-        }
+        stmts.append(&mut parse_upsert_tag(create.creator_id, &create.content));
 
         let rss = self.client.batch(stmts).await.context(Database)?;
         let rs = rss.first();
@@ -90,6 +77,74 @@ impl MemoDao {
         self.client.execute(stmt).await.context(Database)?;
         Ok(())
     }
+
+    pub async fn update_memo(&self, creator_id: i32, update: UpdateMemo) -> Result<(), Error> {
+        {
+            // 更新memo
+            let mut stmts = Vec::new();
+            let mut set = Vec::new();
+            let mut args = Vec::new();
+            if let Some(content) = update.content {
+                stmts.append(&mut parse_upsert_tag(creator_id, &content));
+                set.push("content = ?");
+                args.push(Value::from(content));
+            }
+            if let Some(visibility) = update.visibility {
+                set.push("visibility = ?");
+                args.push(Value::from(visibility.as_str_name().to_owned()));
+            }
+            if let Some(row_status) = update.row_status {
+                set.push("row_status = ?");
+                args.push(Value::from(row_status.as_str_name().to_owned()));
+            }
+            if !set.is_empty() {
+                let update_sql = format!("UPDATE memo SET {} WHERE id = ?", set.join(", "));
+                args.push(Value::from(update.id));
+                stmts.push(Statement::with_args(update_sql, &args));
+
+                self.client.batch(stmts).await.context(Database)?;
+            }
+        }
+        if let Some(pinned) = update.pinned {
+            // 置顶是单独操作的
+            let stmt = Statement::with_args(
+                "
+                INSERT INTO memo_organizer (
+		        	memo_id,
+		        	user_id,
+		        	pinned
+		        )
+		        VALUES (?, ?, ?)
+		        ON CONFLICT(memo_id, user_id) DO UPDATE 
+		        SET
+		        	pinned = EXCLUDED.pinned
+            ",
+                &[update.id, creator_id, if pinned { 1 } else { 0 }],
+            );
+            self.client.execute(stmt).await.context(Database)?;
+        }
+
+        Ok(())
+    }
+}
+
+fn parse_upsert_tag(creator_id: i32, content: &str) -> Vec<Statement> {
+    let mut stmts = Vec::new();
+    let tags = parse_tag(content);
+    for tag in tags {
+        stmts.push(Statement::with_args(
+            "
+            insert into tag (
+                name, creator_id
+            )
+            values (?, ?)
+            on conflict(name, creator_id) do update 
+            set
+                name = excluded.name",
+            &[tag.to_owned(), creator_id.to_string()],
+        ));
+    }
+    stmts
 }
 
 impl FindMemo {

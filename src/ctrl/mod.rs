@@ -7,12 +7,6 @@ pub mod auth;
 pub mod store;
 pub mod system;
 
-impl IntoResponse for crate::api::Error {
-    fn into_response(self) -> Response {
-        error_response(StatusCode::BAD_REQUEST, self)
-    }
-}
-
 impl IntoResponse for crate::svc::system::Error {
     fn into_response(self) -> Response {
         error_response(StatusCode::INTERNAL_SERVER_ERROR, self)

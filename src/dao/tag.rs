@@ -19,15 +19,15 @@ impl Dao for TagDao {
 }
 
 impl TagDao {
-    pub async fn list_tags(&self, creator: String) -> Result<Vec<Tag>, Error> {
-        let stmt = Statement::with_args("select user.username as creator, tag.name from user, tag where user.username = ? and user.id = tag.creator_id", &[creator]);
+    pub async fn list_tags(&self, creator_id: i32) -> Result<Vec<Tag>, Error> {
+        let stmt = Statement::with_args("select user.username as creator, tag.name from user, tag where user.id = ? and user.id = tag.creator_id", &[creator_id]);
         self.execute(stmt).await.context(Database)
     }
 
-    pub async fn delete_tag(&self, tag: Tag) -> Result<(), Error> {
+    pub async fn delete_tag(&self, name: String, creator_id: i32) -> Result<(), Error> {
         let stmt = Statement::with_args(
-            "delete from tag where creator_id = ( select id from user where username = ? limit 1 ) and name = ?",
-            &[tag.creator, tag.name],
+            "delete from tag where name = ? and creator_id = ?",
+            &[Value::from(name), Value::from(creator_id)],
         );
         self.client.execute(stmt).await.context(Database)?;
         Ok(())

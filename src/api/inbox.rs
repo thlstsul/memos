@@ -1,4 +1,6 @@
-use super::{get_name_parent_token, v2::Inbox, INBOX_NAME_PREFIX};
+use crate::util::get_name_parent_token;
+
+use super::{v2::Inbox, INBOX_NAME_PREFIX};
 use snafu::{ResultExt, Snafu};
 
 impl Inbox {
@@ -15,7 +17,7 @@ impl Inbox {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Invalid request: {source}"), context(suffix(false)))]
-    InvalidRequest { source: super::Error },
+    InvalidRequest { source: crate::util::Error },
     #[snafu(display("Invalid inbox id: {name}, {source}"), context(suffix(false)))]
     InvalidInboxId {
         name: String,

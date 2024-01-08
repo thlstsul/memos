@@ -1,13 +1,12 @@
 use snafu::Snafu;
 use std::{collections::HashMap, sync::Arc};
 use tonic::{Request, Response, Status};
-use tracing::info;
 
 use libsql_client::Client;
 
 use crate::{
     api::{
-        memo::{CreateMemo, FindMemo},
+        memo::{CreateMemo, FindMemo, UpdateMemo},
         system::{SystemSetting, SystemSettingKey},
         v2::{
             memo_service_server, CreateMemoCommentRequest, CreateMemoCommentResponse,
@@ -95,7 +94,6 @@ impl memo_service_server::MemoService for MemoService {
         let memos = self.memo_dao.list_memos(find).await?;
         // TODO relate,resource
 
-        info!("{memos:?}");
         Ok(Response::new(memos.into()))
     }
 
@@ -110,7 +108,21 @@ impl memo_service_server::MemoService for MemoService {
         &self,
         request: Request<UpdateMemoRequest>,
     ) -> Result<Response<UpdateMemoResponse>, Status> {
-        todo!()
+        let user = get_current_user(&request)?;
+        let update: UpdateMemo = request.get_ref().into();
+        let memo_id = update.id;
+
+        let memo = self.memo_dao.update_memo(user.id, update).await?;
+
+        let mut memos = self
+            .memo_dao
+            .list_memos(FindMemo {
+                id: Some(memo_id),
+                ..Default::default()
+            })
+            .await?;
+        let memo = memos.pop();
+        Ok(Response::new(memo.into()))
     }
     /// DeleteMemo deletes a memo by id.
     async fn delete_memo(
