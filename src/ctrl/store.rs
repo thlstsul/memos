@@ -37,6 +37,7 @@ impl TursoStore {
     }
 
     /// Set the session table name with the provided name.
+    #[allow(dead_code)]
     pub fn with_table_name(mut self, table_name: impl AsRef<str>) -> Result<Self, Error> {
         let table_name = table_name.as_ref();
         ensure!(
@@ -51,6 +52,7 @@ impl TursoStore {
     }
 
     /// Migrate the session schema.
+    #[allow(dead_code)]
     pub async fn migrate(&self) -> Result<(), Error> {
         let query = format!(
             r#"
@@ -160,6 +162,7 @@ impl SessionStore for TursoStore {
     }
 }
 
+#[allow(dead_code)]
 fn is_valid_table_name(name: &str) -> bool {
     !name.is_empty()
         && name

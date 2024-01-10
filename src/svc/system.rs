@@ -23,6 +23,7 @@ impl SystemService {
         self.dao.list_setting().await.context(ListSettingFailed)
     }
 
+    #[allow(dead_code)]
     pub async fn find_setting(
         &self,
         key: SystemSettingKey,

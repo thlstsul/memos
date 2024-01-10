@@ -5,7 +5,6 @@ use sm3::{Digest, Sm3};
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
 
-use crate::api::user::{UserSetting, UserSettingKey};
 use crate::api::v2::{
     user_service_server, CreateUserAccessTokenRequest, CreateUserAccessTokenResponse,
     CreateUserRequest, CreateUserResponse, DeleteUserAccessTokenRequest,
@@ -71,6 +70,7 @@ impl UserService {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn find_user(&self, name: String) -> Result<User, Error> {
         let rs = self.user_dao.find_user(name.clone(), None).await;
         if let Err(DaoErr::Inexistent) = rs {

@@ -65,6 +65,7 @@ pub struct Filter {
     pub created_ts_before: Option<i64>,
     pub created_ts_after: Option<i64>,
     pub creator: Option<String>,
+    // TODO wait api fix
     pub row_status: Option<String>,
 }
 

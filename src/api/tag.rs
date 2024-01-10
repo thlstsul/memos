@@ -1,5 +1,5 @@
 use super::{
-    v2::{ListTagsRequest, ListTagsResponse, Tag},
+    v2::{ListTagsResponse, Tag},
     USER_NAME_PREFIX,
 };
 
