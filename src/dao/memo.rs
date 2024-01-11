@@ -57,8 +57,8 @@ impl MemoDao {
         }
     }
 
-    pub async fn list_memos(&self, cond: FindMemo) -> Result<Vec<Memo>, Error> {
-        let stmt = cond.into_list_stmt();
+    pub async fn list_memos(&self, find: FindMemo) -> Result<Vec<Memo>, Error> {
+        let stmt: Statement = find.into();
         info!("{stmt}");
         self.execute(stmt).await.context(Database)
     }
@@ -147,8 +147,8 @@ fn parse_upsert_tag(creator_id: i32, content: &str) -> Vec<Statement> {
     stmts
 }
 
-impl FindMemo {
-    fn into_list_stmt(&self) -> Statement {
+impl Into<Statement> for FindMemo {
+    fn into(self) -> Statement {
         let mut wheres = vec!["1 = 1"];
         let mut args = Vec::new();
 
