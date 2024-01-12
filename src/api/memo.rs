@@ -185,7 +185,7 @@ impl Into<UpdateMemoResponse> for Option<Memo> {
 
 fn convert_memo(memo: &mut Memo) {
     memo.creator = format!("{}/{}", USER_NAME_PREFIX, memo.creator);
-    memo.nodes = parse_document(&memo.content);
+    memo.nodes = parse_document(&memo.content, false);
 }
 
 impl From<&UpdateMemoRequest> for UpdateMemo {

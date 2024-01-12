@@ -75,38 +75,58 @@ pub fn get_visibilities(lit: Expr) -> Option<Vec<Visibility>> {
 }
 
 static TAG_REGEX: OnceLock<Regex> = OnceLock::new();
-pub fn parse_tag(content: &str) -> Vec<&str> {
-    let mut rtn = Vec::new();
-    let re = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+$|#\S+\s").unwrap());
-    let matches = re.find_iter(content);
-    let mut i;
-    for mat in matches {
-        i = if mat.end() == content.len() {
-            mat.end()
-        } else {
-            mat.end() - 1
-        };
-        if let Some(tag) = content.get(mat.start() + 1..i) {
-            rtn.push(tag);
-        }
-    }
-    rtn
-}
-
-pub fn parse_document(buffer: impl AsRef<str>) -> Vec<Node> {
-    let buffer = buffer.as_ref();
+pub fn parse_document(content: impl AsRef<str>, only_tag: bool) -> Vec<Node> {
+    let content = content.as_ref();
     let arena = Arena::new();
     let mut options = comrak::Options::default();
     options.extension.tasklist = true;
     options.extension.strikethrough = true;
     options.render.unsafe_ = true;
-    let root = comrak::parse_document(&arena, buffer, &options);
-    parse_node(root)
+    let root = comrak::parse_document(&arena, content, &options);
+    if only_tag {
+        parse_tag(root)
+    } else {
+        parse_node(root)
+    }
+}
+
+fn parse_tag<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
+    match &node.data.borrow().value {
+        NodeValue::Text(content) => {
+            let mut nodes = Vec::new();
+            let re = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+$|#\S+\s").unwrap());
+            let matches = re.find_iter(&content);
+            for mat in matches {
+                let i = if mat.end() == content.len() {
+                    mat.end()
+                } else {
+                    mat.end() - 1
+                };
+                nodes.push(Node {
+                    r#type: NodeType::Tag.into(),
+                    node: content.get(mat.start() + 1..i).map(|c| {
+                        node::Node::TagNode(TagNode {
+                            content: c.to_owned(),
+                        })
+                    }),
+                });
+            }
+            nodes
+        }
+        _ => parse_tag_child(node),
+    }
+}
+fn parse_tag_child<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
+    let mut nodes = Vec::new();
+    for n in node.children() {
+        nodes.append(&mut parse_tag(n));
+    }
+    nodes
 }
 
 fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
     match &node.data.borrow().value {
-        NodeValue::Document => parse_child(node),
+        NodeValue::Document => parse_node_child(node),
         NodeValue::FrontMatter(content) => vec![Node {
             r#type: NodeType::Text.into(),
             node: Some(node::Node::TextNode(TextNode {
@@ -116,7 +136,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
         NodeValue::BlockQuote => vec![Node {
             r#type: NodeType::Blockquote.into(),
             node: Some(node::Node::BlockquoteNode(BlockquoteNode {
-                children: parse_child(node),
+                children: parse_node_child(node),
             })),
         }],
         NodeValue::CodeBlock(code) => vec![Node {
@@ -129,7 +149,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
         NodeValue::Paragraph => vec![Node {
             r#type: NodeType::Paragraph.into(),
             node: Some(node::Node::ParagraphNode(ParagraphNode {
-                children: parse_child(node),
+                children: parse_node_child(node),
             })),
         }],
         NodeValue::LineBreak | NodeValue::SoftBreak => vec![Node {
@@ -188,23 +208,23 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
             r#type: NodeType::Heading.into(),
             node: Some(node::Node::HeadingNode(HeadingNode {
                 level: head.level as i32,
-                children: parse_child(node),
+                children: parse_node_child(node),
             })),
         }],
-        NodeValue::List(list) => parse_child(node),
+        NodeValue::List(list) => parse_node_child(node),
         NodeValue::Item(list) => match list.list_type {
             ListType::Bullet => vec![Node {
                 r#type: NodeType::UnorderedList.into(),
                 node: Some(node::Node::UnorderedListNode(UnorderedListNode {
                     symbol: (list.bullet_char as char).to_string(),
-                    children: parse_child(node),
+                    children: parse_node_child(node),
                 })),
             }],
             ListType::Ordered => vec![Node {
                 r#type: NodeType::OrderedList.into(),
                 node: Some(node::Node::OrderedListNode(OrderedListNode {
                     number: list.start.to_string(),
-                    children: parse_child(node),
+                    children: parse_node_child(node),
                 })),
             }],
         },
@@ -214,14 +234,14 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
                 // 先默认"-”
                 symbol: "-".to_owned(),
                 complete: checked.is_some(),
-                children: parse_child(node),
+                children: parse_node_child(node),
             })),
         }],
         NodeValue::Strong => vec![Node {
             r#type: NodeType::Bold.into(),
             node: Some(node::Node::BoldNode(BoldNode {
                 symbol: Default::default(),
-                children: parse_child(node),
+                children: parse_node_child(node),
             })),
         }],
         NodeValue::Link(link) => {
@@ -302,8 +322,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
         _ => vec![],
     }
 }
-
-fn parse_child<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
+fn parse_node_child<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
     let mut nodes = Vec::new();
     for n in node.children() {
         nodes.append(&mut parse_node(n));
@@ -324,25 +343,25 @@ fn append_text<'a>(node: &'a AstNode<'a>) -> String {
 mod test {
     #[test]
     fn parse_tag() {
+        use crate::api::v2::{node, TagNode};
         let re = regex::Regex::new(r"#\S+$|#\S+\s").unwrap();
-        let hay = "#TEST 你好，世界！ #test";
-        let matches = re.find_iter(hay);
-        let mut i = 0;
-        for mat in matches {
-            if i < mat.start() {
-                println!("text: {:?}", hay.get(i..mat.start()));
-            }
-            i = if mat.end() == hay.len() {
-                mat.end()
-            } else {
-                mat.end() - 1
-            };
-            println!("tag: {:?}", hay.get(mat.start() + 1..i));
-        }
-        println!("text: {:?}", hay.get(i..hay.len()));
-
-        let tags = super::parse_tag(hay);
-        println!("tags: {tags:?}")
+        let hay = "#TEST 你好，世界！ #test
+        ``` Rust
+        #code
+        ```";
+        let nodes = super::parse_document(hay, true);
+        println!("{nodes:?}");
+        let tags: Vec<String> = nodes
+            .into_iter()
+            .filter_map(|n| {
+                if let Some(node::Node::TagNode(TagNode { content })) = n.node {
+                    Some(content)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert_eq!(tags, vec!["TEST", "test"])
     }
 
     #[test]
@@ -350,7 +369,7 @@ mod test {
         let buffer = r#"
 #LIST 
 aaaaaa"#;
-        let nodes = super::parse_document(buffer);
+        let nodes = super::parse_document(buffer, false);
         println!("{nodes:?}");
     }
 }

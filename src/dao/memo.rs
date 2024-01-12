@@ -7,10 +7,10 @@ use libsql_client::{de, Client, Statement, Value};
 use crate::{
     api::{
         memo::{CreateMemo, FindMemo, UpdateMemo},
-        v2::Memo,
+        v2::{node, Memo, TagNode},
         Count,
     },
-    util::ast::parse_tag,
+    util::ast::parse_document,
 };
 
 use super::Dao;
@@ -130,19 +130,21 @@ impl MemoDao {
 
 fn parse_upsert_tag(creator_id: i32, content: &str) -> Vec<Statement> {
     let mut stmts = Vec::new();
-    let tags = parse_tag(content);
+    let tags = parse_document(content, true);
     for tag in tags {
-        stmts.push(Statement::with_args(
-            "
-            insert into tag (
-                name, creator_id
-            )
-            values (?, ?)
-            on conflict(name, creator_id) do update 
-            set
-                name = excluded.name",
-            &[tag.to_owned(), creator_id.to_string()],
-        ));
+        if let Some(node::Node::TagNode(TagNode { content })) = tag.node {
+            stmts.push(Statement::with_args(
+                "
+                insert into tag (
+                    name, creator_id
+                )
+                values (?, ?)
+                on conflict(name, creator_id) do update 
+                set
+                    name = excluded.name",
+                &[content, creator_id.to_string()],
+            ));
+        }
     }
     stmts
 }
