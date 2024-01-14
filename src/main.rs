@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use axum::{error_handling::HandleErrorLayer, BoxError, Router};
 use axum_login::{
-    tower_sessions::{cookie::time::Duration, Expiry, MemoryStore, SessionManagerLayer},
+    tower_sessions::{cookie::time::Duration, Expiry, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
 use ctrl::auth::{self, Backend};
