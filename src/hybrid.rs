@@ -5,6 +5,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::Poll;
 
+use hyper::header::CONTENT_TYPE;
 use hyper::HeaderMap;
 use hyper::{body::HttpBody, Body, Request, Response};
 use pin_project::pin_project;
@@ -129,7 +130,7 @@ where
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let content_type = req.headers().get("content-type").map(|x| x.as_bytes());
+        let content_type = req.headers().get(CONTENT_TYPE).map(|x| x.as_bytes());
         if content_type == Some(b"application/grpc-web+proto")
             || content_type == Some(b"application/grpc-web")
         {
