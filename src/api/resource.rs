@@ -9,10 +9,11 @@ pub struct FindResource {
     pub offset: isize,
 }
 
+#[derive(Debug, Default)]
 pub struct CreateResource {
     pub filename: String,
     pub r#type: String,
-    pub size: i64,
+    pub size: usize,
     pub creator_id: i32,
     pub blob: Option<Vec<u8>>,
     pub external_link: Option<String>,

@@ -1,6 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use hyper::header;
+use snafu::Snafu;
 use tracing::error;
 
 pub mod auth;
@@ -8,13 +9,31 @@ pub mod resource;
 pub mod store;
 pub mod system;
 
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Failed to get current user"), context(suffix(false)))]
+    CurrentUser,
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        error_response(StatusCode::UNAUTHORIZED, self)
+    }
+}
+
+impl IntoResponse for crate::ctrl::resource::Error {
+    fn into_response(self) -> Response {
+        error_response(StatusCode::BAD_REQUEST, self)
+    }
+}
+
 impl IntoResponse for crate::svc::system::Error {
     fn into_response(self) -> Response {
         error_response(StatusCode::INTERNAL_SERVER_ERROR, self)
     }
 }
 
-impl IntoResponse for crate::svc::memo::Error {
+impl IntoResponse for crate::svc::resource::Error {
     fn into_response(self) -> Response {
         error_response(StatusCode::INTERNAL_SERVER_ERROR, self)
     }

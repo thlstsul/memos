@@ -53,6 +53,7 @@ fn main() {
                 "memos.api.v2.Memo.pinned",
                 "memos.api.v2.Memo.resources",
                 "memos.api.v2.Memo.relations",
+                "memos.api.v2.Resource.external_link",
             ],
             &["#[serde(default)]"],
         )

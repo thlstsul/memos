@@ -104,10 +104,3 @@ CREATE INDEX idx_memo_visibility ON memo (visibility);
 CREATE INDEX idx_resource_creator_id ON resource (creator_id);
 CREATE INDEX idx_resource_memo_id ON resource (memo_id);
 COMMIT;
-
-create table if not exists sessions
-(
-    id text primary key not null,
-    data blob not null,
-    expiry_date integer not null
-);

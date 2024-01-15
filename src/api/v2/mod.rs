@@ -2132,6 +2132,7 @@ pub struct Resource {
     #[prost(string, tag = "3")]
     pub filename: ::prost::alloc::string::String,
     #[prost(string, tag = "4")]
+    #[serde(default)]
     pub external_link: ::prost::alloc::string::String,
     #[prost(string, tag = "5")]
     pub r#type: ::prost::alloc::string::String,

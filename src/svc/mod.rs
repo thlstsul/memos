@@ -73,7 +73,7 @@ pub enum Error {
 impl From<Error> for Status {
     fn from(value: Error) -> Self {
         error!("{value}");
-        Status::internal(value.to_string())
+        Status::unauthenticated(value.to_string())
     }
 }
 

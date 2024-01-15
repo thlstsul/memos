@@ -22,25 +22,32 @@ impl Dao for ResourceDao {
 
 impl ResourceDao {
     pub async fn create_resource(&self, create: CreateResource) -> Result<Resource, Error> {
-        let mut fields = vec![
-            "filename",
-            "blob",
-            "external_link",
-            "type",
-            "size",
-            "creator_id",
-            "internal_path",
-        ];
-        let mut placeholder = vec!["?", "?", "?", "?", "?", "?", "?"];
+        let mut fields = vec!["filename", "type", "size", "creator_id"];
+        let mut placeholder = vec!["?", "?", "?", "?"];
         let mut args = vec![
             Value::from(create.filename),
-            Value::from(create.blob),
-            Value::from(create.external_link),
             Value::from(create.r#type),
             Value::from(create.size),
             Value::from(create.creator_id),
-            Value::from(create.internal_path),
         ];
+
+        if let Some(blob) = create.blob {
+            fields.push("blob");
+            placeholder.push("?");
+            args.push(Value::from(blob));
+        }
+
+        if let Some(external_link) = create.external_link {
+            fields.push("external_link");
+            placeholder.push("?");
+            args.push(Value::from(external_link));
+        }
+
+        if let Some(internal_path) = create.internal_path {
+            fields.push("internal_path");
+            placeholder.push("?");
+            args.push(Value::from(internal_path));
+        }
 
         if let Some(id) = create.id {
             fields.push("id");
