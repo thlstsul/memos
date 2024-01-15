@@ -3,11 +3,15 @@ use std::sync::Arc;
 
 use axum::{error_handling::HandleErrorLayer, BoxError, Router};
 use axum_login::{
-    tower_sessions::{cookie::time::Duration, Expiry, MemoryStore, SessionManagerLayer},
+    login_required,
+    tower_sessions::{cookie::time::Duration, Expiry, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
-use ctrl::auth::{self, Backend};
 use ctrl::system;
+use ctrl::{
+    auth::{self, Backend},
+    resource,
+};
 use hybrid::{GrpcWebService, ShuttleGrpcWeb};
 use hyper::StatusCode;
 use libsql_client::client::Client;
@@ -60,8 +64,11 @@ async fn grpc_web(
         .layer(auth_manager_layer.clone());
 
     let public = Router::new().merge(auth::router()).merge(system::router());
+    let protected = Router::new()
+        .merge(resource::router())
+        .route_layer(login_required!(Backend));
 
-    let api_v1 = Router::new().merge(public);
+    let api_v1 = Router::new().merge(public).merge(protected);
 
     let index_file = ServeFile::new("web/dist/index.html");
     let axum_router = Router::new()
@@ -70,6 +77,7 @@ async fn grpc_web(
         .layer(TraceLayer::new_for_http())
         .route_service("/auth", index_file.clone())
         .route_service("/explore", index_file.clone())
+        .route_service("/resource", index_file.clone())
         .route_service("/setting", index_file)
         .nest_service(
             "/",

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.75"
-axum = "0.6.0"
+axum = { version = "0.6.0", features = ["multipart"]}
 hex = "0.4.3"
 hyper = { version = "0.14", features = ["full"] }
 libsql-client = "0.31.0"

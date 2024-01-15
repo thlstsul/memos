@@ -5,6 +5,7 @@ use self::v2::{RowStatus, Visibility};
 pub mod auth;
 pub mod inbox;
 pub mod memo;
+pub mod resource;
 pub mod system;
 pub mod tag;
 pub mod user;

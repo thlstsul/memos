@@ -5,6 +5,7 @@ use libsql_client::{de, Client, Statement};
 use serde::de::DeserializeOwned;
 
 pub mod memo;
+pub mod resource;
 pub mod system_setting;
 pub mod tag;
 pub mod user;

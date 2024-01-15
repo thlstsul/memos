@@ -4,6 +4,7 @@ use hyper::header;
 use tracing::error;
 
 pub mod auth;
+pub mod resource;
 pub mod store;
 pub mod system;
 

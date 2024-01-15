@@ -41,7 +41,7 @@ impl Default for SystemStatus {
             allow_sign_up: true,
             customized_profile: CustomizedProfile {
                 locale: "zh-Hans".to_owned(),
-                name: "memos".to_owned(),
+                name: "Memos".to_owned(),
                 appearance: "system".to_owned(),
                 ..Default::default()
             },

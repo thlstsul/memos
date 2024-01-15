@@ -39,8 +39,7 @@ impl MemoDao {
         stmts.append(&mut parse_upsert_tag(create.creator_id, &create.content));
 
         let rss = self.client.batch(stmts).await.context(Database)?;
-        let rs = rss.first();
-        if let Some(rs) = rs {
+        if let Some(rs) = rss.first() {
             let mut memos = rs
                 .rows
                 .iter()
