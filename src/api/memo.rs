@@ -144,8 +144,16 @@ impl TryInto<FindMemo> for &ListMemosRequest {
             content_search: filter.content_search.unwrap_or_default(),
             visibility_list: filter.visibilities.unwrap_or_default(),
             exclude_content: false,
-            limit: Some(self.limit),
-            offset: Some(self.offset),
+            limit: if self.limit == 0 {
+                None
+            } else {
+                Some(self.limit)
+            },
+            offset: if self.limit == 0 {
+                None
+            } else {
+                Some(self.offset)
+            },
             order_by_updated_ts: false,
             order_by_pinned: filter.order_by_pinned.unwrap_or_default(),
         })

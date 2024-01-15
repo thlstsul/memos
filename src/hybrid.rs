@@ -5,13 +5,14 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::Poll;
 
+use hyper::header::CONTENT_TYPE;
 use hyper::HeaderMap;
 use hyper::{body::HttpBody, Body, Request, Response};
 use pin_project::pin_project;
 use shuttle_runtime::{CustomError, Error};
 use tonic_web::GrpcWebLayer;
 use tower::layer::util::{Identity, Stack};
-use tower::Service;
+use tower::{BoxError, Service};
 
 use crate::ctrl::auth::AuthLayer;
 
@@ -106,11 +107,11 @@ impl<Web, Grpc, WebBody, GrpcBody> Service<Request<Body>> for HybridService<Web,
 where
     Web: Service<Request<Body>, Response = Response<WebBody>>,
     Grpc: Service<Request<Body>, Response = Response<GrpcBody>>,
-    Web::Error: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
-    Grpc::Error: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    Web::Error: Into<BoxError>,
+    Grpc::Error: Into<BoxError>,
 {
     type Response = Response<HybridBody<WebBody, GrpcBody>>;
-    type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
+    type Error = BoxError;
     type Future = HybridFuture<Web::Future, Grpc::Future>;
 
     fn poll_ready(
@@ -129,7 +130,7 @@ where
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let content_type = req.headers().get("content-type").map(|x| x.as_bytes());
+        let content_type = req.headers().get(CONTENT_TYPE).map(|x| x.as_bytes());
         if content_type == Some(b"application/grpc-web+proto")
             || content_type == Some(b"application/grpc-web")
         {
@@ -154,7 +155,7 @@ where
     GrpcBody::Error: std::error::Error + Send + Sync + 'static,
 {
     type Data = WebBody::Data;
-    type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
+    type Error = BoxError;
 
     fn is_end_stream(&self) -> bool {
         match self {
@@ -195,13 +196,10 @@ impl<WebFuture, GrpcFuture, WebBody, GrpcBody, WebError, GrpcError> Future
 where
     WebFuture: Future<Output = Result<Response<WebBody>, WebError>>,
     GrpcFuture: Future<Output = Result<Response<GrpcBody>, GrpcError>>,
-    WebError: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
-    GrpcError: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    WebError: Into<BoxError>,
+    GrpcError: Into<BoxError>,
 {
-    type Output = Result<
-        Response<HybridBody<WebBody, GrpcBody>>,
-        Box<dyn std::error::Error + Send + Sync + 'static>,
-    >;
+    type Output = Result<Response<HybridBody<WebBody, GrpcBody>>, BoxError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context) -> Poll<Self::Output> {
         match self.project() {
