@@ -126,8 +126,8 @@ impl TryInto<FindMemo> for &ListMemosRequest {
     type Error = Error;
 
     fn try_into(self) -> Result<FindMemo, Self::Error> {
-        let filter = &self.filter.replace("'", "\"");
-        let filter = syn::parse_str::<Filter>(&filter).context(FilterDecodeFailed)?;
+        let filter = &self.filter.replace('\'', "\"");
+        let filter = syn::parse_str::<Filter>(filter).context(FilterDecodeFailed)?;
         let creator = filter
             .creator
             .map(|s| get_name_parent_token(s, USER_NAME_PREFIX))
@@ -160,17 +160,17 @@ impl TryInto<FindMemo> for &ListMemosRequest {
     }
 }
 
-impl Into<CreateMemoResponse> for Memo {
-    fn into(self) -> CreateMemoResponse {
-        let mut memo = self;
+impl From<Memo> for CreateMemoResponse {
+    fn from(val: Memo) -> Self {
+        let mut memo = val;
         convert_memo(&mut memo);
         CreateMemoResponse { memo: Some(memo) }
     }
 }
 
-impl Into<ListMemosResponse> for Vec<Memo> {
-    fn into(self) -> ListMemosResponse {
-        let mut memos = self;
+impl From<Vec<Memo>> for ListMemosResponse {
+    fn from(val: Vec<Memo>) -> Self {
+        let mut memos = val;
         for memo in memos.iter_mut() {
             convert_memo(memo)
         }
@@ -178,10 +178,10 @@ impl Into<ListMemosResponse> for Vec<Memo> {
     }
 }
 
-impl Into<UpdateMemoResponse> for Option<Memo> {
-    fn into(self) -> UpdateMemoResponse {
+impl From<Option<Memo>> for UpdateMemoResponse {
+    fn from(val: Option<Memo>) -> Self {
         UpdateMemoResponse {
-            memo: if let Some(mut memo) = self {
+            memo: if let Some(mut memo) = val {
                 convert_memo(&mut memo);
                 Some(memo)
             } else {

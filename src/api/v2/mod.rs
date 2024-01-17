@@ -1,3 +1,4 @@
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum RowStatus {
@@ -65,6 +66,7 @@ pub struct User {
 }
 /// Nested message and enum types in `User`.
 pub mod user {
+    #[allow(clippy::enum_variant_names)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Role {
@@ -1546,6 +1548,7 @@ pub struct Node {
 }
 /// Nested message and enum types in `Node`.
 pub mod node {
+    #[allow(clippy::enum_variant_names)]
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Node {
@@ -1722,6 +1725,7 @@ pub struct EscapingCharacterNode {
     #[prost(string, tag = "1")]
     pub symbol: ::prost::alloc::string::String,
 }
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum NodeType {
@@ -2090,6 +2094,7 @@ pub struct MemoRelation {
 }
 /// Nested message and enum types in `MemoRelation`.
 pub mod memo_relation {
+    #[allow(clippy::enum_variant_names)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Type {
@@ -2878,6 +2883,7 @@ pub struct GetUserMemosStatsResponse {
     #[prost(map = "string, int32", tag = "1")]
     pub memo_creation_stats: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
 }
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum Visibility {
@@ -4790,6 +4796,7 @@ pub struct Inbox {
 }
 /// Nested message and enum types in `Inbox`.
 pub mod inbox {
+    #[allow(clippy::enum_variant_names)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Status {
@@ -4819,6 +4826,7 @@ pub mod inbox {
             }
         }
     }
+    #[allow(clippy::enum_variant_names)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Type {

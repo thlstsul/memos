@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use libsql_client::{Client, Statement};
-use snafu::{ResultExt, Snafu};
-use tonic::Status;
+use snafu::{OptionExt, ResultExt, Snafu};
 
 use crate::api::v2::{user, User};
 
@@ -34,21 +33,13 @@ impl UserDao {
             Statement::with_args("select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where username = ?", &[name])
         };
         let mut users: Vec<User> = self.execute(stmt).await.context(Database)?;
-        if let Some(user) = users.pop() {
-            Ok(user)
-        } else {
-            Err(Error::Inexistent)
-        }
+        users.pop().context(Inexistent)
     }
 
     pub async fn petch_user(&self, id: i32) -> Result<User, Error> {
         let stmt = Statement::with_args("select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where id = ?", &[id]);
         let mut users: Vec<User> = self.execute(stmt).await.context(Database)?;
-        if let Some(user) = users.pop() {
-            Ok(user)
-        } else {
-            Err(Error::Inexistent)
-        }
+        users.pop().context(Inexistent)
     }
 
     pub async fn host_user(&self) -> Result<User, Error> {
@@ -57,11 +48,7 @@ impl UserDao {
             &[user::Role::Host.as_str_name()],
         );
         let mut users: Vec<User> = self.execute(stmt).await.context(Database)?;
-        if let Some(user) = users.pop() {
-            Ok(user)
-        } else {
-            Err(Error::Inexistent)
-        }
+        users.pop().context(Inexistent)
     }
 }
 
@@ -71,13 +58,4 @@ pub enum Error {
     Database { source: anyhow::Error },
     #[snafu(display("Data does not exsit"), context(suffix(false)))]
     Inexistent,
-}
-
-impl From<Error> for Status {
-    fn from(value: Error) -> Self {
-        match value {
-            Error::Inexistent => Status::not_found(value.to_string()),
-            _ => Status::internal(value.to_string()),
-        }
-    }
 }

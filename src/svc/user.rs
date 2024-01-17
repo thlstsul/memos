@@ -152,7 +152,7 @@ impl user_service_server::UserService for UserService {
         request: Request<UpdateUserSettingRequest>,
     ) -> Result<Response<UpdateUserSettingResponse>, Status> {
         let user = get_current_user(&request)?;
-        let settings = request.get_ref().into_settings(user.id);
+        let settings = request.get_ref().as_settings(user.id);
         self.setting_dao.upsert_setting(settings).await?;
 
         Ok(Response::new(UpdateUserSettingResponse {

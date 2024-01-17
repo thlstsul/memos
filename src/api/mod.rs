@@ -93,7 +93,7 @@ impl<'de> Deserialize<'de> for RowStatus {
         let status = String::deserialize(deserializer)?;
         let row_status = RowStatus::from_str_name(&status);
         let row_status = row_status.unwrap_or(RowStatus::Unspecified);
-        Ok(row_status.into())
+        Ok(row_status)
     }
 }
 
@@ -172,7 +172,7 @@ impl<'de> Deserialize<'de> for Visibility {
         let visibility = String::deserialize(deserializer)?;
         let visibility = Visibility::from_str_name(&visibility);
         let visibility = visibility.unwrap_or(Visibility::Unspecified);
-        Ok(visibility.into())
+        Ok(visibility)
     }
 }
 

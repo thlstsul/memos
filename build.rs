@@ -27,6 +27,11 @@ fn main() {
             true,
             None,
         )
+        .type_attribute(
+            "memos.api.v2.User",
+            r"#[derive(serde::Serialize, serde::Deserialize)]",
+        )
+        .enum_attribute(".", "#[allow(clippy::enum_variant_names)]")
         .with_field_attributes(
             &[
                 "memos.api.v2.Activity.create_time",
@@ -56,10 +61,6 @@ fn main() {
                 "memos.api.v2.Resource.external_link",
             ],
             &["#[serde(default)]"],
-        )
-        .type_attribute(
-            "memos.api.v2.User",
-            r"#[derive(serde::Serialize, serde::Deserialize)]",
         )
         .field_attribute(
             "memos.api.v2.Memo.row_status",

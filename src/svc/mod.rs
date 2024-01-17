@@ -53,14 +53,14 @@ impl ServiceFactory {
     }
 }
 
-pub fn get_current_user<'a, T>(request: &'a Request<T>) -> Result<&'a User, Error> {
+pub fn get_current_user<T>(request: &Request<T>) -> Result<&User, Error> {
     if let Some(AuthSession {
         user: Some(user), ..
     }) = request.extensions().get::<AuthSession>()
     {
         Ok(user)
     } else {
-        Err(Error::CurrentUser)
+        CurrentUser.fail()
     }
 }
 
@@ -88,6 +88,16 @@ impl From<crate::dao::user_setting::Error> for Status {
     fn from(value: crate::dao::user_setting::Error) -> Self {
         error!("{value}");
         Status::internal(value.to_string())
+    }
+}
+
+impl From<crate::dao::user::Error> for Status {
+    fn from(value: crate::dao::user::Error) -> Self {
+        error!("{value}");
+        match value {
+            crate::dao::user::Error::Inexistent => Status::not_found(value.to_string()),
+            _ => Status::internal(value.to_string()),
+        }
     }
 }
 

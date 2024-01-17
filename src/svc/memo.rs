@@ -121,8 +121,7 @@ impl memo_service_server::MemoService for MemoService {
                 ..Default::default()
             })
             .await?;
-        let memo = memos.pop();
-        Ok(Response::new(memo.into()))
+        Ok(Response::new(memos.pop().into()))
     }
     /// DeleteMemo deletes a memo by id.
     async fn delete_memo(

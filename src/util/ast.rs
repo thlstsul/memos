@@ -27,7 +27,7 @@ pub fn get_string(lit: Expr) -> Option<String> {
 
 pub fn get_string_list(lit: Expr) -> Option<Vec<String>> {
     if let Expr::Array(ExprArray { elems, .. }) = lit {
-        elems.into_iter().map(|lit| get_string(lit)).collect()
+        elems.into_iter().map(get_string).collect()
     } else {
         None
     }
@@ -63,12 +63,12 @@ pub fn get_bool(lit: Expr) -> Option<bool> {
 
 pub fn get_visibility(lit: Expr) -> Option<Visibility> {
     let visibility = get_string(lit);
-    visibility.map(|s| Visibility::from_str_name(&s)).flatten()
+    visibility.and_then(|s| Visibility::from_str_name(&s))
 }
 
 pub fn get_visibilities(lit: Expr) -> Option<Vec<Visibility>> {
     if let Expr::Array(ExprArray { elems, .. }) = lit {
-        elems.into_iter().map(|lit| get_visibility(lit)).collect()
+        elems.into_iter().map(get_visibility).collect()
     } else {
         None
     }
@@ -95,7 +95,7 @@ fn parse_tag<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
         NodeValue::Text(content) => {
             let mut nodes = Vec::new();
             let re = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+$|#\S+\s").unwrap());
-            let matches = re.find_iter(&content);
+            let matches = re.find_iter(content);
             for mat in matches {
                 let i = if mat.end() == content.len() {
                     mat.end()
@@ -165,7 +165,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
         NodeValue::Text(content) => {
             let mut nodes = Vec::new();
             let re = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+$|#\S+\s").unwrap());
-            let matches = re.find_iter(&content);
+            let matches = re.find_iter(content);
             let mut i = 0;
             for mat in matches {
                 if i < mat.start() {

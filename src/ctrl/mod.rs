@@ -9,18 +9,6 @@ pub mod resource;
 pub mod store;
 pub mod system;
 
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Failed to get current user"), context(suffix(false)))]
-    CurrentUser,
-}
-
-impl IntoResponse for Error {
-    fn into_response(self) -> Response {
-        error_response(StatusCode::UNAUTHORIZED, self)
-    }
-}
-
 impl IntoResponse for crate::ctrl::resource::Error {
     fn into_response(self) -> Response {
         error_response(StatusCode::BAD_REQUEST, self)

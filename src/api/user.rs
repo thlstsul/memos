@@ -84,7 +84,7 @@ impl From<Vec<UserSetting>> for GetUserSettingResponse {
 }
 
 impl UpdateUserSettingRequest {
-    pub fn into_settings(&self, user_id: i32) -> Vec<UserSetting> {
+    pub fn as_settings(&self, user_id: i32) -> Vec<UserSetting> {
         let mut rtn = Vec::new();
         if let UpdateUserSettingRequest {
             update_mask: Some(field_mask),

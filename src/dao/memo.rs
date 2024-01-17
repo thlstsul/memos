@@ -1,4 +1,4 @@
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use std::sync::Arc;
 use tracing::info;
 
@@ -26,17 +26,24 @@ impl Dao for MemoDao {
 }
 
 impl MemoDao {
-    pub async fn create_memo(&self, create: CreateMemo) -> Result<Memo, Error> {
+    pub async fn create_memo(
+        &self,
+        CreateMemo {
+            creator_id,
+            content,
+            visibility,
+        }: CreateMemo,
+    ) -> Result<Memo, Error> {
         let mut stmts = vec![Statement::with_args(
             "INSERT INTO memo (creator_id, content, visibility) VALUES (?, ?, ?) RETURNING id, creator_id, created_ts as create_time, created_ts as display_time, updated_ts as update_time, row_status, content, visibility",
             &[
-                Value::from(create.creator_id),
-                Value::from(create.content.clone()),
-                Value::from(create.visibility.as_str_name().to_owned()),
+                Value::from(creator_id),
+                Value::from(content.clone()),
+                Value::from(visibility.as_str_name().to_owned()),
             ],
         )];
 
-        stmts.append(&mut parse_upsert_tag(create.creator_id, &create.content));
+        stmts.append(&mut parse_upsert_tag(creator_id, &content));
 
         let rss = self.client.batch(stmts).await.context(Database)?;
         if let Some(rs) = rss.first() {
@@ -46,13 +53,9 @@ impl MemoDao {
                 .map(de::from_row)
                 .collect::<Result<Vec<Memo>, _>>()
                 .context(Database)?;
-            if let Some(memo) = memos.pop() {
-                Ok(memo)
-            } else {
-                Err(Error::CreateMemoFailed)
-            }
+            memos.pop().context(CreateMemoFailed)
         } else {
-            Err(Error::CreateMemoFailed)
+            CreateMemoFailed.fail()
         }
     }
 
@@ -77,34 +80,44 @@ impl MemoDao {
         Ok(())
     }
 
-    pub async fn update_memo(&self, creator_id: i32, update: UpdateMemo) -> Result<(), Error> {
+    pub async fn update_memo(
+        &self,
+        creator_id: i32,
+        UpdateMemo {
+            id,
+            content,
+            visibility,
+            row_status,
+            pinned,
+        }: UpdateMemo,
+    ) -> Result<(), Error> {
         {
             // 更新memo
             let mut stmts = Vec::new();
             let mut set = Vec::new();
             let mut args = Vec::new();
-            if let Some(content) = update.content {
+            if let Some(content) = content {
                 stmts.append(&mut parse_upsert_tag(creator_id, &content));
                 set.push("content = ?");
                 args.push(Value::from(content));
             }
-            if let Some(visibility) = update.visibility {
+            if let Some(visibility) = visibility {
                 set.push("visibility = ?");
                 args.push(Value::from(visibility.as_str_name().to_owned()));
             }
-            if let Some(row_status) = update.row_status {
+            if let Some(row_status) = row_status {
                 set.push("row_status = ?");
                 args.push(Value::from(row_status.as_str_name().to_owned()));
             }
             if !set.is_empty() {
                 let update_sql = format!("UPDATE memo SET {} WHERE id = ?", set.join(", "));
-                args.push(Value::from(update.id));
+                args.push(Value::from(id));
                 stmts.push(Statement::with_args(update_sql, &args));
 
                 self.client.batch(stmts).await.context(Database)?;
             }
         }
-        if let Some(pinned) = update.pinned {
+        if let Some(pinned) = pinned {
             // 置顶是单独操作的
             let stmt = Statement::with_args(
                 "
@@ -118,7 +131,7 @@ impl MemoDao {
 		        SET
 		        	pinned = EXCLUDED.pinned
             ",
-                &[update.id, creator_id, if pinned { 1 } else { 0 }],
+                &[id, creator_id, if pinned { 1 } else { 0 }],
             );
             self.client.execute(stmt).await.context(Database)?;
         }
@@ -148,44 +161,44 @@ fn parse_upsert_tag(creator_id: i32, content: &str) -> Vec<Statement> {
     stmts
 }
 
-impl Into<Statement> for FindMemo {
-    fn into(self) -> Statement {
+impl From<FindMemo> for Statement {
+    fn from(val: FindMemo) -> Self {
         let mut wheres = vec!["1 = 1"];
         let mut args = Vec::new();
 
-        if let Some(id) = self.id {
+        if let Some(id) = val.id {
             wheres.push("memo.id = ?");
             args.push(Value::from(id));
         }
-        if let Some(creator_id) = self.creator_id {
+        if let Some(creator_id) = val.creator_id {
             wheres.push("memo.creator_id = ?");
             args.push(Value::from(creator_id));
         }
-        if let Some(row_status) = &self.row_status {
+        if let Some(row_status) = &val.row_status {
             wheres.push("memo.row_status = ?");
             args.push(Value::from(row_status));
         }
-        if let Some(created_ts_before) = self.created_ts_before {
+        if let Some(created_ts_before) = val.created_ts_before {
             wheres.push("memo.created_ts < ?");
             args.push(Value::from(created_ts_before));
         }
-        if let Some(created_ts_after) = self.created_ts_after {
+        if let Some(created_ts_after) = val.created_ts_after {
             wheres.push("memo.created_ts > ?");
             args.push(Value::from(created_ts_after));
         }
-        for content_search in self.content_search.iter() {
+        for content_search in val.content_search.iter() {
             wheres.push("memo.content LIKE ?");
             args.push(Value::from(format!("%{content_search}%")));
         }
-        if self.pinned {
+        if val.pinned {
             wheres.push("memo_organizer.pinned = 1");
         }
 
         let mut wheres: Vec<String> = wheres.into_iter().map(|s| s.to_owned()).collect();
 
-        if !self.visibility_list.is_empty() {
+        if !val.visibility_list.is_empty() {
             let mut l = Vec::new();
-            for visibility in self.visibility_list.iter() {
+            for visibility in val.visibility_list.iter() {
                 args.push(Value::from(visibility.as_str_name().to_owned()));
                 l.push("?");
             }
@@ -193,10 +206,10 @@ impl Into<Statement> for FindMemo {
         }
 
         let mut orders = Vec::new();
-        if self.order_by_pinned {
+        if val.order_by_pinned {
             orders.push("pinned DESC");
         }
-        if self.order_by_updated_ts {
+        if val.order_by_updated_ts {
             orders.push("memo.updated_ts DESC");
         } else {
             orders.push("memo.created_ts DESC");
@@ -214,11 +227,11 @@ impl Into<Statement> for FindMemo {
             "CASE WHEN memo_organizer.pinned = 1 THEN 1 ELSE 0 END AS pinned",
         ];
 
-        if !self.exclude_content {
+        if !val.exclude_content {
             fields.push("memo.content AS content");
         }
 
-        if self.order_by_updated_ts {
+        if val.order_by_updated_ts {
             fields.push("memo.updated_ts AS display_time");
         } else {
             fields.push("memo.created_ts AS display_time");
@@ -238,9 +251,9 @@ impl Into<Statement> for FindMemo {
             orders.join(", ")
         );
 
-        if let Some(limit) = self.limit {
+        if let Some(limit) = val.limit {
             query = format!("{query} LIMIT {limit}");
-            if let Some(offset) = self.offset {
+            if let Some(offset) = val.offset {
                 query = format!("{query} OFFSET {offset}");
             }
         }

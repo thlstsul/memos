@@ -1,5 +1,7 @@
 /// TODO tonic 未升级hyper 1.0，待其升级
 /// fork from https://github.com/snoyberg/tonic-example
+/// fork from https://github.com/tokio-rs/axum/examples/rest-grpc-multiplex
+/// axum::Router impl Service 可以省一层
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -27,11 +29,11 @@ impl shuttle_runtime::Service for GrpcWebService {
     /// Takes the router that is returned by the user in their [shuttle_runtime::main] function
     /// and binds to an address passed in by shuttle.
     async fn bind(mut self, addr: SocketAddr) -> Result<(), Error> {
-        let axum_make_service = self.axum_router.into_make_service();
-        let grpc_service = self.tonic_router.into_service();
-        let hybrid_make_service = hybrid(axum_make_service, grpc_service);
+        let web = self.axum_router;
+        let grpc = self.tonic_router.into_service();
+        let hybrid_service = HybridService { web, grpc };
 
-        let server = hyper::Server::bind(&addr).serve(hybrid_make_service);
+        let server = hyper::Server::bind(&addr).serve(tower::make::Shared::new(hybrid_service));
         server.await.map_err(CustomError::new)?;
         Ok(())
     }
@@ -39,65 +41,7 @@ impl shuttle_runtime::Service for GrpcWebService {
 
 pub type ShuttleGrpcWeb = Result<GrpcWebService, Error>;
 
-fn hybrid<MakeWeb, Grpc>(make_web: MakeWeb, grpc: Grpc) -> HybridMakeService<MakeWeb, Grpc> {
-    HybridMakeService { make_web, grpc }
-}
-
-struct HybridMakeService<MakeWeb, Grpc> {
-    make_web: MakeWeb,
-    grpc: Grpc,
-}
-
-impl<ConnInfo, MakeWeb, Grpc> Service<ConnInfo> for HybridMakeService<MakeWeb, Grpc>
-where
-    MakeWeb: Service<ConnInfo>,
-    Grpc: Clone,
-{
-    type Response = HybridService<MakeWeb::Response, Grpc>;
-    type Error = MakeWeb::Error;
-    type Future = HybridMakeServiceFuture<MakeWeb::Future, Grpc>;
-
-    fn poll_ready(
-        &mut self,
-        cx: &mut std::task::Context,
-    ) -> std::task::Poll<Result<(), Self::Error>> {
-        self.make_web.poll_ready(cx)
-    }
-
-    fn call(&mut self, conn_info: ConnInfo) -> Self::Future {
-        HybridMakeServiceFuture {
-            web_future: self.make_web.call(conn_info),
-            grpc: Some(self.grpc.clone()),
-        }
-    }
-}
-
-#[pin_project]
-struct HybridMakeServiceFuture<WebFuture, Grpc> {
-    #[pin]
-    web_future: WebFuture,
-    grpc: Option<Grpc>,
-}
-
-impl<WebFuture, Web, WebError, Grpc> Future for HybridMakeServiceFuture<WebFuture, Grpc>
-where
-    WebFuture: Future<Output = Result<Web, WebError>>,
-{
-    type Output = Result<HybridService<Web, Grpc>, WebError>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context) -> Poll<Self::Output> {
-        let this = self.project();
-        match this.web_future.poll(cx) {
-            Poll::Pending => Poll::Pending,
-            Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
-            Poll::Ready(Ok(web)) => Poll::Ready(Ok(HybridService {
-                web,
-                grpc: this.grpc.take().expect("Cannot poll twice!"),
-            })),
-        }
-    }
-}
-
+#[derive(Debug, Clone)]
 struct HybridService<Web, Grpc> {
     web: Web,
     grpc: Grpc,

@@ -1,5 +1,6 @@
+use serde::Deserialize;
+
 pub struct FindResource {
-    pub get_blob: bool,
     pub id: i32,
     pub creator_id: i32,
     pub filename: String,
@@ -9,8 +10,8 @@ pub struct FindResource {
     pub offset: isize,
 }
 
-#[derive(Debug, Default)]
-pub struct CreateResource {
+#[derive(Debug, Default, Deserialize)]
+pub struct WholeResource {
     pub filename: String,
     pub r#type: String,
     pub size: usize,

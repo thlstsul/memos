@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use libsql_client::{Client, Statement, Value};
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 
 use crate::api::{
-    resource::{CreateResource, FindResource},
+    resource::{FindResource, WholeResource},
     v2::Resource,
 };
 
@@ -21,7 +21,7 @@ impl Dao for ResourceDao {
 }
 
 impl ResourceDao {
-    pub async fn create_resource(&self, create: CreateResource) -> Result<Resource, Error> {
+    pub async fn create_resource(&self, create: WholeResource) -> Result<Resource, Error> {
         let mut fields = vec!["filename", "type", "size", "creator_id"];
         let mut placeholder = vec!["?", "?", "?", "?"];
         let mut args = vec![
@@ -82,14 +82,16 @@ impl ResourceDao {
         let stmt = Statement::with_args(insert_sql, &args);
 
         let mut rs = self.execute(stmt).await.context(Database)?;
-        if let Some(res) = rs.pop() {
-            Ok(res)
-        } else {
-            Err(Error::CreateResourceFailed)
-        }
+        rs.pop().context(CreateResourceFailed)
     }
 
-    pub fn list_resource(&self, find: FindResource) -> Result<Vec<Resource>, Error> {
+    pub async fn get_resource(&self, id: i32) -> Result<WholeResource, Error> {
+        let stmt = Statement::with_args("select * from resource where id = ?", &[id]);
+        let mut rs: Vec<WholeResource> = self.execute(stmt).await.context(Database)?;
+        rs.pop().context(Inexistent)
+    }
+
+    pub async fn list_resource(&self, find: FindResource) -> Result<Vec<Resource>, Error> {
         todo!()
     }
 }
@@ -100,4 +102,6 @@ pub enum Error {
     Database { source: anyhow::Error },
     #[snafu(display("Create resource failed"), context(suffix(false)))]
     CreateResourceFailed,
+    #[snafu(display("Data does not exsit"), context(suffix(false)))]
+    Inexistent,
 }
