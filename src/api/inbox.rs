@@ -4,6 +4,7 @@ use super::{v2::Inbox, INBOX_NAME_PREFIX};
 use snafu::{ResultExt, Snafu};
 
 impl Inbox {
+    #[allow(dead_code)]
     pub fn get_id(&self) -> Result<i32, Error> {
         get_name_parent_token(self.name.clone(), INBOX_NAME_PREFIX)
             .context(InvalidRequest)?

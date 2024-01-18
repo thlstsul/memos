@@ -1,7 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use hyper::header;
-use snafu::Snafu;
 use tracing::error;
 
 pub mod auth;

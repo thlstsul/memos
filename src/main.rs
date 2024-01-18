@@ -28,6 +28,7 @@ use tracing::error;
 
 use crate::{
     ctrl::{auth::AuthLayer, store::TursoStore},
+    state::AppState,
     svc::ServiceFactory,
 };
 
@@ -35,6 +36,7 @@ mod api;
 mod ctrl;
 mod dao;
 mod hybrid;
+mod state;
 mod svc;
 mod util;
 
@@ -48,13 +50,13 @@ async fn grpc_web(
     client: Client,
     #[shuttle_secrets::Secrets] secrets: SecretStore,
 ) -> ShuttleGrpcWeb {
-    let client = Arc::new(client);
-    let session_store = TursoStore::new(&client);
+    let state = AppState::new(client);
+    let session_store = TursoStore::new(&state);
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
         .with_expiry(Expiry::OnInactivity(Duration::days(30)));
 
-    let backend = Backend::new(UserService::new(&client));
+    let backend = Backend::new(UserService::new(&state));
     let auth_manager_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
     let auth_service = ServiceBuilder::new()
         .layer(HandleErrorLayer::new(|e: BoxError| async move {
@@ -84,12 +86,12 @@ async fn grpc_web(
             ServeDir::new("web/dist").append_index_html_on_directories(true),
         );
 
-    let axum_router = axum_router.with_state(client.clone());
+    let axum_router = axum_router.with_state(state.clone());
 
-    let user = ServiceFactory::get_user(&client);
-    let tag = ServiceFactory::get_tag(&client);
+    let user = ServiceFactory::get_user(&state);
+    let tag = ServiceFactory::get_tag(&state);
     let auth = ServiceFactory::get_auth();
-    let memo = ServiceFactory::get_memo(&client);
+    let memo = ServiceFactory::get_memo(&state);
     let inbox = ServiceFactory::get_inbox();
 
     let public_path = vec![

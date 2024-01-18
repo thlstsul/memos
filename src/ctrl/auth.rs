@@ -1,6 +1,5 @@
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use async_trait::async_trait;
@@ -14,12 +13,12 @@ use axum::{Json, Router};
 use axum_login::tower_sessions::SessionManager;
 use axum_login::{AuthManager, AuthManagerLayer, AuthUser, AuthnBackend, UserId};
 use hyper::{header, Request, Response};
-use libsql_client::Client;
 use pin_project_lite::pin_project;
 use tower::{Layer, Service};
 use tower_cookies::CookieManager;
 use tracing::info;
 
+use crate::state::AppState;
 use crate::{
     api::{v1::sign::SignRequest, v2::User},
     svc::user::{Error, UserService},
@@ -27,7 +26,7 @@ use crate::{
 
 use super::store::TursoStore;
 
-pub fn router() -> Router<Arc<Client>> {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/auth/signin", post(signin))
         .route("/auth/signout", post(logout))

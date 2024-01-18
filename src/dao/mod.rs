@@ -1,8 +1,8 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use libsql_client::{de, Client, Statement};
+use libsql_client::{de, Statement};
 use serde::de::DeserializeOwned;
+
+use crate::state::AppState;
 
 pub mod memo;
 pub mod resource;
@@ -13,12 +13,12 @@ pub mod user_setting;
 
 #[async_trait]
 pub trait Dao {
-    fn get_client(&self) -> Arc<Client>;
+    fn get_state(&self) -> &AppState;
     async fn execute<T: DeserializeOwned>(
         &self,
         stmt: impl Into<Statement> + Send,
     ) -> anyhow::Result<Vec<T>> {
-        self.get_client()
+        self.get_state()
             .execute(stmt)
             .await?
             .rows

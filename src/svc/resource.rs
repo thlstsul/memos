@@ -1,10 +1,9 @@
-use libsql_client::Client;
 use snafu::{ResultExt, Snafu};
-use std::sync::Arc;
 
 use crate::{
     api::{resource::WholeResource, v2::Resource},
     dao::resource::ResourceDao,
+    state::AppState,
 };
 
 pub struct ResourceService {
@@ -12,10 +11,10 @@ pub struct ResourceService {
 }
 
 impl ResourceService {
-    pub fn new(client: &Arc<Client>) -> Self {
+    pub fn new(state: &AppState) -> Self {
         Self {
             dao: ResourceDao {
-                client: Arc::clone(client),
+                state: state.clone(),
             },
         }
     }

@@ -23,6 +23,7 @@ pub const USER_NAME_PREFIX: &str = "users";
 mod bool_serde {
     use serde::{self, Deserialize, Deserializer, Serializer};
 
+    #[allow(dead_code)]
     pub fn serialize<S>(data: &bool, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -181,6 +182,7 @@ mod visibility_serde {
 
     use super::v2::Visibility;
 
+    #[allow(dead_code)]
     pub fn serialize<S>(visibility: &i32, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

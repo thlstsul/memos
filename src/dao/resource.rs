@@ -1,22 +1,23 @@
-use std::sync::Arc;
-
-use libsql_client::{Client, Statement, Value};
+use libsql_client::{Statement, Value};
 use snafu::{OptionExt, ResultExt, Snafu};
 
-use crate::api::{
-    resource::{FindResource, WholeResource},
-    v2::Resource,
+use crate::{
+    api::{
+        resource::{FindResource, WholeResource},
+        v2::Resource,
+    },
+    state::AppState,
 };
 
 use super::Dao;
 
 pub struct ResourceDao {
-    pub client: Arc<Client>,
+    pub state: AppState,
 }
 
 impl Dao for ResourceDao {
-    fn get_client(&self) -> Arc<Client> {
-        Arc::clone(&self.client)
+    fn get_state(&self) -> &AppState {
+        &self.state
     }
 }
 

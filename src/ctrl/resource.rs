@@ -1,39 +1,68 @@
-use std::sync::Arc;
-
 use axum::{
-    extract::{Multipart, State},
+    body::StreamBody,
+    extract::{Multipart, Path, State},
     http::HeaderValue,
-    response::Result,
+    response::{IntoResponse, Result},
     routing::post,
     Json, Router,
 };
-use hyper::header::CONTENT_TYPE;
-use libsql_client::Client;
-use snafu::{ensure, Snafu};
+use hyper::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
+use snafu::{ensure, OptionExt, Snafu};
+use tokio_util::io::ReaderStream;
 
 use crate::{
     api::{
-        resource::CreateResource,
+        resource::WholeResource,
         system::{SystemSetting, SystemSettingKey},
         v1::resource::CreateResourceResponse,
     },
+    state::AppState,
     svc::{resource::ResourceService, system::SystemService},
 };
 
 use super::auth::AuthSession;
 
 const MEBI_BYTE: usize = 1024 * 1024;
+const DEFAULT_MAX_MIB: usize = 32;
 
-pub fn router() -> Router<Arc<Client>> {
+pub fn router() -> Router<AppState> {
     Router::new().route("/resource/blob", post(upload))
+}
+
+/// /o/r/{id}
+pub async fn stream_resource(
+    auth_session: AuthSession,
+    state: State<AppState>,
+    Path(id): Path<i32>,
+) -> impl IntoResponse {
+    // let res_svc = ResourceService::new(&client);
+    // let WholeResource {
+    //     filename, mut blob, ..
+    // } = res_svc.get_resource(id).await.unwrap();
+    // let blob = blob.take().unwrap();
+    // let stream = ReaderStream::new(blob.as_ref());
+    // let body = StreamBody::new(stream);
+
+    // let headers = [
+    //     (CONTENT_TYPE, "image/jpeg"),
+    //     (
+    //         CONTENT_DISPOSITION,
+    //         &format!("attachment; filename=\"{filename}\""),
+    //     ),
+    // ];
+
+    // (headers, body)
+
+    // TODO
+    todo!()
 }
 
 async fn upload(
     auth_session: AuthSession,
-    client: State<Arc<Client>>,
+    state: State<AppState>,
     mut multipart: Multipart,
 ) -> Result<Json<CreateResourceResponse>> {
-    let user = auth_session.user.ok_or(crate::ctrl::Error::CurrentUser)?;
+    let user = auth_session.user.unwrap();
     if let Some(field) = multipart.next_field().await? {
         let filename = field.file_name().unwrap_or_default().to_owned();
         let r#type = field
@@ -46,7 +75,7 @@ async fn upload(
         let data = field.bytes().await?;
         let size = data.len();
 
-        let sys_svc = SystemService::new(&client);
+        let sys_svc = SystemService::new(&state);
         let max_upload_size_mib = SystemSetting {
             name: SystemSettingKey::MaxUploadSizeMiB,
             value: "32".to_owned(),
@@ -58,7 +87,7 @@ async fn upload(
             .unwrap_or(max_upload_size_mib);
 
         let max_upload_size_bytes: usize =
-            max_upload_size_mib.value.parse().unwrap_or(32) * MEBI_BYTE;
+            max_upload_size_mib.value.parse().unwrap_or(DEFAULT_MAX_MIB) * MEBI_BYTE;
 
         ensure!(
             max_upload_size_bytes > size,
@@ -68,7 +97,7 @@ async fn upload(
         );
 
         // 默认保存到 turso
-        let create = CreateResource {
+        let create = WholeResource {
             filename,
             r#type,
             size,
@@ -77,7 +106,7 @@ async fn upload(
             ..Default::default()
         };
 
-        let res_svc = ResourceService::new(&client);
+        let res_svc = ResourceService::new(&state);
         let res = res_svc.create_resource(create).await?;
         let created_ts = res.create_time.unwrap_or_default();
         let resp = CreateResourceResponse {

@@ -1,8 +1,6 @@
 use snafu::Snafu;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use tonic::{Request, Response, Status};
-
-use libsql_client::Client;
 
 use crate::{
     api::{
@@ -20,6 +18,7 @@ use crate::{
         },
     },
     dao::{memo::MemoDao, system_setting::SystemSettingDao, user::UserDao},
+    state::AppState,
 };
 
 use super::get_current_user;
@@ -31,16 +30,16 @@ pub struct MemoService {
 }
 
 impl MemoService {
-    pub fn new(client: &Arc<Client>) -> Self {
+    pub fn new(state: &AppState) -> Self {
         Self {
             memo_dao: MemoDao {
-                client: Arc::clone(client),
+                state: state.clone(),
             },
             user_dao: UserDao {
-                client: Arc::clone(client),
+                state: state.clone(),
             },
             sys_dao: SystemSettingDao {
-                client: Arc::clone(client),
+                state: state.clone(),
             },
         }
     }

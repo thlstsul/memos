@@ -1,8 +1,7 @@
 use snafu::{OptionExt, ResultExt, Snafu};
-use std::sync::Arc;
 use tracing::info;
 
-use libsql_client::{de, Client, Statement, Value};
+use libsql_client::{de, Statement, Value};
 
 use crate::{
     api::{
@@ -10,18 +9,19 @@ use crate::{
         v2::{node, Memo, TagNode},
         Count,
     },
+    state::AppState,
     util::ast::parse_document,
 };
 
 use super::Dao;
 
 pub struct MemoDao {
-    pub client: Arc<Client>,
+    pub state: AppState,
 }
 
 impl Dao for MemoDao {
-    fn get_client(&self) -> Arc<Client> {
-        Arc::clone(&self.client)
+    fn get_state(&self) -> &AppState {
+        &self.state
     }
 }
 
@@ -45,7 +45,7 @@ impl MemoDao {
 
         stmts.append(&mut parse_upsert_tag(creator_id, &content));
 
-        let rss = self.client.batch(stmts).await.context(Database)?;
+        let rss = self.state.batch(stmts).await.context(Database)?;
         if let Some(rs) = rss.first() {
             let mut memos = rs
                 .rows
@@ -76,7 +76,7 @@ impl MemoDao {
 
     pub async fn delete_memo(&self, memo_id: i32) -> Result<(), Error> {
         let stmt = Statement::with_args("delete from memo where id = ?", &[memo_id]);
-        self.client.execute(stmt).await.context(Database)?;
+        self.state.execute(stmt).await.context(Database)?;
         Ok(())
     }
 
@@ -114,7 +114,7 @@ impl MemoDao {
                 args.push(Value::from(id));
                 stmts.push(Statement::with_args(update_sql, &args));
 
-                self.client.batch(stmts).await.context(Database)?;
+                self.state.batch(stmts).await.context(Database)?;
             }
         }
         if let Some(pinned) = pinned {
@@ -133,7 +133,7 @@ impl MemoDao {
             ",
                 &[id, creator_id, if pinned { 1 } else { 0 }],
             );
-            self.client.execute(stmt).await.context(Database)?;
+            self.state.execute(stmt).await.context(Database)?;
         }
 
         Ok(())

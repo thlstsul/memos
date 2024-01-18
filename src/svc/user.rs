@@ -1,6 +1,3 @@
-use std::sync::Arc;
-
-use libsql_client::Client;
 use sm3::{Digest, Sm3};
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
@@ -16,6 +13,7 @@ use crate::api::v2::{
 use crate::dao::user::Error as DaoErr;
 use crate::dao::user::UserDao;
 use crate::dao::user_setting::UserSettingDao;
+use crate::state::AppState;
 
 use super::get_current_user;
 
@@ -26,13 +24,13 @@ pub struct UserService {
 }
 
 impl UserService {
-    pub fn new(client: &Arc<Client>) -> Self {
+    pub fn new(state: &AppState) -> Self {
         Self {
             user_dao: UserDao {
-                client: Arc::clone(client),
+                state: state.clone(),
             },
             setting_dao: UserSettingDao {
-                client: Arc::clone(client),
+                state: state.clone(),
             },
         }
     }

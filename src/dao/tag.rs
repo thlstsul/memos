@@ -1,20 +1,18 @@
-use std::sync::Arc;
-
-use libsql_client::{Client, Statement, Value};
+use libsql_client::{Statement, Value};
 use snafu::{ResultExt, Snafu};
 
-use crate::api::v2::Tag;
+use crate::{api::v2::Tag, state::AppState};
 
 use super::Dao;
 
 #[derive(Debug)]
 pub struct TagDao {
-    pub client: Arc<Client>,
+    pub state: AppState,
 }
 
 impl Dao for TagDao {
-    fn get_client(&self) -> Arc<Client> {
-        Arc::clone(&self.client)
+    fn get_state(&self) -> &AppState {
+        &self.state
     }
 }
 
@@ -29,7 +27,7 @@ impl TagDao {
             "delete from tag where name = ? and creator_id = ?",
             &[Value::from(name), Value::from(creator_id)],
         );
-        self.client.execute(stmt).await.context(Database)?;
+        self.state.execute(stmt).await.context(Database)?;
         Ok(())
     }
 
@@ -45,7 +43,7 @@ impl TagDao {
                 name = EXCLUDED.name",
             &[Value::from(name), Value::from(creator_id)],
         );
-        self.client.execute(stmt).await.context(Database)?;
+        self.state.execute(stmt).await.context(Database)?;
         Ok(())
     }
 }

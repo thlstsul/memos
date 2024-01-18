@@ -1,20 +1,21 @@
-use std::sync::Arc;
-
-use libsql_client::{Client, Statement};
+use libsql_client::Statement;
 use snafu::{ResultExt, Snafu};
 
-use crate::api::system::{SystemSetting, SystemSettingKey};
+use crate::{
+    api::system::{SystemSetting, SystemSettingKey},
+    state::AppState,
+};
 
 use super::Dao;
 
 #[derive(Debug)]
 pub struct SystemSettingDao {
-    pub client: Arc<Client>,
+    pub state: AppState,
 }
 
 impl Dao for SystemSettingDao {
-    fn get_client(&self) -> Arc<Client> {
-        Arc::clone(&self.client)
+    fn get_state(&self) -> &AppState {
+        &self.state
     }
 }
 

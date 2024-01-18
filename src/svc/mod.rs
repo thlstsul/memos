@@ -1,6 +1,3 @@
-use std::sync::Arc;
-
-use libsql_client::Client;
 use snafu::Snafu;
 use tonic::{Request, Status};
 use tracing::error;
@@ -12,6 +9,7 @@ use crate::{
         user_service_server::UserServiceServer, User,
     },
     ctrl::auth::AuthSession,
+    state::AppState,
 };
 
 use self::{
@@ -29,13 +27,13 @@ pub mod user;
 pub struct ServiceFactory;
 
 impl ServiceFactory {
-    pub fn get_user(client: &Arc<Client>) -> UserServiceServer<UserService> {
-        let user = UserService::new(client);
+    pub fn get_user(state: &AppState) -> UserServiceServer<UserService> {
+        let user = UserService::new(state);
         UserServiceServer::new(user)
     }
 
-    pub fn get_tag(client: &Arc<Client>) -> TagServiceServer<TagService> {
-        let tag = TagService::new(client);
+    pub fn get_tag(state: &AppState) -> TagServiceServer<TagService> {
+        let tag = TagService::new(state);
         TagServiceServer::new(tag)
     }
 
@@ -43,8 +41,8 @@ impl ServiceFactory {
         AuthServiceServer::new(AuthService)
     }
 
-    pub fn get_memo(client: &Arc<Client>) -> MemoServiceServer<MemoService> {
-        let memo = MemoService::new(client);
+    pub fn get_memo(state: &AppState) -> MemoServiceServer<MemoService> {
+        let memo = MemoService::new(state);
         MemoServiceServer::new(memo)
     }
 

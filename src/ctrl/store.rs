@@ -1,16 +1,16 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use axum_login::tower_sessions::session::Id;
 use axum_login::tower_sessions::{ExpiredDeletion, MemoryStore, Session, SessionStore};
-use libsql_client::{Client, Statement, Value};
+use libsql_client::{Statement, Value};
 use snafu::{ensure, ResultExt, Snafu};
 use time::OffsetDateTime;
 use tracing::info;
 
+use crate::state::AppState;
+
 #[derive(Debug, Clone)]
 pub struct TursoStore {
-    client: Arc<Client>,
+    state: AppState,
     memory: MemoryStore,
     table_name: String,
 }
@@ -28,9 +28,9 @@ impl TursoStore {
     /// let session_store = SqliteStore::new(pool);
     /// # })
     /// ```
-    pub fn new(client: &Arc<Client>) -> Self {
+    pub fn new(state: &AppState) -> Self {
         Self {
-            client: Arc::clone(client),
+            state: state.clone(),
             memory: MemoryStore::default(),
             table_name: "sessions".into(),
         }
@@ -65,7 +65,7 @@ impl TursoStore {
             "#,
             self.table_name
         );
-        self.client.execute(query).await.context(Database)?;
+        self.state.execute(query).await.context(Database)?;
         Ok(())
     }
 }
@@ -80,7 +80,7 @@ impl ExpiredDeletion for TursoStore {
             "#,
             table_name = self.table_name
         );
-        self.client.execute(query).await.context(Database)?;
+        self.state.execute(query).await.context(Database)?;
         Ok(())
     }
 }
@@ -110,7 +110,7 @@ impl SessionStore for TursoStore {
                 Value::from(session.expiry_date().unix_timestamp()),
             ],
         );
-        self.client.execute(stmt).await.context(Database)?;
+        self.state.execute(stmt).await.context(Database)?;
 
         let _ = self.memory.save(session).await;
 
@@ -136,7 +136,7 @@ impl SessionStore for TursoStore {
                 Value::from(OffsetDateTime::now_utc().unix_timestamp()),
             ],
         );
-        let data = self.client.execute(stmt).await.context(Database)?;
+        let data = self.state.execute(stmt).await.context(Database)?;
 
         if let Some(row) = data.rows.first() {
             if let Some(Value::Blob { value }) = row.values.first() {
@@ -155,7 +155,7 @@ impl SessionStore for TursoStore {
             self.table_name
         );
         let stmt = Statement::with_args(&query, &[session_id.to_string()]);
-        self.client.execute(stmt).await.context(Database)?;
+        self.state.execute(stmt).await.context(Database)?;
 
         let _ = self.memory.delete(session_id).await;
         Ok(())

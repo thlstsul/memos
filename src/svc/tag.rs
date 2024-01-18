@@ -1,6 +1,3 @@
-use std::sync::Arc;
-
-use libsql_client::Client;
 use tonic::{Request, Response, Status};
 use tracing::error;
 
@@ -10,6 +7,7 @@ use crate::api::v2::{
     UpsertTagResponse,
 };
 use crate::dao::tag::TagDao;
+use crate::state::AppState;
 use crate::svc::get_current_user;
 
 pub struct TagService {
@@ -17,10 +15,10 @@ pub struct TagService {
 }
 
 impl TagService {
-    pub fn new(client: &Arc<Client>) -> Self {
+    pub fn new(state: &AppState) -> Self {
         Self {
             dao: TagDao {
-                client: Arc::clone(client),
+                state: state.clone(),
             },
         }
     }
