@@ -1542,7 +1542,7 @@ pub struct Node {
     pub r#type: i32,
     #[prost(
         oneof = "node::Node",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24"
     )]
     pub node: ::core::option::Option<node::Node>,
 }
@@ -1571,25 +1571,33 @@ pub mod node {
         #[prost(message, tag = "10")]
         TaskListNode(super::TaskListNode),
         #[prost(message, tag = "11")]
-        TextNode(super::TextNode),
+        MathBlockNode(super::MathBlockNode),
         #[prost(message, tag = "12")]
-        BoldNode(super::BoldNode),
+        TextNode(super::TextNode),
         #[prost(message, tag = "13")]
-        ItalicNode(super::ItalicNode),
+        BoldNode(super::BoldNode),
         #[prost(message, tag = "14")]
-        BoldItalicNode(super::BoldItalicNode),
+        ItalicNode(super::ItalicNode),
         #[prost(message, tag = "15")]
-        CodeNode(super::CodeNode),
+        BoldItalicNode(super::BoldItalicNode),
         #[prost(message, tag = "16")]
-        ImageNode(super::ImageNode),
+        CodeNode(super::CodeNode),
         #[prost(message, tag = "17")]
-        LinkNode(super::LinkNode),
+        ImageNode(super::ImageNode),
         #[prost(message, tag = "18")]
-        TagNode(super::TagNode),
+        LinkNode(super::LinkNode),
         #[prost(message, tag = "19")]
-        StrikethroughNode(super::StrikethroughNode),
+        AutoLinkNode(super::AutoLinkNode),
         #[prost(message, tag = "20")]
+        TagNode(super::TagNode),
+        #[prost(message, tag = "21")]
+        StrikethroughNode(super::StrikethroughNode),
+        #[prost(message, tag = "22")]
         EscapingCharacterNode(super::EscapingCharacterNode),
+        #[prost(message, tag = "23")]
+        MathNode(super::MathNode),
+        #[prost(message, tag = "24")]
+        HighlightNode(super::HighlightNode),
     }
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1634,7 +1642,9 @@ pub struct BlockquoteNode {
 pub struct OrderedListNode {
     #[prost(string, tag = "1")]
     pub number: ::prost::alloc::string::String,
-    #[prost(message, repeated, tag = "2")]
+    #[prost(int32, tag = "2")]
+    pub indent: i32,
+    #[prost(message, repeated, tag = "3")]
     pub children: ::prost::alloc::vec::Vec<Node>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1642,7 +1652,9 @@ pub struct OrderedListNode {
 pub struct UnorderedListNode {
     #[prost(string, tag = "1")]
     pub symbol: ::prost::alloc::string::String,
-    #[prost(message, repeated, tag = "2")]
+    #[prost(int32, tag = "2")]
+    pub indent: i32,
+    #[prost(message, repeated, tag = "3")]
     pub children: ::prost::alloc::vec::Vec<Node>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1650,10 +1662,18 @@ pub struct UnorderedListNode {
 pub struct TaskListNode {
     #[prost(string, tag = "1")]
     pub symbol: ::prost::alloc::string::String,
-    #[prost(bool, tag = "2")]
+    #[prost(int32, tag = "2")]
+    pub indent: i32,
+    #[prost(bool, tag = "3")]
     pub complete: bool,
-    #[prost(message, repeated, tag = "3")]
+    #[prost(message, repeated, tag = "4")]
     pub children: ::prost::alloc::vec::Vec<Node>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MathBlockNode {
+    #[prost(string, tag = "1")]
+    pub content: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1709,6 +1729,14 @@ pub struct LinkNode {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AutoLinkNode {
+    #[prost(string, tag = "1")]
+    pub url: ::prost::alloc::string::String,
+    #[prost(bool, tag = "2")]
+    pub is_raw_text: bool,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TagNode {
     #[prost(string, tag = "1")]
     pub content: ::prost::alloc::string::String,
@@ -1725,6 +1753,18 @@ pub struct EscapingCharacterNode {
     #[prost(string, tag = "1")]
     pub symbol: ::prost::alloc::string::String,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MathNode {
+    #[prost(string, tag = "1")]
+    pub content: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct HighlightNode {
+    #[prost(string, tag = "1")]
+    pub content: ::prost::alloc::string::String,
+}
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -1739,16 +1779,20 @@ pub enum NodeType {
     OrderedList = 7,
     UnorderedList = 8,
     TaskList = 9,
-    Text = 10,
-    Bold = 11,
-    Italic = 12,
-    BoldItalic = 13,
-    Code = 14,
-    Image = 15,
-    Link = 16,
-    Tag = 17,
-    Strikethrough = 18,
-    EscapingCharacter = 19,
+    MathBlock = 10,
+    Text = 11,
+    Bold = 12,
+    Italic = 13,
+    BoldItalic = 14,
+    Code = 15,
+    Image = 16,
+    Link = 17,
+    AutoLink = 18,
+    Tag = 19,
+    Strikethrough = 20,
+    EscapingCharacter = 21,
+    Math = 22,
+    Highlight = 23,
 }
 impl NodeType {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1767,6 +1811,7 @@ impl NodeType {
             NodeType::OrderedList => "ORDERED_LIST",
             NodeType::UnorderedList => "UNORDERED_LIST",
             NodeType::TaskList => "TASK_LIST",
+            NodeType::MathBlock => "MATH_BLOCK",
             NodeType::Text => "TEXT",
             NodeType::Bold => "BOLD",
             NodeType::Italic => "ITALIC",
@@ -1774,9 +1819,12 @@ impl NodeType {
             NodeType::Code => "CODE",
             NodeType::Image => "IMAGE",
             NodeType::Link => "LINK",
+            NodeType::AutoLink => "AUTO_LINK",
             NodeType::Tag => "TAG",
             NodeType::Strikethrough => "STRIKETHROUGH",
             NodeType::EscapingCharacter => "ESCAPING_CHARACTER",
+            NodeType::Math => "MATH",
+            NodeType::Highlight => "HIGHLIGHT",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1792,6 +1840,7 @@ impl NodeType {
             "ORDERED_LIST" => Some(Self::OrderedList),
             "UNORDERED_LIST" => Some(Self::UnorderedList),
             "TASK_LIST" => Some(Self::TaskList),
+            "MATH_BLOCK" => Some(Self::MathBlock),
             "TEXT" => Some(Self::Text),
             "BOLD" => Some(Self::Bold),
             "ITALIC" => Some(Self::Italic),
@@ -1799,9 +1848,12 @@ impl NodeType {
             "CODE" => Some(Self::Code),
             "IMAGE" => Some(Self::Image),
             "LINK" => Some(Self::Link),
+            "AUTO_LINK" => Some(Self::AutoLink),
             "TAG" => Some(Self::Tag),
             "STRIKETHROUGH" => Some(Self::Strikethrough),
             "ESCAPING_CHARACTER" => Some(Self::EscapingCharacter),
+            "MATH" => Some(Self::Math),
+            "HIGHLIGHT" => Some(Self::Highlight),
             _ => None,
         }
     }
@@ -2716,10 +2768,12 @@ pub struct Memo {
     #[serde(default)]
     #[serde(with = "crate::api::bool_serde")]
     pub pinned: bool,
-    #[prost(message, repeated, tag = "12")]
+    #[prost(int32, optional, tag = "12")]
+    pub parent_id: ::core::option::Option<i32>,
+    #[prost(message, repeated, tag = "13")]
     #[serde(default)]
     pub resources: ::prost::alloc::vec::Vec<Resource>,
-    #[prost(message, repeated, tag = "13")]
+    #[prost(message, repeated, tag = "14")]
     #[serde(default)]
     pub relations: ::prost::alloc::vec::Vec<MemoRelation>,
 }

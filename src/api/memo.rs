@@ -25,7 +25,7 @@ pub struct FindMemo {
 
     // Standard fields
     pub creator_id: Option<i32>,
-    pub row_status: Option<String>,
+    pub row_status: Option<RowStatus>,
     pub created_ts_after: Option<i64>,
     pub created_ts_before: Option<i64>,
 
@@ -65,8 +65,7 @@ pub struct Filter {
     pub created_ts_before: Option<i64>,
     pub created_ts_after: Option<i64>,
     pub creator: Option<String>,
-    // TODO wait api fix
-    pub row_status: Option<String>,
+    pub row_status: Option<RowStatus>,
 }
 
 impl Parse for Filter {
@@ -88,7 +87,7 @@ impl Parse for Filter {
                 if ident == creator {
                     filter.creator = ast::get_string(lit);
                 } else if ident == row_status {
-                    filter.row_status = ast::get_string(lit);
+                    filter.row_status = ast::get_row_status(lit);
                 } else if ident == visibilities {
                     filter.visibilities = ast::get_visibilities(lit);
                 } else if ident == order_by_pinned {
@@ -232,14 +231,14 @@ pub enum Error {
 }
 
 mod test {
-
     #[test]
     fn parse_filter() {
+        use crate::api::v2::RowStatus;
         let filter =
         r#"visibilities == ['PUBLIC'] && row_status == "NORMAL" && creator == "users/THELOSTSOUL" && order_by_pinned == true && created_ts_before == 123"#
             .replace("'", "\"");
         let filter = syn::parse_str::<crate::api::memo::Filter>(&filter).unwrap();
-        assert_eq!(filter.row_status, Some("NORMAL".to_owned()));
+        assert_eq!(filter.row_status, Some(RowStatus::Active));
         assert_eq!(
             filter.visibilities,
             Some(vec![crate::api::v2::Visibility::Public])

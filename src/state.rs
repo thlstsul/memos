@@ -29,6 +29,7 @@ impl AppState {
         self.repo.batch(stmts).await
     }
 
+    #[allow(dead_code)]
     pub async fn raw_batch(
         &self,
         stmts: impl IntoIterator<Item = impl Into<Statement> + Send> + Send,
@@ -36,6 +37,7 @@ impl AppState {
         self.repo.raw_batch(stmts).await
     }
 
+    #[allow(dead_code)]
     pub fn batch_sync<I: IntoIterator<Item = impl Into<Statement> + Send> + Send>(
         &self,
         stmts: I,
@@ -46,6 +48,7 @@ impl AppState {
         self.repo.batch_sync(stmts)
     }
 
+    #[allow(dead_code)]
     pub async fn transaction(&self) -> Result<Transaction> {
         self.repo.transaction().await
     }

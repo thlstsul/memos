@@ -176,7 +176,7 @@ impl From<FindMemo> for Statement {
         }
         if let Some(row_status) = &val.row_status {
             wheres.push("memo.row_status = ?");
-            args.push(Value::from(row_status));
+            args.push(Value::from(row_status.to_string()));
         }
         if let Some(created_ts_before) = val.created_ts_before {
             wheres.push("memo.created_ts < ?");

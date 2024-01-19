@@ -1,7 +1,7 @@
 #![allow(unused_variables)]
 use std::sync::Arc;
 
-use axum::{error_handling::HandleErrorLayer, BoxError, Router};
+use axum::{error_handling::HandleErrorLayer, routing::get, BoxError, Router};
 use axum_login::{
     login_required,
     tower_sessions::{cookie::time::Duration, Expiry, SessionManagerLayer},
@@ -27,7 +27,7 @@ use tower_http::{
 use tracing::error;
 
 use crate::{
-    ctrl::{auth::AuthLayer, store::TursoStore},
+    ctrl::{auth::AuthLayer, resource::stream_resource, store::TursoStore},
     state::AppState,
     svc::ServiceFactory,
 };
@@ -75,8 +75,8 @@ async fn grpc_web(
     let index_file = ServeFile::new("web/dist/index.html");
     let axum_router = Router::new()
         .nest("/api/v1", api_v1)
+        .route("/o/r/:id", get(stream_resource))
         .layer(auth_service)
-        .layer(TraceLayer::new_for_http())
         .route_service("/auth", index_file.clone())
         .route_service("/explore", index_file.clone())
         .route_service("/resource", index_file.clone())
@@ -84,7 +84,8 @@ async fn grpc_web(
         .nest_service(
             "/",
             ServeDir::new("web/dist").append_index_html_on_directories(true),
-        );
+        )
+        .layer(TraceLayer::new_for_http());
 
     let axum_router = axum_router.with_state(state.clone());
 

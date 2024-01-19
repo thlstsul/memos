@@ -1,12 +1,35 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use hyper::header;
+use mime_guess::mime;
 use tracing::error;
 
 pub mod auth;
 pub mod resource;
 pub mod store;
 pub mod system;
+
+pub struct Resource {
+    pub filename: String,
+    pub blob: Vec<u8>,
+}
+
+impl IntoResponse for Resource {
+    fn into_response(self) -> Response {
+        let mime = mime_guess::from_path(&self.filename)
+            .first_raw()
+            .unwrap_or(mime::APPLICATION_OCTET_STREAM.as_ref());
+        let headers = [
+            (header::CONTENT_TYPE, mime),
+            (
+                header::CONTENT_DISPOSITION,
+                &format!("attachment; filename=\"{}\"", self.filename),
+            ),
+        ];
+
+        (headers, self.blob).into_response()
+    }
+}
 
 impl IntoResponse for crate::ctrl::resource::Error {
     fn into_response(self) -> Response {

@@ -1,14 +1,13 @@
 use axum::{
-    body::StreamBody,
     extract::{Multipart, Path, State},
     http::HeaderValue,
     response::{IntoResponse, Result},
     routing::post,
     Json, Router,
 };
+use bytes::Bytes;
 use hyper::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
 use snafu::{ensure, OptionExt, Snafu};
-use tokio_util::io::ReaderStream;
 
 use crate::{
     api::{
@@ -20,7 +19,7 @@ use crate::{
     svc::{resource::ResourceService, system::SystemService},
 };
 
-use super::auth::AuthSession;
+use super::{auth::AuthSession, Resource};
 
 const MEBI_BYTE: usize = 1024 * 1024;
 const DEFAULT_MAX_MIB: usize = 32;
@@ -29,32 +28,16 @@ pub fn router() -> Router<AppState> {
     Router::new().route("/resource/blob", post(upload))
 }
 
-/// /o/r/{id}
+/// /o/r/:id
 pub async fn stream_resource(
     auth_session: AuthSession,
     state: State<AppState>,
     Path(id): Path<i32>,
-) -> impl IntoResponse {
-    // let res_svc = ResourceService::new(&client);
-    // let WholeResource {
-    //     filename, mut blob, ..
-    // } = res_svc.get_resource(id).await.unwrap();
-    // let blob = blob.take().unwrap();
-    // let stream = ReaderStream::new(blob.as_ref());
-    // let body = StreamBody::new(stream);
-
-    // let headers = [
-    //     (CONTENT_TYPE, "image/jpeg"),
-    //     (
-    //         CONTENT_DISPOSITION,
-    //         &format!("attachment; filename=\"{filename}\""),
-    //     ),
-    // ];
-
-    // (headers, body)
-
-    // TODO
-    todo!()
+) -> Result<Resource> {
+    let res_svc = ResourceService::new(&state);
+    let WholeResource { filename, blob, .. } = res_svc.get_resource(id).await?;
+    //TODO thumbnail
+    Ok(Resource { filename, blob })
 }
 
 async fn upload(
@@ -102,7 +85,7 @@ async fn upload(
             r#type,
             size,
             creator_id: user.id,
-            blob: Some(data.to_vec()),
+            blob: data.to_vec(),
             ..Default::default()
         };
 

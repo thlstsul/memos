@@ -32,40 +32,40 @@ impl ResourceDao {
             Value::from(create.creator_id),
         ];
 
-        if let Some(blob) = create.blob {
+        if !create.blob.is_empty() {
             fields.push("blob");
             placeholder.push("?");
-            args.push(Value::from(blob));
+            args.push(Value::from(create.blob));
         }
 
-        if let Some(external_link) = create.external_link {
+        if !create.external_link.is_empty() {
             fields.push("external_link");
             placeholder.push("?");
-            args.push(Value::from(external_link));
+            args.push(Value::from(create.external_link));
         }
 
-        if let Some(internal_path) = create.internal_path {
+        if !create.internal_path.is_empty() {
             fields.push("internal_path");
             placeholder.push("?");
-            args.push(Value::from(internal_path));
+            args.push(Value::from(create.internal_path));
         }
 
-        if let Some(id) = create.id {
+        if create.id > 0 {
             fields.push("id");
             placeholder.push("?");
-            args.push(Value::from(id));
+            args.push(Value::from(create.id));
         }
 
-        if let Some(created_ts) = create.created_ts {
+        if create.created_ts > 0 {
             fields.push("created_ts");
             placeholder.push("?");
-            args.push(Value::from(created_ts));
+            args.push(Value::from(create.created_ts));
         }
 
-        if let Some(updated_ts) = create.updated_ts {
+        if create.updated_ts > 0 {
             fields.push("updated_ts");
             placeholder.push("?");
-            args.push(Value::from(updated_ts));
+            args.push(Value::from(create.updated_ts));
         }
 
         if let Some(memo_id) = create.memo_id {

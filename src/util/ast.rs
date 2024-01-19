@@ -10,7 +10,7 @@ use syn::{Expr, ExprArray, ExprLit, Lit};
 use crate::api::v2::{
     node, BlockquoteNode, BoldItalicNode, BoldNode, CodeBlockNode, CodeNode, HeadingNode,
     HorizontalRuleNode, ImageNode, ItalicNode, LineBreakNode, LinkNode, Node, NodeType,
-    OrderedListNode, ParagraphNode, StrikethroughNode, TagNode, TaskListNode, TextNode,
+    OrderedListNode, ParagraphNode, RowStatus, StrikethroughNode, TagNode, TaskListNode, TextNode,
     UnorderedListNode, Visibility,
 };
 
@@ -56,10 +56,10 @@ pub fn get_bool(lit: Expr) -> Option<bool> {
 }
 
 /// RowStatus no match
-// pub fn get_row_status(lit: Expr) -> Option<RowStatus> {
-//     let row_status = get_string(lit);
-//     row_status.map(|s| RowStatus::from_str_name(&s)).flatten()
-// }
+pub fn get_row_status(lit: Expr) -> Option<RowStatus> {
+    let row_status = get_string(lit);
+    row_status.map(|s| s.parse().ok()).flatten()
+}
 
 pub fn get_visibility(lit: Expr) -> Option<Visibility> {
     let visibility = get_string(lit);
@@ -124,6 +124,12 @@ fn parse_tag_child<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
     nodes
 }
 
+/// commonmark to memomark
+/// TODO
+/// Highlight = 23,
+/// Math = 22,
+/// MathBlock = 10,
+/// AutoLink = 18,
 fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
     match &node.data.borrow().value {
         NodeValue::Document => parse_node_child(node),
@@ -217,6 +223,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
                 r#type: NodeType::UnorderedList.into(),
                 node: Some(node::Node::UnorderedListNode(UnorderedListNode {
                     symbol: (list.bullet_char as char).to_string(),
+                    indent: list.marker_offset as i32,
                     children: parse_node_child(node),
                 })),
             }],
@@ -224,6 +231,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
                 r#type: NodeType::OrderedList.into(),
                 node: Some(node::Node::OrderedListNode(OrderedListNode {
                     number: list.start.to_string(),
+                    indent: list.marker_offset as i32,
                     children: parse_node_child(node),
                 })),
             }],
@@ -233,6 +241,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
             node: Some(node::Node::TaskListNode(TaskListNode {
                 // 先默认"-”
                 symbol: "-".to_owned(),
+                indent: 0,
                 complete: checked.is_some(),
                 children: parse_node_child(node),
             })),

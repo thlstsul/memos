@@ -1,4 +1,4 @@
-use crate::api::v2::Node;
+use crate::api::v2::{Node, RowStatus};
 use snafu::{ensure, Snafu};
 
 pub mod ast;
@@ -7,7 +7,12 @@ pub trait IntoNode {
     fn into(self) -> Vec<Node>;
 }
 
-pub fn get_name_parent_token(name: String, token: &str) -> Result<String, Error> {
+pub fn get_name_parent_token(
+    name: impl AsRef<str>,
+    token: impl AsRef<str>,
+) -> Result<String, Error> {
+    let name = name.as_ref();
+    let token = token.as_ref();
     let parts: Vec<&str> = name.split('/').collect();
     ensure!(parts.len() == 2, InvalidRequest { name });
     ensure!(token == parts[0], InvalidPrefix { name });

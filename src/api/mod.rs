@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use self::v2::{RowStatus, Visibility};
@@ -19,6 +21,29 @@ pub struct Count {
 
 pub const INBOX_NAME_PREFIX: &str = "inboxes";
 pub const USER_NAME_PREFIX: &str = "users";
+
+impl ToString for RowStatus {
+    fn to_string(&self) -> String {
+        let row_status = if self == &RowStatus::Unspecified || self == &RowStatus::Active {
+            "NORMAL"
+        } else {
+            self.as_str_name()
+        };
+        row_status.to_owned()
+    }
+}
+
+impl FromStr for RowStatus {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "NORMAL" {
+            Ok(RowStatus::Active)
+        } else {
+            RowStatus::from_str_name(s).ok_or(())
+        }
+    }
+}
 
 mod bool_serde {
     use serde::{self, Deserialize, Deserializer, Serializer};
@@ -77,12 +102,8 @@ impl Serialize for RowStatus {
     where
         S: Serializer,
     {
-        let row_status = if self == &RowStatus::Unspecified {
-            "NORMAL"
-        } else {
-            self.as_str_name()
-        };
-        serializer.serialize_str(row_status)
+        let row_status = self.to_string();
+        serializer.serialize_str(&row_status)
     }
 }
 
@@ -92,7 +113,7 @@ impl<'de> Deserialize<'de> for RowStatus {
         D: Deserializer<'de>,
     {
         let status = String::deserialize(deserializer)?;
-        let row_status = RowStatus::from_str_name(&status);
+        let row_status = status.parse();
         let row_status = row_status.unwrap_or(RowStatus::Unspecified);
         Ok(row_status)
     }
@@ -109,12 +130,8 @@ mod status_serde {
     {
         let row_status = RowStatus::try_from(*status);
         let row_status = row_status.unwrap_or(RowStatus::Unspecified);
-        let row_status = if row_status == RowStatus::Unspecified {
-            "NORMAL"
-        } else {
-            row_status.as_str_name()
-        };
-        serializer.serialize_str(row_status)
+        let row_status = row_status.to_string();
+        serializer.serialize_str(&row_status)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<i32, D::Error>
@@ -122,7 +139,7 @@ mod status_serde {
         D: Deserializer<'de>,
     {
         let status = String::deserialize(deserializer)?;
-        let row_status = RowStatus::from_str_name(&status);
+        let row_status = status.parse();
         let row_status = row_status.unwrap_or(RowStatus::Unspecified);
         Ok(row_status.into())
     }
