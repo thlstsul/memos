@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -11,4 +11,9 @@ pub struct CreateResourceResponse {
     pub external_link: String,
     pub r#type: String,
     pub size: i64,
+}
+
+#[derive(Deserialize)]
+pub struct ResourceQry {
+    pub thumbnail: Option<String>,
 }

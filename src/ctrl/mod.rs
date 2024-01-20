@@ -1,7 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use hyper::header;
-use mime_guess::mime;
 use tracing::error;
 
 pub mod auth;
@@ -11,19 +10,23 @@ pub mod system;
 
 pub struct Resource {
     pub filename: String,
+    pub r#type: String,
     pub blob: Vec<u8>,
 }
 
 impl IntoResponse for Resource {
     fn into_response(self) -> Response {
-        let mime = mime_guess::from_path(&self.filename)
-            .first_raw()
-            .unwrap_or(mime::APPLICATION_OCTET_STREAM.as_ref());
         let headers = [
-            (header::CONTENT_TYPE, mime),
+            (header::CONTENT_TYPE, self.r#type),
+            (header::CACHE_CONTROL, "max-age=3600".to_owned()),
+            (
+                header::CONTENT_SECURITY_POLICY,
+                "default-src 'none'; script-src 'none'; img-src 'self'; media-src 'self'; sandbox;"
+                    .to_owned(),
+            ),
             (
                 header::CONTENT_DISPOSITION,
-                &format!("attachment; filename=\"{}\"", self.filename),
+                format!("attachment; filename=\"{}\"", self.filename),
             ),
         ];
 

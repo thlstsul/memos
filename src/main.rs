@@ -88,12 +88,6 @@ async fn grpc_web(
 
     let axum_router = axum_router.with_state(state.clone());
 
-    let user = ServiceFactory::get_user(&state);
-    let tag = ServiceFactory::get_tag(&state);
-    let auth = ServiceFactory::get_auth();
-    let memo = ServiceFactory::get_memo(&state);
-    let inbox = ServiceFactory::get_inbox();
-
     let public_path = vec![
         "/memos.api.v2.AuthService/GetAuthStatus",
         "/memos.api.v2.MemoService/ListMemos",
@@ -104,6 +98,13 @@ async fn grpc_web(
     .map(|s| s.to_owned())
     .collect();
 
+    let user = ServiceFactory::get_user(&state);
+    let tag = ServiceFactory::get_tag(&state);
+    let auth = ServiceFactory::get_auth();
+    let memo = ServiceFactory::get_memo(&state);
+    let resource = ServiceFactory::get_resource(&state);
+    let inbox = ServiceFactory::get_inbox();
+
     let tonic_router = Server::builder()
         .accept_http1(true)
         .layer(GrpcWebLayer::new())
@@ -112,6 +113,7 @@ async fn grpc_web(
         .add_service(tag)
         .add_service(auth)
         .add_service(memo)
+        .add_service(resource)
         .add_service(inbox);
 
     Ok(GrpcWebService {

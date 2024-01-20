@@ -21,53 +21,68 @@ impl Dao for ResourceDao {
 }
 
 impl ResourceDao {
-    pub async fn create_resource(&self, create: WholeResource) -> Result<Option<Resource>, Error> {
+    pub async fn create_resource(
+        &self,
+        WholeResource {
+            filename,
+            r#type,
+            size,
+            creator_id,
+            blob,
+            external_link,
+            internal_path,
+            id,
+            created_ts,
+            updated_ts,
+            memo_id,
+        }: WholeResource,
+    ) -> Result<Option<Resource>, Error> {
         let mut fields = vec!["filename", "type", "size", "creator_id"];
         let mut placeholder = vec!["?", "?", "?", "?"];
         let mut args = vec![
-            Value::from(create.filename),
-            Value::from(create.r#type),
-            Value::from(create.size),
-            Value::from(create.creator_id),
+            Value::from(filename),
+            Value::from(r#type),
+            Value::from(size),
+            Value::from(creator_id),
         ];
 
-        if !create.blob.is_empty() {
+        if !blob.is_empty() {
             fields.push("blob");
             placeholder.push("?");
-            args.push(Value::from(create.blob));
+            args.push(Value::from(blob));
         }
 
-        if !create.external_link.is_empty() {
+        if !external_link.is_empty() {
             fields.push("external_link");
             placeholder.push("?");
-            args.push(Value::from(create.external_link));
+            args.push(Value::from(external_link));
         }
 
-        if !create.internal_path.is_empty() {
+        if !internal_path.is_empty() {
             fields.push("internal_path");
             placeholder.push("?");
-            args.push(Value::from(create.internal_path));
+            args.push(Value::from(internal_path));
         }
 
-        if create.id > 0 {
+        if id > 0 {
             fields.push("id");
             placeholder.push("?");
-            args.push(Value::from(create.id));
+            args.push(Value::from(id));
         }
 
-        if create.created_ts > 0 {
+        if created_ts > 0 {
             fields.push("created_ts");
             placeholder.push("?");
-            args.push(Value::from(create.created_ts));
+            args.push(Value::from(created_ts));
         }
 
-        if create.updated_ts > 0 {
+        if updated_ts > 0 {
             fields.push("updated_ts");
             placeholder.push("?");
-            args.push(Value::from(create.updated_ts));
+            args.push(Value::from(updated_ts));
         }
 
-        if let Some(memo_id) = create.memo_id {
+        if let Some(memo_id) = memo_id {
             fields.push("memo_id");
             placeholder.push("?");
             args.push(Value::from(memo_id));
@@ -91,7 +106,60 @@ impl ResourceDao {
         Ok(rs.pop())
     }
 
-    pub async fn list_resource(&self, find: FindResource) -> Result<Vec<Resource>, Error> {
-        todo!()
+    pub async fn list_resources(&self, find: FindResource) -> Result<Vec<Resource>, Error> {
+        let stmt: Statement = find.into();
+        self.query(stmt).await
+    }
+}
+
+impl From<FindResource> for Statement {
+    fn from(value: FindResource) -> Self {
+        let FindResource {
+            id,
+            creator_id,
+            filename,
+            memo_id,
+            limit,
+            offset,
+            has_relate_memo,
+        } = value;
+
+        let mut wheres = vec!["1 = 1"];
+        let mut args = Vec::new();
+
+        if let Some(id) = id {
+            wheres.push("id = ?");
+            args.push(Value::from(id));
+        }
+
+        if let Some(creator_id) = creator_id {
+            wheres.push("creator_id = ?");
+            args.push(Value::from(creator_id));
+        }
+
+        if let Some(filename) = filename {
+            wheres.push("filename = ?");
+            args.push(Value::from(filename));
+        }
+
+        if let Some(memo_id) = memo_id {
+            wheres.push("memo_id = ?");
+            args.push(Value::from(memo_id));
+        }
+
+        if has_relate_memo {
+            wheres.push("memo_id IS NOT NULL");
+        }
+
+        let mut sql = format!("select id, filename, external_link, type, size, created_ts as create_time, memo_id from resource where {}", wheres.join(" AND "));
+
+        if let Some(limit) = limit {
+            sql = format!("{sql} LIMIT {limit}");
+            if let Some(offset) = offset {
+                sql = format!("{sql} OFFSET {offset}");
+            }
+        }
+
+        Statement::with_args(sql, &args)
     }
 }

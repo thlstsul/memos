@@ -1,5 +1,7 @@
+use std::fs;
+
 use axum::{
-    extract::{Multipart, Path, State},
+    extract::{Multipart, Path, Query, State},
     http::HeaderValue,
     response::Result,
     routing::post,
@@ -12,7 +14,7 @@ use crate::{
     api::{
         resource::WholeResource,
         system::{SystemSetting, SystemSettingKey},
-        v1::resource::CreateResourceResponse,
+        v1::resource::{CreateResourceResponse, ResourceQry},
     },
     state::AppState,
     svc::{resource::ResourceService, system::SystemService},
@@ -22,6 +24,7 @@ use super::{auth::AuthSession, Resource};
 
 const MEBI_BYTE: usize = 1024 * 1024;
 const DEFAULT_MAX_MIB: usize = 32;
+const THUMBNAIL_IMAGE_PATH: &str = ".thumbnail_cache";
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/resource/blob", post(upload))
@@ -32,11 +35,23 @@ pub async fn stream_resource(
     auth_session: AuthSession,
     state: State<AppState>,
     Path(id): Path<i32>,
+    Query(ResourceQry { thumbnail }): Query<ResourceQry>,
 ) -> Result<Resource> {
     let res_svc = ResourceService::new(&state);
-    let WholeResource { filename, blob, .. } = res_svc.get_resource(id).await?;
-    //TODO thumbnail
-    Ok(Resource { filename, blob })
+    let WholeResource {
+        filename,
+        mut blob,
+        r#type,
+        ..
+    } = res_svc.get_resource(id).await?;
+    if Some("1".to_owned()) == thumbnail && r#type.starts_with("image/") {
+        // TODO
+    }
+    Ok(Resource {
+        filename,
+        r#type,
+        blob,
+    })
 }
 
 async fn upload(

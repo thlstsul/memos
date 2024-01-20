@@ -5,15 +5,16 @@ use tracing::error;
 use crate::{
     api::v2::{
         auth_service_server::AuthServiceServer, inbox_service_server::InboxServiceServer,
-        memo_service_server::MemoServiceServer, tag_service_server::TagServiceServer,
-        user_service_server::UserServiceServer, User,
+        memo_service_server::MemoServiceServer, resource_service_server::ResourceServiceServer,
+        tag_service_server::TagServiceServer, user_service_server::UserServiceServer, User,
     },
     ctrl::auth::AuthSession,
     state::AppState,
 };
 
 use self::{
-    auth::AuthService, inbox::InboxService, memo::MemoService, tag::TagService, user::UserService,
+    auth::AuthService, inbox::InboxService, memo::MemoService, resource::ResourceService,
+    tag::TagService, user::UserService,
 };
 
 pub mod auth;
@@ -44,6 +45,11 @@ impl ServiceFactory {
     pub fn get_memo(state: &AppState) -> MemoServiceServer<MemoService> {
         let memo = MemoService::new(state);
         MemoServiceServer::new(memo)
+    }
+
+    pub fn get_resource(state: &AppState) -> ResourceServiceServer<ResourceService> {
+        let resource = ResourceService::new(state);
+        ResourceServiceServer::new(resource)
     }
 
     pub fn get_inbox() -> InboxServiceServer<InboxService> {
@@ -105,6 +111,16 @@ impl From<memo::Error> for Status {
         error!("{value}");
         match value {
             memo::Error::InvalidMemoFilter { .. } => Status::invalid_argument(value.to_string()),
+            _ => Status::internal(value.to_string()),
+        }
+    }
+}
+
+impl From<resource::Error> for Status {
+    fn from(value: resource::Error) -> Self {
+        error!("{value}");
+        match value {
+            resource::Error::ResourceNotFound { .. } => Status::not_found(value.to_string()),
             _ => Status::internal(value.to_string()),
         }
     }

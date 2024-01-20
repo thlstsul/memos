@@ -163,43 +163,60 @@ fn parse_upsert_tag(creator_id: i32, content: &str) -> Vec<Statement> {
 }
 
 impl From<FindMemo> for Statement {
-    fn from(val: FindMemo) -> Self {
+    fn from(value: FindMemo) -> Self {
+        let FindMemo {
+            id,
+            creator,
+            creator_id,
+            row_status,
+            created_ts_after,
+            created_ts_before,
+            pinned,
+            content_search,
+            visibility_list,
+            exclude_content,
+            limit,
+            offset,
+            order_by_updated_ts,
+            order_by_pinned,
+        } = value;
+
         let mut wheres = vec!["1 = 1"];
         let mut args = Vec::new();
 
-        if let Some(id) = val.id {
+        if let Some(id) = id {
             wheres.push("memo.id = ?");
             args.push(Value::from(id));
         }
-        if let Some(creator_id) = val.creator_id {
+        if let Some(creator_id) = creator_id {
             wheres.push("memo.creator_id = ?");
             args.push(Value::from(creator_id));
         }
-        if let Some(row_status) = &val.row_status {
+        if let Some(row_status) = &row_status {
             wheres.push("memo.row_status = ?");
             args.push(Value::from(row_status.to_string()));
         }
-        if let Some(created_ts_before) = val.created_ts_before {
+        if let Some(created_ts_before) = created_ts_before {
             wheres.push("memo.created_ts < ?");
             args.push(Value::from(created_ts_before));
         }
-        if let Some(created_ts_after) = val.created_ts_after {
+        if let Some(created_ts_after) = created_ts_after {
             wheres.push("memo.created_ts > ?");
             args.push(Value::from(created_ts_after));
         }
-        for content_search in val.content_search.iter() {
+        for content_search in content_search.iter() {
             wheres.push("memo.content LIKE ?");
             args.push(Value::from(format!("%{content_search}%")));
         }
-        if val.pinned {
+        if pinned {
             wheres.push("memo_organizer.pinned = 1");
         }
 
         let mut wheres: Vec<String> = wheres.into_iter().map(|s| s.to_owned()).collect();
 
-        if !val.visibility_list.is_empty() {
+        if !visibility_list.is_empty() {
             let mut l = Vec::new();
-            for visibility in val.visibility_list.iter() {
+            for visibility in visibility_list.iter() {
                 args.push(Value::from(visibility.as_str_name().to_owned()));
                 l.push("?");
             }
@@ -207,10 +224,10 @@ impl From<FindMemo> for Statement {
         }
 
         let mut orders = Vec::new();
-        if val.order_by_pinned {
+        if order_by_pinned {
             orders.push("pinned DESC");
         }
-        if val.order_by_updated_ts {
+        if order_by_updated_ts {
             orders.push("memo.updated_ts DESC");
         } else {
             orders.push("memo.created_ts DESC");
@@ -228,11 +245,11 @@ impl From<FindMemo> for Statement {
             "CASE WHEN memo_organizer.pinned = 1 THEN 1 ELSE 0 END AS pinned",
         ];
 
-        if !val.exclude_content {
+        if !exclude_content {
             fields.push("memo.content AS content");
         }
 
-        if val.order_by_updated_ts {
+        if order_by_updated_ts {
             fields.push("memo.updated_ts AS display_time");
         } else {
             fields.push("memo.created_ts AS display_time");
@@ -252,9 +269,9 @@ impl From<FindMemo> for Statement {
             orders.join(", ")
         );
 
-        if let Some(limit) = val.limit {
+        if let Some(limit) = limit {
             query = format!("{query} LIMIT {limit}");
-            if let Some(offset) = val.offset {
+            if let Some(offset) = offset {
                 query = format!("{query} OFFSET {offset}");
             }
         }

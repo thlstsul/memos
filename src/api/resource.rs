@@ -1,13 +1,14 @@
 use serde::Deserialize;
 
+#[derive(Debug, Default)]
 pub struct FindResource {
-    pub id: i32,
-    pub creator_id: i32,
-    pub filename: String,
-    pub memo_id: i32,
+    pub id: Option<i32>,
+    pub creator_id: Option<i32>,
+    pub filename: Option<String>,
+    pub memo_id: Option<i32>,
+    pub limit: Option<isize>,
+    pub offset: Option<isize>,
     pub has_relate_memo: bool,
-    pub limit: isize,
-    pub offset: isize,
 }
 
 #[derive(Debug, Default, Deserialize)]

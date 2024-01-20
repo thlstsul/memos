@@ -3,7 +3,7 @@ use tonic::{Request, Response, Status};
 
 use crate::{
     api::{
-        resource::WholeResource,
+        resource::{FindResource, WholeResource},
         v2::{
             resource_service_server, CreateResourceRequest, CreateResourceResponse,
             DeleteResourceRequest, DeleteResourceResponse, ListResourcesRequest,
@@ -13,6 +13,8 @@ use crate::{
     dao::resource::ResourceDao,
     state::AppState,
 };
+
+use super::get_current_user;
 
 pub struct ResourceService {
     dao: ResourceDao,
@@ -49,43 +51,55 @@ impl resource_service_server::ResourceService for ResourceService {
     async fn create_resource(
         &self,
         request: Request<CreateResourceRequest>,
-    ) -> std::result::Result<Response<CreateResourceResponse>, Status> {
+    ) -> Result<Response<CreateResourceResponse>, Status> {
         todo!()
     }
 
     async fn list_resources(
         &self,
         request: Request<ListResourcesRequest>,
-    ) -> std::result::Result<Response<ListResourcesResponse>, Status> {
-        todo!()
+    ) -> Result<Response<ListResourcesResponse>, Status> {
+        let user = get_current_user(&request)?;
+        let resources = self
+            .dao
+            .list_resources(FindResource {
+                creator_id: Some(user.id),
+                ..Default::default()
+            })
+            .await
+            .context(ListResourceFailed)?;
+
+        Ok(Response::new(ListResourcesResponse { resources }))
     }
 
     async fn update_resource(
         &self,
         request: Request<UpdateResourceRequest>,
-    ) -> std::result::Result<Response<UpdateResourceResponse>, Status> {
+    ) -> Result<Response<UpdateResourceResponse>, Status> {
         todo!()
     }
 
     async fn delete_resource(
         &self,
         request: Request<DeleteResourceRequest>,
-    ) -> std::result::Result<Response<DeleteResourceResponse>, Status> {
+    ) -> Result<Response<DeleteResourceResponse>, Status> {
         todo!()
     }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Create resource failed: {source}"), context(suffix(false)))]
+    #[snafu(display("Failed to create resource: {source}"), context(suffix(false)))]
     CreateResourceFailed { source: crate::dao::Error },
     #[snafu(
         display("Maybe create resource failed, because return none"),
         context(suffix(false))
     )]
     MaybeCreateResourceFailed,
-    #[snafu(display("Get resource failed: {source}"), context(suffix(false)))]
+    #[snafu(display("Failed to get resource: {source}"), context(suffix(false)))]
     GetResourceFailed { source: crate::dao::Error },
     #[snafu(display("Resource not found: {id}"), context(suffix(false)))]
     ResourceNotFound { id: i32 },
+    #[snafu(display("Failed to list resource: {source}"), context(suffix(false)))]
+    ListResourceFailed { source: crate::dao::Error },
 }
