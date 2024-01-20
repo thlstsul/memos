@@ -1,4 +1,4 @@
-use snafu::Snafu;
+use snafu::{OptionExt, ResultExt, Snafu};
 use std::collections::HashMap;
 use tonic::{Request, Response, Status};
 
@@ -17,16 +17,16 @@ use crate::{
             UpdateMemoResponse, Visibility,
         },
     },
-    dao::{memo::MemoDao, system_setting::SystemSettingDao, user::UserDao},
+    dao::memo::MemoDao,
     state::AppState,
 };
 
-use super::get_current_user;
+use super::{get_current_user, system::SystemService, user::UserService};
 
 pub struct MemoService {
     memo_dao: MemoDao,
-    user_dao: UserDao,
-    sys_dao: SystemSettingDao,
+    user_svc: UserService,
+    sys_svc: SystemService,
 }
 
 impl MemoService {
@@ -35,12 +35,8 @@ impl MemoService {
             memo_dao: MemoDao {
                 state: state.clone(),
             },
-            user_dao: UserDao {
-                state: state.clone(),
-            },
-            sys_dao: SystemSettingDao {
-                state: state.clone(),
-            },
+            user_svc: UserService::new(state),
+            sys_svc: SystemService::new(state),
         }
     }
 }
@@ -58,7 +54,12 @@ impl memo_service_server::MemoService for MemoService {
             content: req.content.clone(),
             visibility: req.visibility(),
         };
-        let memo = self.memo_dao.create_memo(create).await?;
+        let memo = self
+            .memo_dao
+            .create_memo(create)
+            .await
+            .context(CreateMemoFailed)?
+            .context(MaybeCreateMemoFailed)?;
         Ok(Response::new(memo.into()))
     }
 
@@ -67,9 +68,9 @@ impl memo_service_server::MemoService for MemoService {
         request: Request<ListMemosRequest>,
     ) -> Result<Response<ListMemosResponse>, Status> {
         let user = get_current_user(&request);
-        let mut find: FindMemo = request.get_ref().try_into()?;
+        let mut find: FindMemo = request.get_ref().try_into().context(InvalidMemoFilter)?;
         if let Some(creator) = find.creator.clone() {
-            let user = self.user_dao.find_user(creator, None).await?;
+            let user = self.user_svc.find_user(creator).await?;
             find.creator_id = Some(user.id);
         }
         if let Ok(user) = user {
@@ -84,24 +85,22 @@ impl memo_service_server::MemoService for MemoService {
             find.visibility_list = vec![Visibility::Public];
         }
         if let Some(SystemSetting { value, .. }) = self
-            .sys_dao
+            .sys_svc
             .find_setting(SystemSettingKey::MemoDisplayWithUpdatedTs)
             .await?
         {
             find.order_by_updated_ts = value == "true";
         }
-        let memos = self.memo_dao.list_memos(find).await?;
+        let memos = self
+            .memo_dao
+            .list_memos(find)
+            .await
+            .context(ListMemoFailed)?;
         // TODO relate,resource
 
         Ok(Response::new(memos.into()))
     }
 
-    async fn get_memo(
-        &self,
-        request: Request<GetMemoRequest>,
-    ) -> Result<Response<GetMemoResponse>, Status> {
-        todo!()
-    }
     /// UpdateMemo updates a memo.
     async fn update_memo(
         &self,
@@ -111,7 +110,11 @@ impl memo_service_server::MemoService for MemoService {
         let update: UpdateMemo = request.get_ref().into();
         let memo_id = update.id;
 
-        let memo = self.memo_dao.update_memo(user.id, update).await?;
+        let memo = self
+            .memo_dao
+            .update_memo(user.id, update)
+            .await
+            .context(UpdateMemoFailed)?;
 
         let mut memos = self
             .memo_dao
@@ -119,17 +122,40 @@ impl memo_service_server::MemoService for MemoService {
                 id: Some(memo_id),
                 ..Default::default()
             })
-            .await?;
+            .await
+            .context(ListMemoFailed)?;
         Ok(Response::new(memos.pop().into()))
     }
+
     /// DeleteMemo deletes a memo by id.
     async fn delete_memo(
         &self,
         request: Request<DeleteMemoRequest>,
     ) -> Result<Response<DeleteMemoResponse>, Status> {
-        self.memo_dao.delete_memo(request.get_ref().id).await?;
+        self.memo_dao
+            .delete_memo(request.get_ref().id)
+            .await
+            .context(DeleteMemoFailed)?;
         Ok(Response::new(DeleteMemoResponse {}))
     }
+
+    /// GetUserMemosStats gets stats of memos for a user.
+    async fn get_user_memos_stats(
+        &self,
+        request: Request<GetUserMemosStatsRequest>,
+    ) -> Result<Response<GetUserMemosStatsResponse>, Status> {
+        let user = get_current_user(&request)?;
+        let count = self
+            .memo_dao
+            .count_memos(user.id)
+            .await
+            .context(CountMemoFailed)?;
+        Ok(Response::new(GetUserMemosStatsResponse {
+            // 简化，后面这个api一定会改
+            memo_creation_stats: HashMap::from([("2024-01-01".to_owned(), count.count)]),
+        }))
+    }
+
     /// SetMemoResources sets resources for a memo.
     async fn set_memo_resources(
         &self,
@@ -174,22 +200,36 @@ impl memo_service_server::MemoService for MemoService {
     ) -> Result<Response<ListMemoCommentsResponse>, Status> {
         todo!()
     }
-    /// GetUserMemosStats gets stats of memos for a user.
-    async fn get_user_memos_stats(
+    async fn get_memo(
         &self,
-        request: Request<GetUserMemosStatsRequest>,
-    ) -> Result<Response<GetUserMemosStatsResponse>, Status> {
-        let user = get_current_user(&request)?;
-        let count = self.memo_dao.count_memos(user.id).await?;
-        Ok(Response::new(GetUserMemosStatsResponse {
-            // 简化，后面这个api一定会改
-            memo_creation_stats: HashMap::from([("2024-01-01".to_owned(), count.count)]),
-        }))
+        request: Request<GetMemoRequest>,
+    ) -> Result<Response<GetMemoResponse>, Status> {
+        todo!()
     }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
+    #[snafu(display("Failed to create memo: {source}"), context(suffix(false)))]
+    CreateMemoFailed { source: crate::dao::Error },
+    #[snafu(
+        display("Maybe create memo failed, because return none"),
+        context(suffix(false))
+    )]
+    MaybeCreateMemoFailed,
+
+    #[snafu(display("Failed to update memo: {source}"), context(suffix(false)))]
+    UpdateMemoFailed { source: crate::dao::Error },
+
+    #[snafu(display("Failed to delete memo: {source}"), context(suffix(false)))]
+    DeleteMemoFailed { source: crate::dao::Error },
+
     #[snafu(display("Failed to find memo list: {source}"), context(suffix(false)))]
-    ListMemoFailed { source: crate::dao::memo::Error },
+    ListMemoFailed { source: crate::dao::Error },
+
+    #[snafu(display("Failed to count memo: {source}"), context(suffix(false)))]
+    CountMemoFailed { source: crate::dao::Error },
+
+    #[snafu(display("Invalid memo filter: {source}"), context(suffix(false)))]
+    InvalidMemoFilter { source: crate::api::memo::Error },
 }

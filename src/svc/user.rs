@@ -1,5 +1,5 @@
 use sm3::{Digest, Sm3};
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use tonic::{Request, Response, Status};
 
 use crate::api::v2::{
@@ -10,7 +10,6 @@ use crate::api::v2::{
     ListUserAccessTokensResponse, ListUsersRequest, ListUsersResponse, UpdateUserRequest,
     UpdateUserResponse, UpdateUserSettingRequest, UpdateUserSettingResponse, User,
 };
-use crate::dao::user::Error as DaoErr;
 use crate::dao::user::UserDao;
 use crate::dao::user_setting::UserSettingDao;
 use crate::state::AppState;
@@ -43,57 +42,79 @@ impl UserService {
         self.user_dao
             .find_user(name, Some(password_hash))
             .await
+            .context(QueryUserFailed)?
             .context(Login)
     }
 
     pub async fn petch_user(&self, id: i32) -> Result<User, Error> {
-        let rs = self.user_dao.petch_user(id).await;
-        if let Err(DaoErr::Inexistent) = rs {
-            rs.context(UserNotFound {
-                ident: id.to_string(),
+        self.user_dao
+            .petch_user(id)
+            .await
+            .context(QueryUserFailed)?
+            .context(UserNotFound {
+                ident: Some(id.to_string()),
             })
-        } else {
-            rs.context(QueryUserFailed)
-        }
     }
 
     pub async fn host_user(&self) -> Result<User, Error> {
-        let rs = self.user_dao.host_user().await;
-        if let Err(DaoErr::Inexistent) = rs {
-            rs.context(UserNotFound {
-                ident: String::new(),
-            })
-        } else {
-            rs.context(QueryUserFailed)
-        }
+        self.user_dao
+            .host_user()
+            .await
+            .context(QueryUserFailed)?
+            .context(UserNotFound { ident: None })
     }
 
-    #[allow(dead_code)]
     pub async fn find_user(&self, name: String) -> Result<User, Error> {
-        let rs = self.user_dao.find_user(name.clone(), None).await;
-        if let Err(DaoErr::Inexistent) = rs {
-            rs.context(UserNotFound { ident: name })
-        } else {
-            rs.context(QueryUserFailed)
-        }
+        self.user_dao
+            .find_user(name.clone(), None)
+            .await
+            .context(QueryUserFailed)?
+            .context(UserNotFound { ident: Some(name) })
     }
 }
 
 #[tonic::async_trait]
 impl user_service_server::UserService for UserService {
+    async fn get_user(
+        &self,
+        request: Request<GetUserRequest>,
+    ) -> Result<Response<GetUserResponse>, Status> {
+        let name = request.into_inner().get_name().context(InvalidUsername)?;
+        let user = Self::find_user(self, name).await?;
+        Ok(Response::new(user.into()))
+    }
+    async fn get_user_setting(
+        &self,
+        request: Request<GetUserSettingRequest>,
+    ) -> Result<Response<GetUserSettingResponse>, Status> {
+        let user = get_current_user(&request)?;
+        let settings = self
+            .setting_dao
+            .find_setting(user.id)
+            .await
+            .context(QuerySettingFailed)?;
+        Ok(Response::new(settings.into()))
+    }
+    async fn update_user_setting(
+        &self,
+        request: Request<UpdateUserSettingRequest>,
+    ) -> Result<Response<UpdateUserSettingResponse>, Status> {
+        let user = get_current_user(&request)?;
+        let settings = request.get_ref().as_settings(user.id);
+        self.setting_dao
+            .upsert_setting(settings)
+            .await
+            .context(UpsertSettingFailed)?;
+
+        Ok(Response::new(UpdateUserSettingResponse {
+            setting: request.get_ref().setting.clone(),
+        }))
+    }
     async fn list_users(
         &self,
         request: Request<ListUsersRequest>,
     ) -> Result<Response<ListUsersResponse>, Status> {
         todo!()
-    }
-    async fn get_user(
-        &self,
-        request: Request<GetUserRequest>,
-    ) -> Result<Response<GetUserResponse>, Status> {
-        let name = request.into_inner().get_name()?;
-        let user = self.user_dao.find_user(name.clone(), None).await?;
-        Ok(Response::new(user.into()))
     }
     async fn create_user(
         &self,
@@ -137,47 +158,34 @@ impl user_service_server::UserService for UserService {
     ) -> Result<Response<DeleteUserResponse>, Status> {
         todo!()
     }
-    async fn get_user_setting(
-        &self,
-        request: Request<GetUserSettingRequest>,
-    ) -> Result<Response<GetUserSettingResponse>, Status> {
-        let user = get_current_user(&request)?;
-        let settings = self.setting_dao.find_setting(user.id).await?;
-        Ok(Response::new(settings.into()))
-    }
-    async fn update_user_setting(
-        &self,
-        request: Request<UpdateUserSettingRequest>,
-    ) -> Result<Response<UpdateUserSettingResponse>, Status> {
-        let user = get_current_user(&request)?;
-        let settings = request.get_ref().as_settings(user.id);
-        self.setting_dao.upsert_setting(settings).await?;
-
-        Ok(Response::new(UpdateUserSettingResponse {
-            setting: request.get_ref().setting.clone(),
-        }))
-    }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(
-        display("Incorrect login credentials, please try again: {source}"),
+        display("Incorrect login credentials, please try again"),
         context(suffix(false))
     )]
-    Login { source: crate::dao::user::Error },
-    #[snafu(display("User not found: {ident}, {source}"), context(suffix(false)))]
-    UserNotFound {
-        ident: String,
-        source: crate::dao::user::Error,
-    },
+    Login,
+
+    #[snafu(display("User not found: {ident:?}"), context(suffix(false)))]
+    UserNotFound { ident: Option<String> },
+
     #[snafu(display("Failed to find user: {source}"), context(suffix(false)))]
-    QueryUserFailed { source: crate::dao::user::Error },
+    QueryUserFailed { source: crate::dao::Error },
+
     #[snafu(
-        display("Failed to find userSettingList: {source}"),
+        display("Failed to find user setting: {source}"),
         context(suffix(false))
     )]
-    QuerySettingFailed {
-        source: crate::dao::user_setting::Error,
-    },
+    QuerySettingFailed { source: crate::dao::Error },
+
+    #[snafu(
+        display("Failed to update/insert user setting: {source}"),
+        context(suffix(false))
+    )]
+    UpsertSettingFailed { source: crate::dao::Error },
+
+    #[snafu(display("Invalid username: {source}"), context(suffix(false)))]
+    InvalidUsername { source: crate::api::user::Error },
 }

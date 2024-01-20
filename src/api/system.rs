@@ -13,7 +13,7 @@ pub struct SystemSetting {
     pub description: String,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum SystemSettingKey {
     // the name of server id.
     ServerId,
@@ -105,6 +105,29 @@ const TELEGRAM_BOT_TOKEN: &str = "telegram-bot-token";
 const MEMO_DISPLAY_WITH_UPDATED_TS: &str = "memo-display-with-updated-ts";
 const AUTO_BACKUP_INTERVAL: &str = "auto-backup-interval";
 
+impl std::fmt::Display for SystemSettingKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let key = match self {
+            SystemSettingKey::ServerId => SERVER_ID,
+            SystemSettingKey::SecretSession => SECRET_SESSION,
+            SystemSettingKey::AllowSignup => ALLOW_SIGNUP,
+            SystemSettingKey::DisablePasswordLogin => DISABLE_PASSWORD_LOGIN,
+            SystemSettingKey::DisablePublicMemos => DISABLE_PUBLIC_MEMOS,
+            SystemSettingKey::MaxUploadSizeMiB => MAX_UPLOAD_SIZE_MIB,
+            SystemSettingKey::AdditionalStyle => ADDITIONAL_STYLE,
+            SystemSettingKey::AdditionalScript => ADDITIONAL_SCRIPT,
+            SystemSettingKey::CustomizedProfile => CUSTOMIZED_PROFILE,
+            SystemSettingKey::StorageServiceID => STORAGE_SERVICE_ID,
+            SystemSettingKey::LocalStoragePath => LOCAL_STORAGE_PATH,
+            SystemSettingKey::TelegramBotToken => TELEGRAM_BOT_TOKEN,
+            SystemSettingKey::MemoDisplayWithUpdatedTs => MEMO_DISPLAY_WITH_UPDATED_TS,
+            SystemSettingKey::AutoBackupInterval => AUTO_BACKUP_INTERVAL,
+            SystemSettingKey::Unknow => "unknow",
+        };
+        write!(f, "{key}")
+    }
+}
+
 impl FromStr for SystemSettingKey {
     type Err = ();
 
@@ -127,29 +150,6 @@ impl FromStr for SystemSettingKey {
             _ => SystemSettingKey::Unknow,
         };
         Ok(key)
-    }
-}
-
-impl ToString for SystemSettingKey {
-    fn to_string(&self) -> String {
-        let key = match self {
-            SystemSettingKey::ServerId => SERVER_ID,
-            SystemSettingKey::SecretSession => SECRET_SESSION,
-            SystemSettingKey::AllowSignup => ALLOW_SIGNUP,
-            SystemSettingKey::DisablePasswordLogin => DISABLE_PASSWORD_LOGIN,
-            SystemSettingKey::DisablePublicMemos => DISABLE_PUBLIC_MEMOS,
-            SystemSettingKey::MaxUploadSizeMiB => MAX_UPLOAD_SIZE_MIB,
-            SystemSettingKey::AdditionalStyle => ADDITIONAL_STYLE,
-            SystemSettingKey::AdditionalScript => ADDITIONAL_SCRIPT,
-            SystemSettingKey::CustomizedProfile => CUSTOMIZED_PROFILE,
-            SystemSettingKey::StorageServiceID => STORAGE_SERVICE_ID,
-            SystemSettingKey::LocalStoragePath => LOCAL_STORAGE_PATH,
-            SystemSettingKey::TelegramBotToken => TELEGRAM_BOT_TOKEN,
-            SystemSettingKey::MemoDisplayWithUpdatedTs => MEMO_DISPLAY_WITH_UPDATED_TS,
-            SystemSettingKey::AutoBackupInterval => AUTO_BACKUP_INTERVAL,
-            SystemSettingKey::Unknow => "",
-        };
-        key.to_string()
     }
 }
 

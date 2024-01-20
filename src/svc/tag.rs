@@ -1,5 +1,5 @@
+use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
-use tracing::error;
 
 use crate::api::v2::{
     tag_service_server, DeleteTagRequest, DeleteTagResponse, GetTagSuggestionsRequest,
@@ -35,7 +35,10 @@ impl tag_service_server::TagService for TagService {
         let creator_id = user.id;
         let name = &request.get_ref().name;
 
-        self.dao.upsert_tag(name.clone(), user.id).await?;
+        self.dao
+            .upsert_tag(name.clone(), user.id)
+            .await
+            .context(UpsertTagFailed)?;
         Ok(Response::new(UpsertTagResponse {
             tag: Some(Tag {
                 name: name.clone(),
@@ -48,7 +51,7 @@ impl tag_service_server::TagService for TagService {
         request: Request<ListTagsRequest>,
     ) -> Result<Response<ListTagsResponse>, Status> {
         let user = get_current_user(&request)?;
-        let tags = self.dao.list_tags(user.id).await?;
+        let tags = self.dao.list_tags(user.id).await.context(ListTagFailed)?;
         Ok(Response::new(tags.into()))
     }
     async fn delete_tag(
@@ -57,7 +60,10 @@ impl tag_service_server::TagService for TagService {
     ) -> Result<Response<DeleteTagResponse>, Status> {
         if let Some(tag) = &request.get_ref().tag {
             let user = get_current_user(&request)?;
-            self.dao.delete_tag(tag.name.clone(), user.id).await?;
+            self.dao
+                .delete_tag(tag.name.clone(), user.id)
+                .await
+                .context(DeleteTagFailed)?;
         }
 
         Ok(Response::new(DeleteTagResponse {}))
@@ -70,9 +76,18 @@ impl tag_service_server::TagService for TagService {
     }
 }
 
-impl From<crate::dao::tag::Error> for Status {
-    fn from(value: crate::dao::tag::Error) -> Self {
-        error!("{value}");
-        Status::internal(value.to_string())
-    }
+#[derive(Debug, Snafu)]
+#[allow(clippy::enum_variant_names)]
+pub enum Error {
+    #[snafu(display("Failed to get tag list: {source}"), context(suffix(false)))]
+    ListTagFailed { source: crate::dao::Error },
+
+    #[snafu(
+        display("Failed to update/insert tag: {source}"),
+        context(suffix(false))
+    )]
+    UpsertTagFailed { source: crate::dao::Error },
+
+    #[snafu(display("Failed to delete tag: {source}"), context(suffix(false)))]
+    DeleteTagFailed { source: crate::dao::Error },
 }

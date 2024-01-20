@@ -1,9 +1,8 @@
 use libsql_client::{Statement, Value};
-use snafu::{ResultExt, Snafu};
 
 use crate::{api::v2::Tag, state::AppState};
 
-use super::Dao;
+use super::{Dao, Error};
 
 #[derive(Debug)]
 pub struct TagDao {
@@ -19,7 +18,7 @@ impl Dao for TagDao {
 impl TagDao {
     pub async fn list_tags(&self, creator_id: i32) -> Result<Vec<Tag>, Error> {
         let stmt = Statement::with_args("select user.username as creator, tag.name from user, tag where user.id = ? and user.id = tag.creator_id", &[creator_id]);
-        self.execute(stmt).await.context(Database)
+        self.query(stmt).await
     }
 
     pub async fn delete_tag(&self, name: String, creator_id: i32) -> Result<(), Error> {
@@ -27,7 +26,7 @@ impl TagDao {
             "delete from tag where name = ? and creator_id = ?",
             &[Value::from(name), Value::from(creator_id)],
         );
-        self.state.execute(stmt).await.context(Database)?;
+        self.execute(stmt).await?;
         Ok(())
     }
 
@@ -43,13 +42,7 @@ impl TagDao {
                 name = EXCLUDED.name",
             &[Value::from(name), Value::from(creator_id)],
         );
-        self.state.execute(stmt).await.context(Database)?;
+        self.execute(stmt).await?;
         Ok(())
     }
-}
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
-    Database { source: anyhow::Error },
 }

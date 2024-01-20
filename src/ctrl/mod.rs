@@ -54,10 +54,8 @@ impl IntoResponse for crate::svc::user::Error {
         let status_code = match self {
             crate::svc::user::Error::Login { .. } => StatusCode::UNAUTHORIZED,
             crate::svc::user::Error::UserNotFound { .. } => StatusCode::NOT_FOUND,
-            crate::svc::user::Error::QueryUserFailed { .. }
-            | crate::svc::user::Error::QuerySettingFailed { .. } => {
-                StatusCode::INTERNAL_SERVER_ERROR
-            }
+            crate::svc::user::Error::InvalidUsername { .. } => StatusCode::BAD_REQUEST,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
         error_response(status_code, self)
     }

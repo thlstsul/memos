@@ -1,9 +1,8 @@
 use libsql_client::{Statement, Value};
-use snafu::{ResultExt, Snafu};
 
 use crate::{api::user::UserSetting, state::AppState};
 
-use super::Dao;
+use super::{Dao, Error};
 
 #[derive(Debug, Clone)]
 pub struct UserSettingDao {
@@ -19,7 +18,7 @@ impl Dao for UserSettingDao {
 impl UserSettingDao {
     pub async fn find_setting(&self, user_id: i32) -> Result<Vec<UserSetting>, Error> {
         let stmt = Statement::with_args("select * from user_setting where user_id = ?", &[user_id]);
-        self.execute(stmt).await.context(Database)
+        self.query(stmt).await
     }
 
     pub async fn upsert_setting(&self, settings: Vec<UserSetting>) -> Result<(), Error> {
@@ -38,13 +37,7 @@ impl UserSettingDao {
             })
             .collect();
 
-        self.state.batch(stmts).await.context(Database)?;
+        self.batch(stmts).await?;
         Ok(())
     }
-}
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
-    Database { source: anyhow::Error },
 }

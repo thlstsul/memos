@@ -1,5 +1,4 @@
-use snafu::{OptionExt, ResultExt, Snafu};
-use tracing::info;
+use tracing::{error, info};
 
 use libsql_client::{de, Statement, Value};
 
@@ -13,7 +12,7 @@ use crate::{
     util::ast::parse_document,
 };
 
-use super::Dao;
+use super::{Dao, Error};
 
 pub struct MemoDao {
     pub state: AppState,
@@ -33,7 +32,7 @@ impl MemoDao {
             content,
             visibility,
         }: CreateMemo,
-    ) -> Result<Memo, Error> {
+    ) -> Result<Option<Memo>, Error> {
         let mut stmts = vec![Statement::with_args(
             "INSERT INTO memo (creator_id, content, visibility) VALUES (?, ?, ?) RETURNING id, creator_id, created_ts as create_time, created_ts as display_time, updated_ts as update_time, row_status, content, visibility",
             &[
@@ -45,24 +44,26 @@ impl MemoDao {
 
         stmts.append(&mut parse_upsert_tag(creator_id, &content));
 
-        let rss = self.state.batch(stmts).await.context(Database)?;
+        let rss = self.batch(stmts).await?;
         if let Some(rs) = rss.first() {
-            let mut memos = rs
+            if let Ok(mut memos) = rs
                 .rows
                 .iter()
                 .map(de::from_row)
                 .collect::<Result<Vec<Memo>, _>>()
-                .context(Database)?;
-            memos.pop().context(CreateMemoFailed)
-        } else {
-            CreateMemoFailed.fail()
+            {
+                return Ok(memos.pop());
+            } else {
+                error!("Deserialize memo failed: {rs:?}");
+            }
         }
+        Ok(None)
     }
 
     pub async fn list_memos(&self, find: FindMemo) -> Result<Vec<Memo>, Error> {
         let stmt: Statement = find.into();
         info!("{stmt}");
-        self.execute(stmt).await.context(Database)
+        self.query(stmt).await
     }
 
     pub async fn count_memos(&self, creator_id: i32) -> Result<Count, Error> {
@@ -70,13 +71,13 @@ impl MemoDao {
             "select count(1) as count from memo where creator_id = ?",
             &[creator_id],
         );
-        let mut rs: Vec<Count> = self.execute(stmt).await.context(Database)?;
+        let mut rs: Vec<Count> = self.query(stmt).await?;
         Ok(rs.pop().unwrap_or(Count { count: 0 }))
     }
 
     pub async fn delete_memo(&self, memo_id: i32) -> Result<(), Error> {
         let stmt = Statement::with_args("delete from memo where id = ?", &[memo_id]);
-        self.state.execute(stmt).await.context(Database)?;
+        self.execute(stmt).await?;
         Ok(())
     }
 
@@ -114,7 +115,7 @@ impl MemoDao {
                 args.push(Value::from(id));
                 stmts.push(Statement::with_args(update_sql, &args));
 
-                self.state.batch(stmts).await.context(Database)?;
+                self.batch(stmts).await?;
             }
         }
         if let Some(pinned) = pinned {
@@ -133,7 +134,7 @@ impl MemoDao {
             ",
                 &[id, creator_id, if pinned { 1 } else { 0 }],
             );
-            self.state.execute(stmt).await.context(Database)?;
+            self.execute(stmt).await?;
         }
 
         Ok(())
@@ -260,12 +261,4 @@ impl From<FindMemo> for Statement {
 
         Statement::with_args(query, &args)
     }
-}
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
-    Database { source: anyhow::Error },
-    #[snafu(display("Create memo failed"), context(suffix(false)))]
-    CreateMemoFailed,
 }

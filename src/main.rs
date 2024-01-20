@@ -1,5 +1,4 @@
 #![allow(unused_variables)]
-use std::sync::Arc;
 
 use axum::{error_handling::HandleErrorLayer, routing::get, BoxError, Router};
 use axum_login::{

@@ -1,13 +1,12 @@
 use axum::{
     extract::{Multipart, Path, State},
     http::HeaderValue,
-    response::{IntoResponse, Result},
+    response::Result,
     routing::post,
     Json, Router,
 };
-use bytes::Bytes;
-use hyper::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
-use snafu::{ensure, OptionExt, Snafu};
+use hyper::header::CONTENT_TYPE;
+use snafu::{ensure, Snafu};
 
 use crate::{
     api::{

@@ -21,7 +21,6 @@ impl SystemService {
         self.dao.list_setting().await.context(ListSettingFailed)
     }
 
-    #[allow(dead_code)]
     pub async fn find_setting(
         &self,
         key: SystemSettingKey,
@@ -29,9 +28,7 @@ impl SystemService {
         self.dao
             .find_setting(key.clone())
             .await
-            .context(FindSettingFailed {
-                key: key.to_string(),
-            })
+            .context(FindSettingFailed { key })
     }
 }
 
@@ -41,15 +38,13 @@ pub enum Error {
         display("Failed to get system setting list: {source}"),
         context(suffix(false))
     )]
-    ListSettingFailed {
-        source: crate::dao::system_setting::Error,
-    },
+    ListSettingFailed { source: crate::dao::Error },
     #[snafu(
         display("Failed to find system setting with: {key}, {source}"),
         context(suffix(false))
     )]
     FindSettingFailed {
-        key: String,
-        source: crate::dao::system_setting::Error,
+        key: SystemSettingKey,
+        source: crate::dao::Error,
     },
 }

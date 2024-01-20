@@ -1,12 +1,11 @@
 use libsql_client::Statement;
-use snafu::{ResultExt, Snafu};
 
 use crate::{
     api::system::{SystemSetting, SystemSettingKey},
     state::AppState,
 };
 
-use super::Dao;
+use super::{Dao, Error};
 
 #[derive(Debug)]
 pub struct SystemSettingDao {
@@ -21,9 +20,7 @@ impl Dao for SystemSettingDao {
 
 impl SystemSettingDao {
     pub async fn list_setting(&self) -> Result<Vec<SystemSetting>, Error> {
-        self.execute("select * from system_setting")
-            .await
-            .context(Database)
+        self.query("select * from system_setting").await
     }
 
     pub async fn find_setting(
@@ -34,15 +31,7 @@ impl SystemSettingDao {
             "select * from system_setting where name = ?",
             &[key.to_string()],
         );
-        let settings: Vec<SystemSetting> = self.execute(stmt).await.context(Database)?;
-        Ok(settings.first().cloned())
+        let mut settings: Vec<SystemSetting> = self.query(stmt).await?;
+        Ok(settings.pop())
     }
-}
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
-    Database { source: anyhow::Error },
-    #[snafu(display("Data does not exsit"), context(suffix(false)))]
-    Inexistent,
 }

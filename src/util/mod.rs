@@ -1,4 +1,4 @@
-use crate::api::v2::{Node, RowStatus};
+use crate::api::v2::Node;
 use snafu::{ensure, Snafu};
 
 pub mod ast;

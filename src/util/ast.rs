@@ -58,7 +58,7 @@ pub fn get_bool(lit: Expr) -> Option<bool> {
 /// RowStatus no match
 pub fn get_row_status(lit: Expr) -> Option<RowStatus> {
     let row_status = get_string(lit);
-    row_status.map(|s| s.parse().ok()).flatten()
+    row_status.and_then(|s| s.parse().ok())
 }
 
 pub fn get_visibility(lit: Expr) -> Option<Visibility> {

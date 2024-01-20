@@ -75,54 +75,37 @@ impl From<Error> for Status {
     }
 }
 
-impl From<crate::dao::system_setting::Error> for Status {
-    fn from(value: crate::dao::system_setting::Error) -> Self {
-        error!("{value}");
-        Status::internal(value.to_string())
-    }
-}
-
-impl From<crate::dao::user_setting::Error> for Status {
-    fn from(value: crate::dao::user_setting::Error) -> Self {
-        error!("{value}");
-        Status::internal(value.to_string())
-    }
-}
-
-impl From<crate::dao::user::Error> for Status {
-    fn from(value: crate::dao::user::Error) -> Self {
+impl From<user::Error> for Status {
+    fn from(value: user::Error) -> Self {
         error!("{value}");
         match value {
-            crate::dao::user::Error::Inexistent => Status::not_found(value.to_string()),
+            user::Error::UserNotFound { .. } => Status::not_found(value.to_string()),
+            user::Error::InvalidUsername { .. } => Status::invalid_argument(value.to_string()),
             _ => Status::internal(value.to_string()),
         }
     }
 }
 
-impl From<crate::dao::memo::Error> for Status {
-    fn from(value: crate::dao::memo::Error) -> Self {
+impl From<system::Error> for Status {
+    fn from(value: system::Error) -> Self {
         error!("{value}");
         Status::internal(value.to_string())
     }
 }
 
-impl From<crate::util::Error> for Status {
-    fn from(value: crate::util::Error) -> Self {
+impl From<tag::Error> for Status {
+    fn from(value: tag::Error) -> Self {
         error!("{value}");
-        Status::invalid_argument(value.to_string())
+        Status::internal(value.to_string())
     }
 }
 
-impl From<crate::api::memo::Error> for Status {
-    fn from(value: crate::api::memo::Error) -> Self {
+impl From<memo::Error> for Status {
+    fn from(value: memo::Error) -> Self {
         error!("{value}");
-        Status::invalid_argument(value.to_string())
-    }
-}
-
-impl From<crate::api::user::Error> for Status {
-    fn from(value: crate::api::user::Error) -> Self {
-        error!("{value}");
-        Status::invalid_argument(value.to_string())
+        match value {
+            memo::Error::InvalidMemoFilter { .. } => Status::invalid_argument(value.to_string()),
+            _ => Status::internal(value.to_string()),
+        }
     }
 }
