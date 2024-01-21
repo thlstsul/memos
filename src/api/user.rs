@@ -124,7 +124,7 @@ impl UpdateUserSettingRequest {
 
 impl GetUserRequest {
     pub fn get_name(&self) -> Result<String, Error> {
-        get_name_parent_token(self.name.clone(), USER_NAME_PREFIX).context(InvalidUsername)
+        get_name_parent_token(&self.name, USER_NAME_PREFIX).context(InvalidUsername)
     }
 }
 

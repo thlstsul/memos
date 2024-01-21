@@ -1,6 +1,9 @@
+use axum::body::StreamBody;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use hyper::header;
+use tokio::fs::File;
+use tokio_util::io::ReaderStream;
 use tracing::error;
 
 pub mod auth;
@@ -11,7 +14,7 @@ pub mod system;
 pub struct Resource {
     pub filename: String,
     pub r#type: String,
-    pub blob: Vec<u8>,
+    pub body: StreamBody<ReaderStream<File>>,
 }
 
 impl IntoResponse for Resource {
@@ -30,7 +33,7 @@ impl IntoResponse for Resource {
             ),
         ];
 
-        (headers, self.blob).into_response()
+        (headers, self.body).into_response()
     }
 }
 

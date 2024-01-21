@@ -36,7 +36,7 @@ impl tag_service_server::TagService for TagService {
         let name = &request.get_ref().name;
 
         self.dao
-            .upsert_tag(name.clone(), user.id)
+            .upsert_tag(name.clone(), creator_id)
             .await
             .context(UpsertTagFailed)?;
         Ok(Response::new(UpsertTagResponse {

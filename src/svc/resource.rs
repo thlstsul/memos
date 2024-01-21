@@ -1,4 +1,13 @@
+use std::io::Cursor;
+use std::path;
+
+use image::{io::Reader as ImageReader, ImageFormat, ImageOutputFormat};
 use snafu::{OptionExt, ResultExt, Snafu};
+use tokio::{
+    fs::{self, File, OpenOptions},
+    io::AsyncWriteExt,
+};
+use tokio_util::io::ReaderStream;
 use tonic::{Request, Response, Status};
 
 use crate::{
@@ -15,6 +24,9 @@ use crate::{
 };
 
 use super::get_current_user;
+
+const RESOURCE_PATH: &str = ".resource_cache";
+const THUMBNAIL_IMAGE_PATH: &str = ".thumbnail_cache";
 
 pub struct ResourceService {
     dao: ResourceDao,
@@ -37,12 +49,105 @@ impl ResourceService {
             .context(MaybeCreateResourceFailed)
     }
 
-    pub async fn get_resource(&self, id: i32) -> Result<WholeResource, Error> {
+    pub async fn get_resource(&self, id: i32) -> Result<Resource, Error> {
+        let mut rs = self
+            .dao
+            .list_resources(FindResource {
+                id: Some(id),
+                ..Default::default()
+            })
+            .await
+            .context(GetResourceFailed)?;
+        rs.pop().context(ResourceNotFound { id })
+    }
+
+    pub async fn get_whole_resource(&self, id: i32) -> Result<WholeResource, Error> {
         self.dao
             .get_resource(id)
             .await
             .context(GetResourceFailed)?
             .context(ResourceNotFound { id })
+    }
+
+    pub async fn get_resource_stream(
+        &self,
+        Resource {
+            id,
+            filename,
+            r#type,
+            ..
+        }: Resource,
+        thumbnail: bool,
+    ) -> Result<ReaderStream<File>, Error> {
+        let filename = format!("{}.{}", id, filename);
+        let resource_path = path::Path::new(RESOURCE_PATH).join(&filename);
+        let thumbnail_path = path::Path::new(THUMBNAIL_IMAGE_PATH).join(&filename);
+
+        let exists = if thumbnail {
+            fs::try_exists(&thumbnail_path).await.unwrap_or(false)
+        } else {
+            fs::try_exists(&resource_path).await.unwrap_or(false)
+        };
+        if !exists {
+            if thumbnail {
+                Self::creator_dir(THUMBNAIL_IMAGE_PATH).await?;
+            } else {
+                Self::creator_dir(RESOURCE_PATH).await?;
+            }
+
+            let WholeResource { blob, .. } = Self::get_whole_resource(self, id).await?;
+            if thumbnail {
+                let img = ImageReader::new(Cursor::new(blob))
+                    .with_guessed_format()
+                    .context(OpenResourceFailed)?
+                    .decode()
+                    .context(ImageDecodeFailed)?;
+                let mut bytes = Vec::new();
+                {
+                    let img = img.thumbnail(512, 512);
+                    let format: ImageOutputFormat = ImageFormat::from_path(&filename)
+                        .context(ImageEncodeFailed)?
+                        .into();
+                    img.write_to(&mut Cursor::new(&mut bytes), format)
+                        .context(ImageEncodeFailed)?;
+                }
+                Self::save_file(&thumbnail_path, &bytes).await?;
+            } else {
+                Self::save_file(&resource_path, &blob).await?;
+            }
+        }
+
+        let read_path = if thumbnail {
+            thumbnail_path
+        } else {
+            resource_path
+        };
+
+        let read_file = File::open(&read_path).await.context(OpenResourceFailed)?;
+        Ok(ReaderStream::new(read_file))
+    }
+
+    async fn creator_dir(dir: impl AsRef<path::Path>) -> Result<(), Error> {
+        if !fs::try_exists(&dir).await.context(CreateCachedDirFailed)? {
+            fs::create_dir(dir).await.context(CreateCachedDirFailed)?;
+        }
+        Ok(())
+    }
+
+    async fn save_file(path: impl AsRef<path::Path>, blob: &[u8]) -> Result<(), Error> {
+        let mut resource_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(false)
+            .open(&path)
+            .await
+            .context(OpenResourceFailed)?;
+
+        resource_file
+            .write_all(blob)
+            .await
+            .context(WriteResourceFailed)?;
+        Ok(())
     }
 }
 
@@ -102,4 +207,21 @@ pub enum Error {
     ResourceNotFound { id: i32 },
     #[snafu(display("Failed to list resource: {source}"), context(suffix(false)))]
     ListResourceFailed { source: crate::dao::Error },
+
+    #[snafu(
+        display("Failed to create cached dir: {source}"),
+        context(suffix(false))
+    )]
+    CreateCachedDirFailed { source: std::io::Error },
+    #[snafu(display("Failed to open resource: {source}"), context(suffix(false)))]
+    OpenResourceFailed { source: std::io::Error },
+    #[snafu(display("Failed to write resource: {source}"), context(suffix(false)))]
+    WriteResourceFailed { source: std::io::Error },
+    #[snafu(display("Failed to decode image: {source}"), context(suffix(false)))]
+    ImageDecodeFailed { source: image::ImageError },
+    #[snafu(
+        display("Failed to encode thumbnail: {source}"),
+        context(suffix(false))
+    )]
+    ImageEncodeFailed { source: image::ImageError },
 }

@@ -36,6 +36,7 @@ regex = "1.10.2"
 rmp-serde = "1.1.2"
 time = "0.3.31"
 image = "0.24.8"
+tokio-util = "0.7.10"
 
 [build-dependencies]
 protoc-bin-vendored = "3.0.0"

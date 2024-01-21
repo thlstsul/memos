@@ -4,3 +4,5 @@ Secrets*.toml
 dumpfile.sql
 memos.db
 firedbg
+.thumbnail_cache
+.resource_cache
