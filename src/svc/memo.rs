@@ -76,7 +76,8 @@ impl memo_service_server::MemoService for MemoService {
             .await
             .context(GetMemoFailed)?;
 
-        Ok(Response::new(GetMemoResponse { memo: memos.pop() }))
+        let memo = memos.pop();
+        Ok(Response::new(memo.into()))
     }
 
     async fn list_memos(

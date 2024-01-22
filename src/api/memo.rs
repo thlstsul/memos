@@ -5,7 +5,7 @@ use crate::util::{
 
 use super::{
     v2::{
-        CreateMemoResponse, ListMemosRequest, ListMemosResponse, Memo, RowStatus,
+        CreateMemoResponse, GetMemoResponse, ListMemosRequest, ListMemosResponse, Memo, RowStatus,
         UpdateMemoRequest, UpdateMemoResponse, Visibility,
     },
     USER_NAME_PREFIX,
@@ -180,6 +180,19 @@ impl From<Vec<Memo>> for ListMemosResponse {
 impl From<Option<Memo>> for UpdateMemoResponse {
     fn from(val: Option<Memo>) -> Self {
         UpdateMemoResponse {
+            memo: if let Some(mut memo) = val {
+                convert_memo(&mut memo);
+                Some(memo)
+            } else {
+                None
+            },
+        }
+    }
+}
+
+impl From<Option<Memo>> for GetMemoResponse {
+    fn from(val: Option<Memo>) -> Self {
+        GetMemoResponse {
             memo: if let Some(mut memo) = val {
                 convert_memo(&mut memo);
                 Some(memo)
