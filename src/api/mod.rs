@@ -22,26 +22,16 @@ pub struct Count {
 pub const INBOX_NAME_PREFIX: &str = "inboxes";
 pub const USER_NAME_PREFIX: &str = "users";
 
-impl ToString for RowStatus {
-    fn to_string(&self) -> String {
-        let row_status = if self == &RowStatus::Unspecified || self == &RowStatus::Active {
-            "NORMAL"
-        } else {
-            self.as_str_name()
-        };
-        row_status.to_owned()
-    }
-}
+mod option_serde {
+    use serde::{self, de::DeserializeOwned, Deserializer};
 
-impl FromStr for RowStatus {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "NORMAL" {
-            Ok(RowStatus::Active)
-        } else {
-            RowStatus::from_str_name(s).ok_or(())
-        }
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: DeserializeOwned,
+    {
+        let data = T::deserialize(deserializer).ok();
+        Ok(data)
     }
 }
 
@@ -93,6 +83,29 @@ mod time_serde {
     {
         let seconds = i64::deserialize(deserializer)?;
         Ok(Some(prost_types::Timestamp { seconds, nanos: 0 }))
+    }
+}
+
+impl ToString for RowStatus {
+    fn to_string(&self) -> String {
+        let row_status = if self == &RowStatus::Unspecified || self == &RowStatus::Active {
+            "NORMAL"
+        } else {
+            self.as_str_name()
+        };
+        row_status.to_owned()
+    }
+}
+
+impl FromStr for RowStatus {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "NORMAL" {
+            Ok(RowStatus::Active)
+        } else {
+            RowStatus::from_str_name(s).ok_or(())
+        }
     }
 }
 

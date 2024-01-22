@@ -2196,6 +2196,7 @@ pub struct Resource {
     #[prost(int64, tag = "6")]
     pub size: i64,
     #[prost(int32, optional, tag = "7")]
+    #[serde(deserialize_with = "crate::api::option_serde::deserialize")]
     pub memo_id: ::core::option::Option<i32>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]

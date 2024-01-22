@@ -80,7 +80,14 @@ impl memo_service_server::MemoService for MemoService {
             .await
             .context(GetMemoFailed)?;
 
-        let memo = memos.pop();
+        let mut memo = memos.pop();
+
+        if let Some(ref mut memo) = memo {
+            let relate_resources = self.res_svc.relate_resource(memo.id).await?;
+            memo.resources = relate_resources;
+        }
+        // TODO relate
+
         Ok(Response::new(memo.into()))
     }
 

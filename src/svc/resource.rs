@@ -99,7 +99,7 @@ impl ResourceService {
         self.dao
             .relate_resources(memo_ids)
             .await
-            .context(RelateResourceFailed)
+            .context(RelateResourcesFailed)
     }
 
     pub async fn relate_resource(&self, memo_id: i32) -> Result<Vec<Resource>, Error> {
@@ -107,12 +107,8 @@ impl ResourceService {
             .dao
             .relate_resources(vec![memo_id])
             .await
-            .context(RelateResourceFailed)?;
-        if let Some(res) = rs.into_values().next() {
-            Ok(res)
-        } else {
-            Ok(vec![])
-        }
+            .context(RelateResourcesFailed)?;
+        Ok(rs.into_values().next().unwrap_or(vec![]))
     }
 
     pub async fn get_resource_stream(
@@ -265,8 +261,11 @@ pub enum Error {
     ListResourceFailed { source: crate::dao::Error },
     #[snafu(display("Failed to delete resource: {source}"), context(suffix(false)))]
     DeleteResourceFailed { source: crate::dao::Error },
-    #[snafu(display("Failed to relate resource: {source}"), context(suffix(false)))]
-    RelateResourceFailed { source: crate::dao::Error },
+    #[snafu(
+        display("Failed to relate resources: {source}"),
+        context(suffix(false))
+    )]
+    RelateResourcesFailed { source: crate::dao::Error },
 
     #[snafu(
         display("Failed to create cached dir: {source}"),

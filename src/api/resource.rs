@@ -23,5 +23,6 @@ pub struct WholeResource {
     pub id: i32,
     pub created_ts: i64,
     pub updated_ts: i64,
+    #[serde(deserialize_with = "crate::api::option_serde::deserialize")]
     pub memo_id: Option<i32>,
 }

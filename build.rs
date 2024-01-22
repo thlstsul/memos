@@ -63,6 +63,10 @@ fn main() {
             &["#[serde(default)]"],
         )
         .field_attribute(
+            "memos.api.v2.Resource.memo_id",
+            r#"#[serde(deserialize_with = "crate::api::option_serde::deserialize")]"#,
+        )
+        .field_attribute(
             "memos.api.v2.Memo.row_status",
             r#"#[serde(with = "crate::api::status_serde")]"#,
         )
