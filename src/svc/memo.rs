@@ -63,6 +63,22 @@ impl memo_service_server::MemoService for MemoService {
         Ok(Response::new(memo.into()))
     }
 
+    async fn get_memo(
+        &self,
+        request: Request<GetMemoRequest>,
+    ) -> Result<Response<GetMemoResponse>, Status> {
+        let mut memos = self
+            .memo_dao
+            .list_memos(FindMemo {
+                id: Some(request.get_ref().id),
+                ..Default::default()
+            })
+            .await
+            .context(GetMemoFailed)?;
+
+        Ok(Response::new(GetMemoResponse { memo: memos.pop() }))
+    }
+
     async fn list_memos(
         &self,
         request: Request<ListMemosRequest>,
@@ -200,18 +216,14 @@ impl memo_service_server::MemoService for MemoService {
     ) -> Result<Response<ListMemoCommentsResponse>, Status> {
         todo!()
     }
-    async fn get_memo(
-        &self,
-        request: Request<GetMemoRequest>,
-    ) -> Result<Response<GetMemoResponse>, Status> {
-        todo!()
-    }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Failed to create memo: {source}"), context(suffix(false)))]
     CreateMemoFailed { source: crate::dao::Error },
+    #[snafu(display("Failed to get memo: {source}"), context(suffix(false)))]
+    GetMemoFailed { source: crate::dao::Error },
     #[snafu(
         display("Maybe create memo failed, because return none"),
         context(suffix(false))
