@@ -112,20 +112,26 @@ impl ResourceDao {
             return Ok(());
         }
 
-        let mut add_stmts: Vec<Statememt> = add_res_ids.iter().map(|i: &i32| {
-            Statement::with_args(
-                "update resource set memo_id = ? where id = ?",
-                &[memo_id, *i],
-            )
-        });
-        let mut del_stmts: Vec<Statement> = del_res_ids.iter().map(|i: &i32| {
-            Statement::with_args(
-                "delete from resource where memo_id = ? and id = ?",
-                &[memo_id, *i],
-            )
-        });
+        let mut add_stmts: Vec<Statement> = add_res_ids
+            .iter()
+            .map(|i| {
+                Statement::with_args(
+                    "update resource set memo_id = ? where id = ?",
+                    &[memo_id, *i],
+                )
+            })
+            .collect();
+        let mut del_stmts: Vec<Statement> = del_res_ids
+            .iter()
+            .map(|i| {
+                Statement::with_args(
+                    "delete from resource where memo_id = ? and id = ?",
+                    &[memo_id, *i],
+                )
+            })
+            .collect();
 
-        let stmts = Vec::new();
+        let mut stmts = Vec::new();
         stmts.append(&mut add_stmts);
         stmts.append(&mut del_stmts);
 

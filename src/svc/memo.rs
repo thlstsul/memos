@@ -122,11 +122,12 @@ impl memo_service_server::MemoService for MemoService {
             .context(ListMemoFailed)?;
 
         {
-            let memo_ids: Vec<i32> = memos.iter().map(|m: &Memo| m.id).collect();
-            let relate_resources = self.res_svc.relate_resources(memo_ids).await?;
-            for mut memo in memos {
-                let value = *relate_resources.get(&memo.id).unwrap_or_default();
-                memo.resources = value;
+            let memo_ids: Vec<i32> = memos.iter().map(|m| m.id).collect();
+            let mut relate_resources = self.res_svc.relate_resources(memo_ids).await?;
+            for memo in memos.iter_mut() {
+                if let Some(value) = relate_resources.remove(&memo.id) {
+                    memo.resources = value;
+                }
             }
         }
         // TODO relate
@@ -195,11 +196,11 @@ impl memo_service_server::MemoService for MemoService {
         request: Request<SetMemoResourcesRequest>,
     ) -> Result<Response<SetMemoResourcesResponse>, Status> {
         let memo_id = request.get_ref().id;
-        let resources = request.get_ref().resources;
+        let resources = &request.get_ref().resources;
         let relate_resources = self.res_svc.relate_resource(memo_id).await?;
 
-        let new_res_ids = resources.iter().map(|s: &Resource| *s.id).collect();
-        let old_res_ids = relate_resources.iter().map(|s: &Resource| *s.id).collect();
+        let new_res_ids = resources.iter().map(|s| s.id).collect();
+        let old_res_ids = relate_resources.iter().map(|s| s.id).collect();
 
         self.res_svc
             .set_memo_resources(memo_id, new_res_ids, old_res_ids)

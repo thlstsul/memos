@@ -57,11 +57,13 @@ impl ResourceService {
     ) -> Result<(), Error> {
         let add_res_ids = new_res_ids
             .iter()
-            .filter(|i: &i32| !old_res_ids.contains(i))
+            .filter(|&i| !old_res_ids.contains(i))
+            .map(|&i| i)
             .collect();
         let del_res_ids = old_res_ids
             .iter()
-            .filter(|i: &i32| !new_res_ids.contains(i))
+            .filter(|&i| !new_res_ids.contains(i))
+            .map(|&i| i)
             .collect();
 
         self.dao
@@ -101,8 +103,16 @@ impl ResourceService {
     }
 
     pub async fn relate_resource(&self, memo_id: i32) -> Result<Vec<Resource>, Error> {
-        let rs = self.dao.relate_resources(vec![memo_id]).await?;
-        Ok(*rs.get(&memo_id).unwrap_or_default())
+        let rs = self
+            .dao
+            .relate_resources(vec![memo_id])
+            .await
+            .context(RelateResourceFailed)?;
+        if let Some(res) = rs.into_values().next() {
+            Ok(res)
+        } else {
+            Ok(vec![])
+        }
     }
 
     pub async fn get_resource_stream(
