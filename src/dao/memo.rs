@@ -191,7 +191,7 @@ impl From<FindMemo> for Statement {
             wheres.push("memo_organizer.pinned = 1");
         }
 
-        let mut wheres: Vec<String> = wheres.into_iter().map(|s| s.to_owned()).collect();
+        let mut wheres: Vec<_> = wheres.into_iter().map(|s| s.to_owned()).collect();
 
         if !visibility_list.is_empty() {
             let mut l = Vec::new();

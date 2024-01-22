@@ -32,13 +32,13 @@ impl UserDao {
         } else {
             Statement::with_args("select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where username = ?", &[name])
         };
-        let mut users: Vec<User> = self.query(stmt).await?;
+        let mut users = self.query(stmt).await?;
         Ok(users.pop())
     }
 
     pub async fn petch_user(&self, id: i32) -> Result<Option<User>, Error> {
         let stmt = Statement::with_args("select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where id = ?", &[id]);
-        let mut users: Vec<User> = self.query(stmt).await?;
+        let mut users = self.query(stmt).await?;
         Ok(users.pop())
     }
 
@@ -47,7 +47,7 @@ impl UserDao {
             "select id, created_ts as create_time, updated_ts as update_time, row_status, username, role, email, nickname, password_hash as password, avatar_url from user where role = ?",
             &[user::Role::Host.as_str_name()],
         );
-        let mut users: Vec<User> = self.query(stmt).await?;
+        let mut users = self.query(stmt).await?;
         Ok(users.pop())
     }
 }

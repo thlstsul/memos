@@ -58,12 +58,12 @@ impl ResourceService {
         let add_res_ids = new_res_ids
             .iter()
             .filter(|&i| !old_res_ids.contains(i))
-            .map(|&i| i)
+            .copied()
             .collect();
         let del_res_ids = old_res_ids
             .iter()
             .filter(|&i| !new_res_ids.contains(i))
-            .map(|&i| i)
+            .copied()
             .collect();
 
         self.dao

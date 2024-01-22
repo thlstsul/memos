@@ -112,7 +112,7 @@ impl ResourceDao {
             return Ok(());
         }
 
-        let mut add_stmts: Vec<Statement> = add_res_ids
+        let mut add_stmts = add_res_ids
             .iter()
             .map(|i| {
                 Statement::with_args(
@@ -121,7 +121,7 @@ impl ResourceDao {
                 )
             })
             .collect();
-        let mut del_stmts: Vec<Statement> = del_res_ids
+        let mut del_stmts = del_res_ids
             .iter()
             .map(|i| {
                 Statement::with_args(
@@ -141,7 +141,7 @@ impl ResourceDao {
 
     pub async fn get_resource(&self, id: i32) -> Result<Option<WholeResource>, Error> {
         let stmt = Statement::with_args("select * from resource where id = ?", &[id]);
-        let mut rs: Vec<WholeResource> = self.query(stmt).await?;
+        let mut rs = self.query(stmt).await?;
         Ok(rs.pop())
     }
 
@@ -166,7 +166,7 @@ impl ResourceDao {
         if memo_ids.is_empty() {
             return Ok(HashMap::new());
         }
-        let stmts: Vec<Statement> = memo_ids.iter().map(|i: &i32| Statement::with_args("select id, filename, external_link, type, size, created_ts as create_time, memo_id from resource where memo_id = ?", &[*i])).collect();
+        let stmts: Vec<_> = memo_ids.iter().map(|i: &i32| Statement::with_args("select id, filename, external_link, type, size, created_ts as create_time, memo_id from resource where memo_id = ?", &[*i])).collect();
         let mut rss = self.batch_query::<_, Resource>(stmts).await?;
         let mut rtn = HashMap::new();
         for (i, memo_id) in memo_ids.iter().enumerate() {

@@ -129,7 +129,7 @@ impl memo_service_server::MemoService for MemoService {
             .context(ListMemoFailed)?;
 
         {
-            let memo_ids: Vec<i32> = memos.iter().map(|m| m.id).collect();
+            let memo_ids = memos.iter().map(|m| m.id).collect();
             let mut relate_resources = self.res_svc.relate_resources(memo_ids).await?;
             for memo in memos.iter_mut() {
                 if let Some(value) = relate_resources.remove(&memo.id) {

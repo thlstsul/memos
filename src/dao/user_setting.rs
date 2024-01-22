@@ -22,7 +22,7 @@ impl UserSettingDao {
     }
 
     pub async fn upsert_setting(&self, settings: Vec<UserSetting>) -> Result<(), Error> {
-        let stmts: Vec<Statement> = settings
+        let stmts: Vec<_> = settings
             .into_iter()
             .map(|setting| {
                 Statement::with_args(

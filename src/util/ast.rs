@@ -360,7 +360,7 @@ mod test {
         ```";
         let nodes = super::parse_document(hay, true);
         println!("{nodes:?}");
-        let tags: Vec<String> = nodes
+        let tags: Vec<_> = nodes
             .into_iter()
             .filter_map(|n| {
                 if let Some(node::Node::TagNode(TagNode { content })) = n.node {

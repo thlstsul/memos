@@ -31,7 +31,7 @@ impl SystemSettingDao {
             "select * from system_setting where name = ?",
             &[key.to_string()],
         );
-        let mut settings: Vec<SystemSetting> = self.query(stmt).await?;
+        let mut settings = self.query(stmt).await?;
         Ok(settings.pop())
     }
 }
