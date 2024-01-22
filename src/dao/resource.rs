@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use libsql_client::{Statement, Value};
 
 use crate::{
@@ -109,6 +111,31 @@ impl ResourceDao {
     pub async fn list_resources(&self, find: FindResource) -> Result<Vec<Resource>, Error> {
         let stmt: Statement = find.into();
         self.query(stmt).await
+    }
+
+    pub async fn delete_resource(&self, id: i32, creator_id: i32) -> Result<(), Error> {
+        let stmt = Statement::with_args(
+            "delete from resource where id = ? and creator_id = ?",
+            &[id, creator_id],
+        );
+        self.execute(stmt).await?;
+        Ok(())
+    }
+
+    pub async fn relate_resources(
+        &self,
+        memo_ids: Vec<i32>,
+    ) -> Result<HashMap<i32, Vec<Resource>>, Error> {
+        if memo_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let stmts: Vec<Statement> = memo_ids.iter().map(|i: &i32| Statement::with_args("select id, filename, external_link, type, size, created_ts as create_time, memo_id from resource where memo_id = ?", &[*i])).collect();
+        let mut rss = self.batch_query::<_, Resource>(stmts).await?;
+        let mut rtn = HashMap::new();
+        for (i, memo_id) in memo_ids.iter().enumerate() {
+            rtn.insert(*memo_id, rss.pop_front().unwrap_or_default());
+        }
+        Ok(rtn)
     }
 }
 

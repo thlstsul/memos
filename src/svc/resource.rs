@@ -1,5 +1,5 @@
-use std::io::Cursor;
 use std::path;
+use std::{collections::HashMap, io::Cursor};
 
 use image::{io::Reader as ImageReader, ImageFormat, ImageOutputFormat};
 use snafu::{OptionExt, ResultExt, Snafu};
@@ -69,6 +69,16 @@ impl ResourceService {
             .context(ResourceNotFound { id })
     }
 
+    pub async fn relate_resources(
+        &self,
+        memo_ids: Vec<i32>,
+    ) -> Result<HashMap<i32, Vec<Resource>>, Error> {
+        self.dao
+            .relate_resources(memo_ids)
+            .await
+            .context(RelateResourceFailed)
+    }
+
     pub async fn get_resource_stream(
         &self,
         Resource {
@@ -97,13 +107,13 @@ impl ResourceService {
 
             let WholeResource { blob, .. } = Self::get_whole_resource(self, id).await?;
             if thumbnail {
-                let img = ImageReader::new(Cursor::new(blob))
-                    .with_guessed_format()
-                    .context(OpenResourceFailed)?
-                    .decode()
-                    .context(ImageDecodeFailed)?;
                 let mut bytes = Vec::new();
                 {
+                    let img = ImageReader::new(Cursor::new(blob))
+                        .with_guessed_format()
+                        .context(OpenResourceFailed)?
+                        .decode()
+                        .context(ImageDecodeFailed)?;
                     let img = img.thumbnail(512, 512);
                     let format: ImageOutputFormat = ImageFormat::from_path(&filename)
                         .context(ImageEncodeFailed)?
@@ -153,13 +163,6 @@ impl ResourceService {
 
 #[tonic::async_trait]
 impl resource_service_server::ResourceService for ResourceService {
-    async fn create_resource(
-        &self,
-        request: Request<CreateResourceRequest>,
-    ) -> Result<Response<CreateResourceResponse>, Status> {
-        todo!()
-    }
-
     async fn list_resources(
         &self,
         request: Request<ListResourcesRequest>,
@@ -177,6 +180,18 @@ impl resource_service_server::ResourceService for ResourceService {
         Ok(Response::new(ListResourcesResponse { resources }))
     }
 
+    async fn delete_resource(
+        &self,
+        request: Request<DeleteResourceRequest>,
+    ) -> Result<Response<DeleteResourceResponse>, Status> {
+        let user = get_current_user(&request)?;
+        self.dao
+            .delete_resource(request.get_ref().id, user.id)
+            .await
+            .context(DeleteResourceFailed)?;
+        Ok(Response::new(DeleteResourceResponse {}))
+    }
+
     async fn update_resource(
         &self,
         request: Request<UpdateResourceRequest>,
@@ -184,10 +199,10 @@ impl resource_service_server::ResourceService for ResourceService {
         todo!()
     }
 
-    async fn delete_resource(
+    async fn create_resource(
         &self,
-        request: Request<DeleteResourceRequest>,
-    ) -> Result<Response<DeleteResourceResponse>, Status> {
+        request: Request<CreateResourceRequest>,
+    ) -> Result<Response<CreateResourceResponse>, Status> {
         todo!()
     }
 }
@@ -207,6 +222,10 @@ pub enum Error {
     ResourceNotFound { id: i32 },
     #[snafu(display("Failed to list resource: {source}"), context(suffix(false)))]
     ListResourceFailed { source: crate::dao::Error },
+    #[snafu(display("Failed to delete resource: {source}"), context(suffix(false)))]
+    DeleteResourceFailed { source: crate::dao::Error },
+    #[snafu(display("Failed to relate resource: {source}"), context(suffix(false)))]
+    RelateResourceFailed { source: crate::dao::Error },
 
     #[snafu(
         display("Failed to create cached dir: {source}"),

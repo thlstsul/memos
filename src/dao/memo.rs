@@ -5,11 +5,11 @@ use libsql_client::{de, Statement, Value};
 use crate::{
     api::{
         memo::{CreateMemo, FindMemo, UpdateMemo},
-        v2::{node, Memo, TagNode},
+        v2::Memo,
         Count,
     },
+    dao::tag::parse_upsert_tag,
     state::AppState,
-    util::ast::parse_document,
 };
 
 use super::{Dao, Error};
@@ -139,27 +139,6 @@ impl MemoDao {
 
         Ok(())
     }
-}
-
-fn parse_upsert_tag(creator_id: i32, content: &str) -> Vec<Statement> {
-    let mut stmts = Vec::new();
-    let tags = parse_document(content, true);
-    for tag in tags {
-        if let Some(node::Node::TagNode(TagNode { content })) = tag.node {
-            stmts.push(Statement::with_args(
-                "
-                insert into tag (
-                    name, creator_id
-                )
-                values (?, ?)
-                on conflict(name, creator_id) do update 
-                set
-                    name = excluded.name",
-                &[content, creator_id.to_string()],
-            ));
-        }
-    }
-    stmts
 }
 
 impl From<FindMemo> for Statement {

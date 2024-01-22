@@ -91,12 +91,16 @@ impl memo_service_server::MemoService for MemoService {
         {
             find.order_by_updated_ts = value == "true";
         }
-        let memos = self
+        let mut memos = self
             .memo_dao
             .list_memos(find)
             .await
             .context(ListMemoFailed)?;
+
         // TODO relate,resource
+        // {
+        //     let memo_ids: Vec<i32> = memos.iter().map(|m: &Memo| m.id).collect();
+        // }
 
         Ok(Response::new(memos.into()))
     }

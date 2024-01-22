@@ -1,6 +1,10 @@
 use libsql_client::{Statement, Value};
 
-use crate::{api::v2::Tag, state::AppState};
+use crate::{
+    api::v2::{node, Tag, TagNode},
+    state::AppState,
+    util::ast::parse_document,
+};
 
 use super::{Dao, Error};
 
@@ -45,4 +49,25 @@ impl TagDao {
         self.execute(stmt).await?;
         Ok(())
     }
+}
+
+pub fn parse_upsert_tag(creator_id: i32, content: &str) -> Vec<Statement> {
+    let mut stmts = Vec::new();
+    let tags = parse_document(content, true);
+    for tag in tags {
+        if let Some(node::Node::TagNode(TagNode { content })) = tag.node {
+            stmts.push(Statement::with_args(
+                "
+                insert into tag (
+                    name, creator_id
+                )
+                values (?, ?)
+                on conflict(name, creator_id) do update 
+                set
+                    name = excluded.name",
+                &[content, creator_id.to_string()],
+            ));
+        }
+    }
+    stmts
 }
