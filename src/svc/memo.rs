@@ -21,10 +21,13 @@ use crate::{
     state::AppState,
 };
 
-use super::{get_current_user, system::SystemService, user::UserService};
+use super::{
+    get_current_user, resource::ResourceService, system::SystemService, user::UserService,
+};
 
 pub struct MemoService {
     memo_dao: MemoDao,
+    res_svc: ResourceService,
     user_svc: UserService,
     sys_svc: SystemService,
 }
@@ -35,6 +38,7 @@ impl MemoService {
             memo_dao: MemoDao {
                 state: state.clone(),
             },
+            res_svc: ResourceService::new(state),
             user_svc: UserService::new(state),
             sys_svc: SystemService::new(state),
         }
@@ -101,23 +105,31 @@ impl memo_service_server::MemoService for MemoService {
         } else {
             find.visibility_list = vec![Visibility::Public];
         }
-        if let Some(SystemSetting { value, .. }) = self
-            .sys_svc
-            .find_setting(SystemSettingKey::MemoDisplayWithUpdatedTs)
-            .await?
-        {
-            find.order_by_updated_ts = value == "true";
+        if find.id.is_none() {
+            if let Some(SystemSetting { value, .. }) = self
+                .sys_svc
+                .find_setting(SystemSettingKey::MemoDisplayWithUpdatedTs)
+                .await?
+            {
+                find.order_by_updated_ts = value == "true";
+            }
         }
+
         let mut memos = self
             .memo_dao
             .list_memos(find)
             .await
             .context(ListMemoFailed)?;
 
-        // TODO relate,resource
-        // {
-        //     let memo_ids: Vec<i32> = memos.iter().map(|m: &Memo| m.id).collect();
-        // }
+        {
+            let memo_ids: Vec<i32> = memos.iter().map(|m: &Memo| m.id).collect();
+            let relate_resources = self.res_svc.relate_resources(memo_ids).await?;
+            for mut memo in memos {
+                let value = *relate_resources.get(&memo.id).unwrap_or_default();
+                memo.resources = value;
+            }
+        }
+        // TODO relate
 
         Ok(Response::new(memos.into()))
     }
@@ -182,7 +194,16 @@ impl memo_service_server::MemoService for MemoService {
         &self,
         request: Request<SetMemoResourcesRequest>,
     ) -> Result<Response<SetMemoResourcesResponse>, Status> {
-        // TODO
+        let memo_id = request.get_ref().id;
+        let resources = request.get_ref().resources;
+        let relate_resources = self.res_svc.relate_resource(memo_id).await?;
+
+        let new_res_ids = resources.iter().map(|s: &Resource| *s.id).collect();
+        let old_res_ids = relate_resources.iter().map(|s: &Resource| *s.id).collect();
+
+        self.res_svc
+            .set_memo_resources(memo_id, new_res_ids, old_res_ids)
+            .await?;
         Ok(Response::new(SetMemoResourcesResponse {}))
     }
     /// ListMemoResources lists resources for a memo.

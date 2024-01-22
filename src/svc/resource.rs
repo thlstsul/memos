@@ -49,6 +49,27 @@ impl ResourceService {
             .context(MaybeCreateResourceFailed)
     }
 
+    pub async fn set_memo_resources(
+        &self,
+        memo_id: i32,
+        new_res_ids: Vec<i32>,
+        old_res_ids: Vec<i32>,
+    ) -> Result<(), Error> {
+        let add_res_ids = new_res_ids
+            .iter()
+            .filter(|i: &i32| !old_res_ids.contains(i))
+            .collect();
+        let del_res_ids = old_res_ids
+            .iter()
+            .filter(|i: &i32| !new_res_ids.contains(i))
+            .collect();
+
+        self.dao
+            .set_memo_resources(memo_id, add_res_ids, del_res_ids)
+            .await
+            .context(SetMemoResourcesFailed)
+    }
+
     pub async fn get_resource(&self, id: i32) -> Result<Resource, Error> {
         let mut rs = self
             .dao
@@ -77,6 +98,11 @@ impl ResourceService {
             .relate_resources(memo_ids)
             .await
             .context(RelateResourceFailed)
+    }
+
+    pub async fn relate_resource(&self, memo_id: i32) -> Result<Vec<Resource>, Error> {
+        let rs = self.dao.relate_resources(vec![memo_id]).await?;
+        Ok(*rs.get(&memo_id).unwrap_or_default())
     }
 
     pub async fn get_resource_stream(
@@ -216,6 +242,11 @@ pub enum Error {
         context(suffix(false))
     )]
     MaybeCreateResourceFailed,
+    #[snafu(
+        display("Failed to set memo resources: {source}"),
+        context(suffix(false))
+    )]
+    SetMemoResourcesFailed { source: crate::dao::Error },
     #[snafu(display("Failed to get resource: {source}"), context(suffix(false)))]
     GetResourceFailed { source: crate::dao::Error },
     #[snafu(display("Resource not found: {id}"), context(suffix(false)))]

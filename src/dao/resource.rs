@@ -102,6 +102,37 @@ impl ResourceDao {
         Ok(rs.pop())
     }
 
+    pub async fn set_memo_resources(
+        &self,
+        memo_id: i32,
+        add_res_ids: Vec<i32>,
+        del_res_ids: Vec<i32>,
+    ) -> Result<(), Error> {
+        if add_res_ids.is_empty() && del_res_ids.is_empty() {
+            return Ok(());
+        }
+
+        let mut add_stmts: Vec<Statememt> = add_res_ids.iter().map(|i: &i32| {
+            Statement::with_args(
+                "update resource set memo_id = ? where id = ?",
+                &[memo_id, *i],
+            )
+        });
+        let mut del_stmts: Vec<Statement> = del_res_ids.iter().map(|i: &i32| {
+            Statement::with_args(
+                "delete from resource where memo_id = ? and id = ?",
+                &[memo_id, *i],
+            )
+        });
+
+        let stmts = Vec::new();
+        stmts.append(&mut add_stmts);
+        stmts.append(&mut del_stmts);
+
+        self.batch(stmts).await?;
+        Ok(())
+    }
+
     pub async fn get_resource(&self, id: i32) -> Result<Option<WholeResource>, Error> {
         let stmt = Statement::with_args("select * from resource where id = ?", &[id]);
         let mut rs: Vec<WholeResource> = self.query(stmt).await?;
