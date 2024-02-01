@@ -5,20 +5,23 @@ use tonic::{Request, Response, Status};
 use crate::{
     api::{
         memo::{CreateMemo, FindMemo, UpdateMemo},
+        pager::Paginator,
         system::{SystemSetting, SystemSettingKey},
         v2::{
             memo_service_server, CreateMemoCommentRequest, CreateMemoCommentResponse,
             CreateMemoRequest, CreateMemoResponse, DeleteMemoRequest, DeleteMemoResponse,
-            GetMemoRequest, GetMemoResponse, GetUserMemosStatsRequest, GetUserMemosStatsResponse,
-            ListMemoCommentsRequest, ListMemoCommentsResponse, ListMemoRelationsRequest,
-            ListMemoRelationsResponse, ListMemoResourcesRequest, ListMemoResourcesResponse,
-            ListMemosRequest, ListMemosResponse, SetMemoRelationsRequest, SetMemoRelationsResponse,
+            GetMemoByNameRequest, GetMemoByNameResponse, GetMemoRequest, GetMemoResponse,
+            GetUserMemosStatsRequest, GetUserMemosStatsResponse, ListMemoCommentsRequest,
+            ListMemoCommentsResponse, ListMemoRelationsRequest, ListMemoRelationsResponse,
+            ListMemoResourcesRequest, ListMemoResourcesResponse, ListMemosRequest,
+            ListMemosResponse, SetMemoRelationsRequest, SetMemoRelationsResponse,
             SetMemoResourcesRequest, SetMemoResourcesResponse, UpdateMemoRequest,
             UpdateMemoResponse, Visibility,
         },
     },
     dao::memo::MemoDao,
     state::AppState,
+    util,
 };
 
 use super::{
@@ -55,6 +58,7 @@ impl memo_service_server::MemoService for MemoService {
         let req = request.get_ref();
         let create = CreateMemo {
             creator_id: user.id,
+            resource_name: util::uuid(),
             content: req.content.clone(),
             visibility: req.visibility(),
         };
@@ -122,11 +126,20 @@ impl memo_service_server::MemoService for MemoService {
             }
         }
 
+        let page_token = find.page_token.clone();
         let mut memos = self
             .memo_dao
             .list_memos(find)
             .await
             .context(ListMemoFailed)?;
+
+        // 是否有下一页
+        let mut next_page_token = String::new();
+        if let Some(page_token) = page_token {
+            if let Some(next) = page_token.next_page(&mut memos) {
+                next_page_token = serde_json::to_string(&next).unwrap_or_default();
+            }
+        }
 
         {
             let memo_ids = memos.iter().map(|m| m.id).collect();
@@ -139,7 +152,10 @@ impl memo_service_server::MemoService for MemoService {
         }
         // TODO relate
 
-        Ok(Response::new(memos.into()))
+        // convert memo
+        let mut resp: ListMemosResponse = memos.into();
+        resp.next_page_token = next_page_token;
+        Ok(Response::new(resp))
     }
 
     /// UpdateMemo updates a memo.
@@ -193,7 +209,7 @@ impl memo_service_server::MemoService for MemoService {
             .context(CountMemoFailed)?;
         Ok(Response::new(GetUserMemosStatsResponse {
             // 简化，后面这个api一定会改
-            memo_creation_stats: HashMap::from([("2024-01-01".to_owned(), count.count)]),
+            stats: HashMap::from([("2024-01-01".to_owned(), count.count)]),
         }))
     }
 
@@ -248,6 +264,13 @@ impl memo_service_server::MemoService for MemoService {
         &self,
         request: Request<ListMemoCommentsRequest>,
     ) -> Result<Response<ListMemoCommentsResponse>, Status> {
+        todo!()
+    }
+    /// GetMemoByName gets a memo by name.
+    async fn get_memo_by_name(
+        &self,
+        request: Request<GetMemoByNameRequest>,
+    ) -> Result<Response<GetMemoByNameResponse>, Status> {
         todo!()
     }
 }

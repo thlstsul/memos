@@ -27,9 +27,11 @@ fn main() {
             true,
             None,
         )
-        .type_attribute(
-            "memos.api.v2.User",
-            r"#[derive(serde::Serialize, serde::Deserialize)]",
+        .with_serde(
+            &["memos.api.v2.User", "memos.api.v2.PageToken"],
+            true,
+            true,
+            None,
         )
         .enum_attribute(".", "#[allow(clippy::enum_variant_names)]")
         .with_field_attributes(
@@ -101,7 +103,7 @@ fn main() {
         .compile(
             &[
                 "proto/api/v2/user_service.proto",
-                "proto/api/v2/system_service.proto",
+                "proto/api/v2/workspace_service.proto",
                 "proto/api/v2/memo_service.proto",
                 "proto/api/v2/resource_service.proto",
                 "proto/api/v2/tag_service.proto",

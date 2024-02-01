@@ -32,12 +32,11 @@ pub fn router() -> Router<AppState> {
 pub async fn stream_resource(
     auth_session: AuthSession,
     state: State<AppState>,
-    Path(id): Path<i32>,
+    Path(name): Path<String>,
     Query(ResourceQry { thumbnail }): Query<ResourceQry>,
 ) -> Result<super::Resource> {
     let svc = ResourceService::new(&state);
-    let res = svc.get_resource(id).await?;
-    // TODO
+    let res = svc.get_resource_by_name(name).await?;
     let filename = res.filename.clone();
     let r#type = res.r#type.clone();
     let thumbnail = Some("1".to_owned()) == thumbnail && res.r#type.starts_with("image");

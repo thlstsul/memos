@@ -3,8 +3,8 @@ use tonic::{Request, Response, Status};
 
 use crate::api::v2::{
     tag_service_server, DeleteTagRequest, DeleteTagResponse, GetTagSuggestionsRequest,
-    GetTagSuggestionsResponse, ListTagsRequest, ListTagsResponse, Tag, UpsertTagRequest,
-    UpsertTagResponse,
+    GetTagSuggestionsResponse, ListTagsRequest, ListTagsResponse, RenameTagRequest,
+    RenameTagResponse, Tag, UpsertTagRequest, UpsertTagResponse,
 };
 use crate::dao::tag::TagDao;
 use crate::state::AppState;
@@ -72,6 +72,12 @@ impl tag_service_server::TagService for TagService {
         &self,
         request: Request<GetTagSuggestionsRequest>,
     ) -> Result<Response<GetTagSuggestionsResponse>, Status> {
+        todo!()
+    }
+    async fn rename_tag(
+        &self,
+        request: Request<RenameTagRequest>,
+    ) -> Result<Response<RenameTagResponse>, Status> {
         todo!()
     }
 }

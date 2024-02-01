@@ -1,4 +1,5 @@
 use crate::api::v2::Node;
+use nanoid::{alphabet, nanoid};
 use snafu::{ensure, Snafu};
 
 pub mod ast;
@@ -17,6 +18,10 @@ pub fn get_name_parent_token(
     ensure!(parts.len() == 2, InvalidRequest { name });
     ensure!(token == parts[0], InvalidPrefix { name });
     Ok(parts[1].to_owned())
+}
+
+pub fn uuid() -> String {
+    nanoid!(16, &alphabet::SAFE)
 }
 
 #[derive(Debug, Snafu)]

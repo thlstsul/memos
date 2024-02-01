@@ -5,6 +5,7 @@ use libsql_client::{de, Statement, Value};
 use crate::{
     api::{
         memo::{CreateMemo, FindMemo, UpdateMemo},
+        pager::Paginator,
         v2::Memo,
         Count,
     },
@@ -29,15 +30,17 @@ impl MemoDao {
         &self,
         CreateMemo {
             creator_id,
+            resource_name,
             content,
             visibility,
         }: CreateMemo,
     ) -> Result<Option<Memo>, Error> {
         let mut stmts = vec![Statement::with_args(
-            "INSERT INTO memo (creator_id, content, visibility) VALUES (?, ?, ?) RETURNING id, creator_id, created_ts as create_time, created_ts as display_time, updated_ts as update_time, row_status, content, visibility",
+            "INSERT INTO memo (creator_id, resource_name, content, visibility) VALUES (?, ?, ?, ?) RETURNING id, resource_name as name, creator_id, created_ts as create_time, created_ts as display_time, updated_ts as update_time, row_status, content, visibility",
             &[
                 Value::from(creator_id),
-                Value::from(content.clone()),
+                Value::from(resource_name),
+                Value::from(&content),
                 Value::from(visibility.as_str_name().to_owned()),
             ],
         )];
@@ -145,6 +148,7 @@ impl From<FindMemo> for Statement {
     fn from(value: FindMemo) -> Self {
         let FindMemo {
             id,
+            name,
             creator,
             creator_id,
             row_status,
@@ -154,8 +158,7 @@ impl From<FindMemo> for Statement {
             content_search,
             visibility_list,
             exclude_content,
-            limit,
-            offset,
+            page_token,
             order_by_updated_ts,
             order_by_pinned,
         } = value;
@@ -166,6 +169,10 @@ impl From<FindMemo> for Statement {
         if let Some(id) = id {
             wheres.push("memo.id = ?");
             args.push(Value::from(id));
+        }
+        if let Some(name) = name {
+            wheres.push("memo.resource_name = ?");
+            args.push(Value::from(name))
         }
         if let Some(creator_id) = creator_id {
             wheres.push("memo.creator_id = ?");
@@ -215,6 +222,7 @@ impl From<FindMemo> for Statement {
 
         let mut fields = vec![
             "memo.id AS id",
+            "memo.resource_name as name",
             "user.username AS creator",
             "memo.creator_id AS creator_id",
             "memo.created_ts AS create_time",
@@ -248,11 +256,8 @@ impl From<FindMemo> for Statement {
             orders.join(", ")
         );
 
-        if let Some(limit) = limit {
-            query = format!("{query} LIMIT {limit}");
-            if let Some(offset) = offset {
-                query = format!("{query} OFFSET {offset}");
-            }
+        if let Some(page_token) = page_token {
+            query = format!("{query} {}", page_token.as_limit_sql());
         }
 
         Statement::with_args(query, &args)

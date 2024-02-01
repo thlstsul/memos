@@ -34,14 +34,16 @@ impl ResourceDao {
             external_link,
             internal_path,
             id,
+            resource_name,
             created_ts,
             updated_ts,
             memo_id,
         }: WholeResource,
     ) -> Result<Option<Resource>, Error> {
-        let mut fields = vec!["filename", "type", "size", "creator_id"];
+        let mut fields = vec!["resource_name", "filename", "type", "size", "creator_id"];
         let mut placeholder = vec!["?", "?", "?", "?"];
         let mut args = vec![
+            Value::from(resource_name),
             Value::from(filename),
             Value::from(r#type),
             Value::from(size),
@@ -91,7 +93,7 @@ impl ResourceDao {
         }
 
         let insert_sql = format!(
-            "insert into resource ({}) values ({}) returning id, filename, type, size, created_ts as create_time, external_link",
+            "insert into resource ({}) values ({}) returning id, resource_name as name, filename, type, size, created_ts as create_time, external_link",
             fields.join(", "),
             placeholder.join(", ")
         );
@@ -166,7 +168,7 @@ impl ResourceDao {
         if memo_ids.is_empty() {
             return Ok(HashMap::new());
         }
-        let stmts: Vec<_> = memo_ids.iter().map(|i: &i32| Statement::with_args("select id, filename, external_link, type, size, created_ts as create_time, memo_id from resource where memo_id = ?", &[*i])).collect();
+        let stmts: Vec<_> = memo_ids.iter().map(|i: &i32| Statement::with_args("select id, resource_name as name, filename, external_link, type, size, created_ts as create_time, memo_id from resource where memo_id = ?", &[*i])).collect();
         let mut rss = self.batch_query::<_, Resource>(stmts).await?;
         let mut rtn = HashMap::new();
         for (i, memo_id) in memo_ids.iter().enumerate() {
@@ -180,6 +182,7 @@ impl From<FindResource> for Statement {
     fn from(value: FindResource) -> Self {
         let FindResource {
             id,
+            name,
             creator_id,
             filename,
             memo_id,
@@ -194,6 +197,10 @@ impl From<FindResource> for Statement {
         if let Some(id) = id {
             wheres.push("id = ?");
             args.push(Value::from(id));
+        }
+        if let Some(name) = name {
+            wheres.push("name = ?");
+            args.push(Value::from(name));
         }
 
         if let Some(creator_id) = creator_id {
@@ -215,7 +222,7 @@ impl From<FindResource> for Statement {
             wheres.push("memo_id IS NOT NULL");
         }
 
-        let mut sql = format!("select id, filename, external_link, type, size, created_ts as create_time, memo_id from resource where {}", wheres.join(" AND "));
+        let mut sql = format!("select id, resource_name as name, filename, external_link, type, size, created_ts as create_time, memo_id from resource where {}", wheres.join(" AND "));
 
         if let Some(limit) = limit {
             sql = format!("{sql} LIMIT {limit}");

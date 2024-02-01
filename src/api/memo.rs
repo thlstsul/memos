@@ -5,8 +5,8 @@ use crate::util::{
 
 use super::{
     v2::{
-        CreateMemoResponse, GetMemoResponse, ListMemosRequest, ListMemosResponse, Memo, RowStatus,
-        UpdateMemoRequest, UpdateMemoResponse, Visibility,
+        CreateMemoResponse, GetMemoResponse, ListMemosRequest, ListMemosResponse, Memo, PageToken,
+        RowStatus, UpdateMemoRequest, UpdateMemoResponse, Visibility,
     },
     USER_NAME_PREFIX,
 };
@@ -19,6 +19,7 @@ use syn::{
 #[derive(Debug, Default)]
 pub struct FindMemo {
     pub id: Option<i32>,
+    pub name: Option<String>,
 
     // Temp fields
     pub creator: Option<String>,
@@ -36,14 +37,14 @@ pub struct FindMemo {
     pub exclude_content: bool,
 
     // Pagination
-    pub limit: Option<i32>,
-    pub offset: Option<i32>,
+    pub page_token: Option<PageToken>,
     pub order_by_updated_ts: bool,
     pub order_by_pinned: bool,
 }
 
 pub struct CreateMemo {
     pub creator_id: i32,
+    pub resource_name: String,
     pub content: String,
     pub visibility: Visibility,
 }
@@ -132,8 +133,17 @@ impl TryInto<FindMemo> for &ListMemosRequest {
             .map(|s| get_name_parent_token(s, USER_NAME_PREFIX))
             .transpose()
             .context(InvalidUsername)?;
+        let page_token = if !self.page_token.is_empty() {
+            serde_json::from_str(&self.page_token).context(PageTokenDecodeFailed)?
+        } else {
+            PageToken {
+                limit: self.page_size,
+                offset: 0,
+            }
+        };
         Ok(FindMemo {
             id: None,
+            name: None,
             creator,
             creator_id: None,
             row_status: filter.row_status,
@@ -143,16 +153,7 @@ impl TryInto<FindMemo> for &ListMemosRequest {
             content_search: filter.content_search.unwrap_or_default(),
             visibility_list: filter.visibilities.unwrap_or_default(),
             exclude_content: false,
-            limit: if self.limit == 0 {
-                None
-            } else {
-                Some(self.limit)
-            },
-            offset: if self.limit == 0 {
-                None
-            } else {
-                Some(self.offset)
-            },
+            page_token: Some(page_token),
             order_by_updated_ts: false,
             order_by_pinned: filter.order_by_pinned.unwrap_or_default(),
         })
@@ -173,7 +174,10 @@ impl From<Vec<Memo>> for ListMemosResponse {
         for memo in memos.iter_mut() {
             convert_memo(memo)
         }
-        ListMemosResponse { memos }
+        ListMemosResponse {
+            memos,
+            ..Default::default()
+        }
     }
 }
 
@@ -239,8 +243,13 @@ impl From<&UpdateMemoRequest> for UpdateMemo {
 pub enum Error {
     #[snafu(display("Invalid username : {source}"), context(suffix(false)))]
     InvalidUsername { source: crate::util::Error },
-    #[snafu(display("Invalid username : {source}"), context(suffix(false)))]
+    #[snafu(display("Failed to decode filter : {source}"), context(suffix(false)))]
     FilterDecodeFailed { source: syn::Error },
+    #[snafu(
+        display("Failed to decode page token : {source}"),
+        context(suffix(false))
+    )]
+    PageTokenDecodeFailed { source: serde_json::Error },
 }
 
 mod test {

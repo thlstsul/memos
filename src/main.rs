@@ -71,7 +71,7 @@ async fn grpc_web(
 
     let api_v1 = Router::new().merge(public).merge(protected);
 
-    let index_file = ServeFile::new("web/dist/index.html");
+    let index_file = ServeFile::new("web/dist/index.html").precompressed_br();
     let axum_router = Router::new()
         .nest("/api/v1", api_v1)
         .route("/o/r/:id", get(stream_resource))
@@ -82,11 +82,11 @@ async fn grpc_web(
         .route_service("/setting", index_file)
         .nest_service(
             "/",
-            ServeDir::new("web/dist").append_index_html_on_directories(true),
+            ServeDir::new("web/dist")
+                .precompressed_br()
+                .append_index_html_on_directories(true),
         )
         .layer(TraceLayer::new_for_http());
-
-    let axum_router = axum_router.with_state(state.clone());
 
     let public_path = vec![
         "/memos.api.v2.AuthService/GetAuthStatus",
@@ -104,6 +104,8 @@ async fn grpc_web(
     let memo = ServiceFactory::get_memo(&state);
     let resource = ServiceFactory::get_resource(&state);
     let inbox = ServiceFactory::get_inbox();
+
+    let axum_router = axum_router.with_state(state);
 
     let tonic_router = Server::builder()
         .accept_http1(true)

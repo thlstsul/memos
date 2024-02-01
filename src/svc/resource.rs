@@ -10,6 +10,10 @@ use tokio::{
 use tokio_util::io::ReaderStream;
 use tonic::{Request, Response, Status};
 
+use crate::api::v2::{
+    GetResourceByNameRequest, GetResourceByNameResponse, GetResourceRequest, GetResourceResponse,
+};
+use crate::util;
 use crate::{
     api::{
         resource::{FindResource, WholeResource},
@@ -41,7 +45,8 @@ impl ResourceService {
         }
     }
 
-    pub async fn create_resource(&self, create: WholeResource) -> Result<Resource, Error> {
+    pub async fn create_resource(&self, mut create: WholeResource) -> Result<Resource, Error> {
+        create.resource_name = util::uuid();
         self.dao
             .create_resource(create)
             .await
@@ -81,7 +86,19 @@ impl ResourceService {
             })
             .await
             .context(GetResourceFailed)?;
-        rs.pop().context(ResourceNotFound { id })
+        rs.pop().context(ResourceNotFound)
+    }
+
+    pub async fn get_resource_by_name(&self, name: String) -> Result<Resource, Error> {
+        let mut rs = self
+            .dao
+            .list_resources(FindResource {
+                name: Some(name),
+                ..Default::default()
+            })
+            .await
+            .context(GetResourceFailed)?;
+        rs.pop().context(ResourceNotFound)
     }
 
     pub async fn get_whole_resource(&self, id: i32) -> Result<WholeResource, Error> {
@@ -89,7 +106,7 @@ impl ResourceService {
             .get_resource(id)
             .await
             .context(GetResourceFailed)?
-            .context(ResourceNotFound { id })
+            .context(ResourceNotFound)
     }
 
     pub async fn relate_resources(
@@ -224,6 +241,26 @@ impl resource_service_server::ResourceService for ResourceService {
         Ok(Response::new(DeleteResourceResponse {}))
     }
 
+    async fn get_resource(
+        &self,
+        request: Request<GetResourceRequest>,
+    ) -> Result<Response<GetResourceResponse>, Status> {
+        let res = Self::get_resource(&self, request.get_ref().id).await?;
+        Ok(Response::new(GetResourceResponse {
+            resource: Some(res),
+        }))
+    }
+
+    async fn get_resource_by_name(
+        &self,
+        request: Request<GetResourceByNameRequest>,
+    ) -> Result<Response<GetResourceByNameResponse>, Status> {
+        let res = Self::get_resource_by_name(&self, request.into_inner().name).await?;
+        Ok(Response::new(GetResourceByNameResponse {
+            resource: Some(res),
+        }))
+    }
+
     async fn update_resource(
         &self,
         request: Request<UpdateResourceRequest>,
@@ -255,8 +292,8 @@ pub enum Error {
     SetMemoResourcesFailed { source: crate::dao::Error },
     #[snafu(display("Failed to get resource: {source}"), context(suffix(false)))]
     GetResourceFailed { source: crate::dao::Error },
-    #[snafu(display("Resource not found: {id}"), context(suffix(false)))]
-    ResourceNotFound { id: i32 },
+    #[snafu(display("Resource not found"), context(suffix(false)))]
+    ResourceNotFound,
     #[snafu(display("Failed to list resource: {source}"), context(suffix(false)))]
     ListResourceFailed { source: crate::dao::Error },
     #[snafu(display("Failed to delete resource: {source}"), context(suffix(false)))]
