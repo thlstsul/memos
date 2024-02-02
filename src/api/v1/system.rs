@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::v2::User;
 
-const VERSION: &str = "v0.17.1";
+const VERSION: &str = "0.19.0";
 const MODE: &str = "prod";
 
 #[derive(Deserialize, Serialize)]

@@ -6,7 +6,8 @@ use crate::{
     api::v2::{
         auth_service_server::AuthServiceServer, inbox_service_server::InboxServiceServer,
         memo_service_server::MemoServiceServer, resource_service_server::ResourceServiceServer,
-        tag_service_server::TagServiceServer, user_service_server::UserServiceServer, User,
+        tag_service_server::TagServiceServer, user_service_server::UserServiceServer,
+        webhook_service_server::WebhookServiceServer, User,
     },
     ctrl::auth::AuthSession,
     state::AppState,
@@ -14,7 +15,7 @@ use crate::{
 
 use self::{
     auth::AuthService, inbox::InboxService, memo::MemoService, resource::ResourceService,
-    tag::TagService, user::UserService,
+    tag::TagService, user::UserService, webhook::WebhookService,
 };
 
 pub mod auth;
@@ -24,6 +25,7 @@ pub mod resource;
 pub mod system;
 pub mod tag;
 pub mod user;
+pub mod webhook;
 
 pub struct ServiceFactory;
 
@@ -54,6 +56,10 @@ impl ServiceFactory {
 
     pub fn get_inbox() -> InboxServiceServer<InboxService> {
         InboxServiceServer::new(InboxService {})
+    }
+
+    pub fn get_webhook() -> WebhookServiceServer<WebhookService> {
+        WebhookServiceServer::new(WebhookService)
     }
 }
 

@@ -104,6 +104,7 @@ async fn grpc_web(
     let memo = ServiceFactory::get_memo(&state);
     let resource = ServiceFactory::get_resource(&state);
     let inbox = ServiceFactory::get_inbox();
+    let webhook = ServiceFactory::get_webhook();
 
     let axum_router = axum_router.with_state(state);
 
@@ -116,7 +117,8 @@ async fn grpc_web(
         .add_service(auth)
         .add_service(memo)
         .add_service(resource)
-        .add_service(inbox);
+        .add_service(inbox)
+        .add_service(webhook);
 
     Ok(GrpcWebService {
         axum_router,
