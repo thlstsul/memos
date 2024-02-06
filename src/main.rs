@@ -13,7 +13,7 @@ use ctrl::{
 };
 use hybrid::{GrpcWebService, ShuttleGrpcWeb};
 use hyper::StatusCode;
-use libsql_client::client::Client;
+use libsql::Connection;
 use shuttle_secrets::SecretStore;
 use svc::user::UserService;
 use tonic::transport::Server;
@@ -41,15 +41,11 @@ mod util;
 
 #[shuttle_runtime::main]
 async fn grpc_web(
-    #[shuttle_turso::Turso(
-        addr = "{secrets.TURSO_URL}",
-        token = "{secrets.TURSO_TOKEN}",
-        local_addr = "{secrets.TURSO_URL}"
-    )]
-    client: Client,
+    #[shuttle_turso::Turso(addr = "{secrets.TURSO_URL}", token = "{secrets.TURSO_TOKEN}")]
+    conn: Connection,
     #[shuttle_secrets::Secrets] secrets: SecretStore,
 ) -> ShuttleGrpcWeb {
-    let state = AppState::new(client);
+    let state = AppState::new(conn);
     let session_store = TursoStore::new(&state);
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)

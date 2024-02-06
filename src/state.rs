@@ -1,55 +1,48 @@
 use std::sync::Arc;
 
-use anyhow::Result;
-use libsql_client::{BatchResult, Client, ResultSet, Statement, Transaction};
+use libsql::{
+    params::IntoParams, Connection, Error, Rows, Statement, Transaction, TransactionBehavior,
+};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AppState {
-    repo: Arc<Client>,
+    repo: Arc<Connection>,
 }
 
 impl AppState {
-    pub fn new(repo: Client) -> Self {
+    pub fn new(repo: Connection) -> Self {
         Self {
             repo: Arc::new(repo),
         }
     }
 
-    pub async fn execute(&self, stmt: impl Into<Statement> + Send) -> Result<ResultSet> {
-        self.repo.execute(stmt).await
-    }
-
-    pub async fn batch<I: IntoIterator<Item = impl Into<Statement> + Send> + Send>(
-        &self,
-        stmts: I,
-    ) -> Result<Vec<ResultSet>>
-    where
-        <I as IntoIterator>::IntoIter: Send,
-    {
-        self.repo.batch(stmts).await
+    pub async fn execute(&self, sql: &str, params: impl IntoParams) -> Result<u64, Error> {
+        self.repo.execute(sql, params).await
     }
 
     #[allow(dead_code)]
-    pub async fn raw_batch(
-        &self,
-        stmts: impl IntoIterator<Item = impl Into<Statement> + Send> + Send,
-    ) -> Result<BatchResult> {
-        self.repo.raw_batch(stmts).await
+    pub async fn execute_batch(&self, sql: &str) -> Result<(), Error> {
+        self.repo.execute_batch(sql).await
+    }
+
+    pub async fn query(&self, sql: &str, params: impl IntoParams) -> Result<Rows, Error> {
+        self.repo.query(sql, params).await
+    }
+
+    pub async fn prepare(&self, sql: &str) -> Result<Statement, Error> {
+        self.repo.prepare(sql).await
     }
 
     #[allow(dead_code)]
-    pub fn batch_sync<I: IntoIterator<Item = impl Into<Statement> + Send> + Send>(
-        &self,
-        stmts: I,
-    ) -> Result<Vec<ResultSet>>
-    where
-        <I as std::iter::IntoIterator>::IntoIter: std::marker::Send,
-    {
-        self.repo.batch_sync(stmts)
-    }
-
-    #[allow(dead_code)]
-    pub async fn transaction(&self) -> Result<Transaction> {
+    pub async fn transaction(&self) -> Result<Transaction, Error> {
         self.repo.transaction().await
+    }
+
+    #[allow(dead_code)]
+    pub async fn transaction_with_behavior(
+        &self,
+        tx_behavior: TransactionBehavior,
+    ) -> Result<Transaction, Error> {
+        self.repo.transaction_with_behavior(tx_behavior).await
     }
 }

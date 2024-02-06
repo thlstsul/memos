@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use libsql_client::{Statement, Value};
+use libsql::Value;
+use snafu::{ResultExt, Snafu};
 
 use crate::{
     api::{
@@ -10,7 +11,7 @@ use crate::{
     state::AppState,
 };
 
-use super::{Dao, Error};
+use super::{de, Dao};
 
 pub struct ResourceDao {
     pub state: AppState,
@@ -39,14 +40,14 @@ impl ResourceDao {
             updated_ts,
             memo_id,
         }: WholeResource,
-    ) -> Result<Option<Resource>, Error> {
+    ) -> Result<Option<Resource>, super::Error> {
         let mut fields = vec!["resource_name", "filename", "type", "size", "creator_id"];
         let mut placeholder = vec!["?", "?", "?", "?"];
         let mut args = vec![
             Value::from(resource_name),
             Value::from(filename),
             Value::from(r#type),
-            Value::from(size),
+            Value::from(size as u32),
             Value::from(creator_id),
         ];
 
@@ -98,9 +99,7 @@ impl ResourceDao {
             placeholder.join(", ")
         );
 
-        let stmt = Statement::with_args(insert_sql, &args);
-
-        let mut rs = self.query(stmt).await?;
+        let mut rs = self.query(&insert_sql, args).await?;
         Ok(rs.pop())
     }
 
@@ -109,78 +108,43 @@ impl ResourceDao {
         memo_id: i32,
         add_res_ids: Vec<i32>,
         del_res_ids: Vec<i32>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), libsql::Error> {
         if add_res_ids.is_empty() && del_res_ids.is_empty() {
             return Ok(());
         }
 
-        let mut add_stmts = add_res_ids
-            .iter()
-            .map(|i| {
-                Statement::with_args(
-                    "update resource set memo_id = ? where id = ?",
-                    &[memo_id, *i],
-                )
-            })
-            .collect();
-        let mut del_stmts = del_res_ids
-            .iter()
-            .map(|i| {
-                Statement::with_args(
-                    "delete from resource where memo_id = ? and id = ?",
-                    &[memo_id, *i],
-                )
-            })
-            .collect();
+        if add_res_ids.is_empty() {
+            let mut stmt = self
+                .get_state()
+                .prepare("update resource set memo_id = ? where id = ?")
+                .await?;
+            for add_id in add_res_ids {
+                stmt.execute([memo_id, add_id]).await?;
+            }
+        }
 
-        let mut stmts = Vec::new();
-        stmts.append(&mut add_stmts);
-        stmts.append(&mut del_stmts);
+        if del_res_ids.is_empty() {
+            let mut stmt = self
+                .get_state()
+                .prepare("delete from resource where memo_id = ? and id = ?")
+                .await?;
+            for del_id in del_res_ids {
+                stmt.execute([memo_id, del_id]).await?;
+            }
+        }
 
-        self.batch(stmts).await?;
         Ok(())
     }
 
-    pub async fn get_resource(&self, id: i32) -> Result<Option<WholeResource>, Error> {
-        let stmt = Statement::with_args("select * from resource where id = ?", &[id]);
-        let mut rs = self.query(stmt).await?;
+    pub async fn get_resource(&self, id: i32) -> Result<Option<WholeResource>, super::Error> {
+        let sql = "select * from resource where id = ?";
+        let mut rs = self.query(sql, [id]).await?;
         Ok(rs.pop())
     }
 
-    pub async fn list_resources(&self, find: FindResource) -> Result<Vec<Resource>, Error> {
-        let stmt: Statement = find.into();
-        self.query(stmt).await
-    }
-
-    pub async fn delete_resource(&self, id: i32, creator_id: i32) -> Result<(), Error> {
-        let stmt = Statement::with_args(
-            "delete from resource where id = ? and creator_id = ?",
-            &[id, creator_id],
-        );
-        self.execute(stmt).await?;
-        Ok(())
-    }
-
-    pub async fn relate_resources(
+    pub async fn list_resources(
         &self,
-        memo_ids: Vec<i32>,
-    ) -> Result<HashMap<i32, Vec<Resource>>, Error> {
-        if memo_ids.is_empty() {
-            return Ok(HashMap::new());
-        }
-        let stmts: Vec<_> = memo_ids.iter().map(|i: &i32| Statement::with_args("select id, resource_name as name, filename, external_link, type, size, created_ts as create_time, memo_id from resource where memo_id = ?", &[*i])).collect();
-        let mut rss = self.batch_query::<_, Resource>(stmts).await?;
-        let mut rtn = HashMap::new();
-        for (i, memo_id) in memo_ids.iter().enumerate() {
-            rtn.insert(*memo_id, rss.pop_front().unwrap_or_default());
-        }
-        Ok(rtn)
-    }
-}
-
-impl From<FindResource> for Statement {
-    fn from(value: FindResource) -> Self {
-        let FindResource {
+        FindResource {
             id,
             name,
             creator_id,
@@ -189,8 +153,8 @@ impl From<FindResource> for Statement {
             limit,
             offset,
             has_relate_memo,
-        } = value;
-
+        }: FindResource,
+    ) -> Result<Vec<Resource>, super::Error> {
         let mut wheres = vec!["1 = 1"];
         let mut args = Vec::new();
 
@@ -231,6 +195,48 @@ impl From<FindResource> for Statement {
             }
         }
 
-        Statement::with_args(sql, &args)
+        self.query(&sql, args).await
     }
+
+    pub async fn delete_resource(&self, id: i32, creator_id: i32) -> Result<(), super::Error> {
+        let sql = "delete from resource where id = ? and creator_id = ?";
+        self.execute(sql, [id, creator_id]).await?;
+        Ok(())
+    }
+
+    pub async fn relate_resources(
+        &self,
+        memo_ids: Vec<i32>,
+    ) -> Result<HashMap<i32, Vec<Resource>>, Error> {
+        if memo_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let mut rtn = HashMap::new();
+        let mut stmt = self
+            .get_state()
+            .prepare("select id, resource_name as name, filename, external_link, type, size, created_ts as create_time, memo_id from resource where memo_id = ?")
+            .await
+            .context(PrepareStatement)?;
+        for memo_id in memo_ids {
+            let rows = stmt.query([memo_id]).await.context(Execute)?;
+            let res = de(rows).context(Deserialize)?;
+            rtn.insert(memo_id, res);
+        }
+
+        Ok(rtn)
+    }
+}
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
+    Execute { source: libsql::Error },
+    #[snafu(
+        display("Failed to prepare statement: {source}"),
+        context(suffix(false))
+    )]
+    PrepareStatement { source: libsql::Error },
+    #[snafu(display("Deserialize failed: {source}"), context(suffix(false)))]
+    Deserialize { source: super::Error },
 }

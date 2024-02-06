@@ -50,8 +50,8 @@ impl ResourceService {
         self.dao
             .create_resource(create)
             .await
-            .context(CreateResourceFailed)?
-            .context(MaybeCreateResourceFailed)
+            .context(CreateResource)?
+            .context(MaybeCreateResource)
     }
 
     pub async fn set_memo_resources(
@@ -74,7 +74,7 @@ impl ResourceService {
         self.dao
             .set_memo_resources(memo_id, add_res_ids, del_res_ids)
             .await
-            .context(SetMemoResourcesFailed)
+            .context(SetMemoResources)
     }
 
     pub async fn get_resource(&self, id: i32) -> Result<Resource, Error> {
@@ -85,7 +85,7 @@ impl ResourceService {
                 ..Default::default()
             })
             .await
-            .context(GetResourceFailed)?;
+            .context(GetResource)?;
         rs.pop().context(ResourceNotFound)
     }
 
@@ -97,7 +97,7 @@ impl ResourceService {
                 ..Default::default()
             })
             .await
-            .context(GetResourceFailed)?;
+            .context(GetResource)?;
         rs.pop().context(ResourceNotFound)
     }
 
@@ -105,7 +105,7 @@ impl ResourceService {
         self.dao
             .get_resource(id)
             .await
-            .context(GetResourceFailed)?
+            .context(GetResource)?
             .context(ResourceNotFound)
     }
 
@@ -116,7 +116,7 @@ impl ResourceService {
         self.dao
             .relate_resources(memo_ids)
             .await
-            .context(RelateResourcesFailed)
+            .context(RelateResources)
     }
 
     pub async fn relate_resource(&self, memo_id: i32) -> Result<Vec<Resource>, Error> {
@@ -124,7 +124,7 @@ impl ResourceService {
             .dao
             .relate_resources(vec![memo_id])
             .await
-            .context(RelateResourcesFailed)?;
+            .context(RelateResources)?;
         Ok(rs.into_values().next().unwrap_or(vec![]))
     }
 
@@ -160,15 +160,15 @@ impl ResourceService {
                 {
                     let img = ImageReader::new(Cursor::new(blob))
                         .with_guessed_format()
-                        .context(OpenResourceFailed)?
+                        .context(OpenResource)?
                         .decode()
-                        .context(ImageDecodeFailed)?;
+                        .context(ImageDecode)?;
                     let img = img.thumbnail(512, 512);
                     let format: ImageOutputFormat = ImageFormat::from_path(&filename)
-                        .context(ImageEncodeFailed)?
+                        .context(ImageEncode)?
                         .into();
                     img.write_to(&mut Cursor::new(&mut bytes), format)
-                        .context(ImageEncodeFailed)?;
+                        .context(ImageEncode)?;
                 }
                 Self::save_file(&thumbnail_path, &bytes).await?;
             } else {
@@ -182,13 +182,13 @@ impl ResourceService {
             resource_path
         };
 
-        let read_file = File::open(&read_path).await.context(OpenResourceFailed)?;
+        let read_file = File::open(&read_path).await.context(OpenResource)?;
         Ok(ReaderStream::new(read_file))
     }
 
     async fn creator_dir(dir: impl AsRef<path::Path>) -> Result<(), Error> {
-        if !fs::try_exists(&dir).await.context(CreateCachedDirFailed)? {
-            fs::create_dir(dir).await.context(CreateCachedDirFailed)?;
+        if !fs::try_exists(&dir).await.context(CreateCachedDir)? {
+            fs::create_dir(dir).await.context(CreateCachedDir)?;
         }
         Ok(())
     }
@@ -200,12 +200,9 @@ impl ResourceService {
             .read(false)
             .open(&path)
             .await
-            .context(OpenResourceFailed)?;
+            .context(OpenResource)?;
 
-        resource_file
-            .write_all(blob)
-            .await
-            .context(WriteResourceFailed)?;
+        resource_file.write_all(blob).await.context(WriteResource)?;
         Ok(())
     }
 }
@@ -224,7 +221,7 @@ impl resource_service_server::ResourceService for ResourceService {
                 ..Default::default()
             })
             .await
-            .context(ListResourceFailed)?;
+            .context(ListResource)?;
 
         Ok(Response::new(ListResourcesResponse { resources }))
     }
@@ -237,7 +234,7 @@ impl resource_service_server::ResourceService for ResourceService {
         self.dao
             .delete_resource(request.get_ref().id, user.id)
             .await
-            .context(DeleteResourceFailed)?;
+            .context(DeleteResource)?;
         Ok(Response::new(DeleteResourceResponse {}))
     }
 
@@ -245,7 +242,7 @@ impl resource_service_server::ResourceService for ResourceService {
         &self,
         request: Request<GetResourceRequest>,
     ) -> Result<Response<GetResourceResponse>, Status> {
-        let res = Self::get_resource(&self, request.get_ref().id).await?;
+        let res = Self::get_resource(self, request.get_ref().id).await?;
         Ok(Response::new(GetResourceResponse {
             resource: Some(res),
         }))
@@ -255,7 +252,7 @@ impl resource_service_server::ResourceService for ResourceService {
         &self,
         request: Request<GetResourceByNameRequest>,
     ) -> Result<Response<GetResourceByNameResponse>, Status> {
-        let res = Self::get_resource_by_name(&self, request.into_inner().name).await?;
+        let res = Self::get_resource_by_name(self, request.into_inner().name).await?;
         Ok(Response::new(GetResourceByNameResponse {
             resource: Some(res),
         }))
@@ -279,45 +276,45 @@ impl resource_service_server::ResourceService for ResourceService {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Failed to create resource: {source}"), context(suffix(false)))]
-    CreateResourceFailed { source: crate::dao::Error },
+    CreateResource { source: crate::dao::Error },
     #[snafu(
         display("Maybe create resource failed, because return none"),
         context(suffix(false))
     )]
-    MaybeCreateResourceFailed,
+    MaybeCreateResource,
     #[snafu(
         display("Failed to set memo resources: {source}"),
         context(suffix(false))
     )]
-    SetMemoResourcesFailed { source: crate::dao::Error },
+    SetMemoResources { source: libsql::Error },
     #[snafu(display("Failed to get resource: {source}"), context(suffix(false)))]
-    GetResourceFailed { source: crate::dao::Error },
+    GetResource { source: crate::dao::Error },
     #[snafu(display("Resource not found"), context(suffix(false)))]
     ResourceNotFound,
     #[snafu(display("Failed to list resource: {source}"), context(suffix(false)))]
-    ListResourceFailed { source: crate::dao::Error },
+    ListResource { source: crate::dao::Error },
     #[snafu(display("Failed to delete resource: {source}"), context(suffix(false)))]
-    DeleteResourceFailed { source: crate::dao::Error },
+    DeleteResource { source: crate::dao::Error },
     #[snafu(
         display("Failed to relate resources: {source}"),
         context(suffix(false))
     )]
-    RelateResourcesFailed { source: crate::dao::Error },
+    RelateResources { source: crate::dao::resource::Error },
 
     #[snafu(
         display("Failed to create cached dir: {source}"),
         context(suffix(false))
     )]
-    CreateCachedDirFailed { source: std::io::Error },
+    CreateCachedDir { source: std::io::Error },
     #[snafu(display("Failed to open resource: {source}"), context(suffix(false)))]
-    OpenResourceFailed { source: std::io::Error },
+    OpenResource { source: std::io::Error },
     #[snafu(display("Failed to write resource: {source}"), context(suffix(false)))]
-    WriteResourceFailed { source: std::io::Error },
+    WriteResource { source: std::io::Error },
     #[snafu(display("Failed to decode image: {source}"), context(suffix(false)))]
-    ImageDecodeFailed { source: image::ImageError },
+    ImageDecode { source: image::ImageError },
     #[snafu(
         display("Failed to encode thumbnail: {source}"),
         context(suffix(false))
     )]
-    ImageEncodeFailed { source: image::ImageError },
+    ImageEncode { source: image::ImageError },
 }

@@ -67,7 +67,7 @@ impl memo_service_server::MemoService for MemoService {
             .create_memo(create)
             .await
             .context(CreateMemoFailed)?
-            .context(MaybeCreateMemoFailed)?;
+            .context(MaybeCreateMemo)?;
         Ok(Response::new(memo.into()))
     }
 
@@ -82,7 +82,7 @@ impl memo_service_server::MemoService for MemoService {
                 ..Default::default()
             })
             .await
-            .context(GetMemoFailed)?;
+            .context(GetMemo)?;
 
         let mut memo = memos.pop();
 
@@ -101,7 +101,7 @@ impl memo_service_server::MemoService for MemoService {
     ) -> Result<Response<ListMemosResponse>, Status> {
         let user = get_current_user(&request);
         let mut find: FindMemo = request.get_ref().try_into().context(InvalidMemoFilter)?;
-        if let Some(creator) = find.creator.clone() {
+        if let Some(ref creator) = find.creator {
             let user = self.user_svc.find_user(creator).await?;
             find.creator_id = Some(user.id);
         }
@@ -127,11 +127,7 @@ impl memo_service_server::MemoService for MemoService {
         }
 
         let page_token = find.page_token.clone();
-        let mut memos = self
-            .memo_dao
-            .list_memos(find)
-            .await
-            .context(ListMemoFailed)?;
+        let mut memos = self.memo_dao.list_memos(find).await.context(ListMemo)?;
 
         // 是否有下一页
         let mut next_page_token = String::new();
@@ -180,7 +176,7 @@ impl memo_service_server::MemoService for MemoService {
                 ..Default::default()
             })
             .await
-            .context(ListMemoFailed)?;
+            .context(ListMemo)?;
         Ok(Response::new(memos.pop().into()))
     }
 
@@ -192,7 +188,7 @@ impl memo_service_server::MemoService for MemoService {
         self.memo_dao
             .delete_memo(request.get_ref().id)
             .await
-            .context(DeleteMemoFailed)?;
+            .context(DeleteMemo)?;
         Ok(Response::new(DeleteMemoResponse {}))
     }
 
@@ -206,7 +202,7 @@ impl memo_service_server::MemoService for MemoService {
             .memo_dao
             .count_memos(user.id)
             .await
-            .context(CountMemoFailed)?;
+            .context(CountMemo)?;
         Ok(Response::new(GetUserMemosStatsResponse {
             // 简化，后面这个api一定会改
             stats: HashMap::from([("2024-01-01".to_owned(), count.count)]),
@@ -278,26 +274,26 @@ impl memo_service_server::MemoService for MemoService {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Failed to create memo: {source}"), context(suffix(false)))]
-    CreateMemoFailed { source: crate::dao::Error },
+    CreateMemoFailed { source: crate::dao::memo::Error },
     #[snafu(display("Failed to get memo: {source}"), context(suffix(false)))]
-    GetMemoFailed { source: crate::dao::Error },
+    GetMemo { source: crate::dao::Error },
     #[snafu(
         display("Maybe create memo failed, because return none"),
         context(suffix(false))
     )]
-    MaybeCreateMemoFailed,
+    MaybeCreateMemo,
 
     #[snafu(display("Failed to update memo: {source}"), context(suffix(false)))]
-    UpdateMemoFailed { source: crate::dao::Error },
+    UpdateMemoFailed { source: crate::dao::memo::Error },
 
     #[snafu(display("Failed to delete memo: {source}"), context(suffix(false)))]
-    DeleteMemoFailed { source: crate::dao::Error },
+    DeleteMemo { source: crate::dao::Error },
 
     #[snafu(display("Failed to find memo list: {source}"), context(suffix(false)))]
-    ListMemoFailed { source: crate::dao::Error },
+    ListMemo { source: crate::dao::Error },
 
     #[snafu(display("Failed to count memo: {source}"), context(suffix(false)))]
-    CountMemoFailed { source: crate::dao::Error },
+    CountMemo { source: crate::dao::Error },
 
     #[snafu(display("Invalid memo filter: {source}"), context(suffix(false)))]
     InvalidMemoFilter { source: crate::api::memo::Error },

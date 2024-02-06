@@ -16,7 +16,7 @@ use crate::state::AppState;
 
 use super::get_current_user;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct UserService {
     user_dao: UserDao,
     setting_dao: UserSettingDao,
@@ -34,15 +34,15 @@ impl UserService {
         }
     }
 
-    pub async fn sign_in(&self, name: String, password: String) -> Result<User, Error> {
+    pub async fn sign_in(&self, name: &str, password: &str) -> Result<User, Error> {
         let mut hasher = Sm3::new();
         hasher.update(password);
 
         let password_hash = hex::encode(hasher.finalize());
         self.user_dao
-            .find_user(name, Some(password_hash))
+            .find_user(name, Some(&password_hash))
             .await
-            .context(QueryUserFailed)?
+            .context(QueryUser)?
             .context(Login)
     }
 
@@ -50,9 +50,9 @@ impl UserService {
         self.user_dao
             .petch_user(id)
             .await
-            .context(QueryUserFailed)?
+            .context(QueryUser)?
             .context(UserNotFound {
-                ident: Some(id.to_string()),
+                ident: id.to_string(),
             })
     }
 
@@ -60,16 +60,16 @@ impl UserService {
         self.user_dao
             .host_user()
             .await
-            .context(QueryUserFailed)?
-            .context(UserNotFound { ident: None })
+            .context(QueryUser)?
+            .context(UserNotFound { ident: "" })
     }
 
-    pub async fn find_user(&self, name: String) -> Result<User, Error> {
+    pub async fn find_user(&self, name: &str) -> Result<User, Error> {
         self.user_dao
-            .find_user(name.clone(), None)
+            .find_user(name, None)
             .await
-            .context(QueryUserFailed)?
-            .context(UserNotFound { ident: Some(name) })
+            .context(QueryUser)?
+            .context(UserNotFound { ident: name })
     }
 }
 
@@ -80,7 +80,7 @@ impl user_service_server::UserService for UserService {
         request: Request<GetUserRequest>,
     ) -> Result<Response<GetUserResponse>, Status> {
         let name = request.into_inner().get_name().context(InvalidUsername)?;
-        let user = Self::find_user(self, name).await?;
+        let user = Self::find_user(self, &name).await?;
         Ok(Response::new(user.into()))
     }
     async fn get_user_setting(
@@ -92,7 +92,7 @@ impl user_service_server::UserService for UserService {
             .setting_dao
             .find_setting(user.id)
             .await
-            .context(QuerySettingFailed)?;
+            .context(QuerySetting)?;
         Ok(Response::new(settings.into()))
     }
     async fn update_user_setting(
@@ -104,7 +104,7 @@ impl user_service_server::UserService for UserService {
         self.setting_dao
             .upsert_setting(settings)
             .await
-            .context(UpsertSettingFailed)?;
+            .context(UpsertSetting)?;
 
         Ok(Response::new(UpdateUserSettingResponse {
             setting: request.get_ref().setting.clone(),
@@ -168,23 +168,23 @@ pub enum Error {
     )]
     Login,
 
-    #[snafu(display("User not found: {ident:?}"), context(suffix(false)))]
-    UserNotFound { ident: Option<String> },
+    #[snafu(display("User not found: {ident}"), context(suffix(false)))]
+    UserNotFound { ident: String },
 
     #[snafu(display("Failed to find user: {source}"), context(suffix(false)))]
-    QueryUserFailed { source: crate::dao::Error },
+    QueryUser { source: crate::dao::Error },
 
     #[snafu(
         display("Failed to find user setting: {source}"),
         context(suffix(false))
     )]
-    QuerySettingFailed { source: crate::dao::Error },
+    QuerySetting { source: crate::dao::Error },
 
     #[snafu(
         display("Failed to update/insert user setting: {source}"),
         context(suffix(false))
     )]
-    UpsertSettingFailed { source: crate::dao::Error },
+    UpsertSetting { source: libsql::Error },
 
     #[snafu(display("Invalid username: {source}"), context(suffix(false)))]
     InvalidUsername { source: crate::api::user::Error },

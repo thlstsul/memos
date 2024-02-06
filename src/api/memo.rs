@@ -127,14 +127,14 @@ impl TryInto<FindMemo> for &ListMemosRequest {
 
     fn try_into(self) -> Result<FindMemo, Self::Error> {
         let filter = &self.filter.replace('\'', "\"");
-        let filter = syn::parse_str::<Filter>(filter).context(FilterDecodeFailed)?;
+        let filter = syn::parse_str::<Filter>(filter).context(FilterDecode)?;
         let creator = filter
             .creator
             .map(|s| get_name_parent_token(s, USER_NAME_PREFIX))
             .transpose()
             .context(InvalidUsername)?;
         let page_token = if !self.page_token.is_empty() {
-            serde_json::from_str(&self.page_token).context(PageTokenDecodeFailed)?
+            serde_json::from_str(&self.page_token).context(PageTokenDecode)?
         } else {
             PageToken {
                 limit: self.page_size,
@@ -244,12 +244,12 @@ pub enum Error {
     #[snafu(display("Invalid username : {source}"), context(suffix(false)))]
     InvalidUsername { source: crate::util::Error },
     #[snafu(display("Failed to decode filter : {source}"), context(suffix(false)))]
-    FilterDecodeFailed { source: syn::Error },
+    FilterDecode { source: syn::Error },
     #[snafu(
         display("Failed to decode page token : {source}"),
         context(suffix(false))
     )]
-    PageTokenDecodeFailed { source: serde_json::Error },
+    PageTokenDecode { source: serde_json::Error },
 }
 
 mod test {

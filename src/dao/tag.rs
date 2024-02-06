@@ -1,14 +1,9 @@
-use libsql_client::{Statement, Value};
+use libsql::params;
 
-use crate::{
-    api::v2::{node, Tag, TagNode},
-    state::AppState,
-    util::ast::parse_document,
-};
+use crate::{api::v2::Tag, state::AppState};
 
 use super::{Dao, Error};
 
-#[derive(Debug)]
 pub struct TagDao {
     pub state: AppState,
 }
@@ -21,53 +16,26 @@ impl Dao for TagDao {
 
 impl TagDao {
     pub async fn list_tags(&self, creator_id: i32) -> Result<Vec<Tag>, Error> {
-        let stmt = Statement::with_args("select user.username as creator, tag.name from user, tag where user.id = ? and user.id = tag.creator_id", &[creator_id]);
-        self.query(stmt).await
+        let sql = "select user.username as creator, tag.name from user, tag where user.id = ? and user.id = tag.creator_id";
+        self.query(sql, [creator_id]).await
     }
 
-    pub async fn delete_tag(&self, name: String, creator_id: i32) -> Result<(), Error> {
-        let stmt = Statement::with_args(
-            "delete from tag where name = ? and creator_id = ?",
-            &[Value::from(name), Value::from(creator_id)],
-        );
-        self.execute(stmt).await?;
+    pub async fn delete_tag(&self, name: &str, creator_id: i32) -> Result<(), Error> {
+        let sql = "delete from tag where name = ? and creator_id = ?";
+        self.execute(sql, params![name, creator_id]).await?;
         Ok(())
     }
 
-    pub async fn upsert_tag(&self, name: String, creator_id: i32) -> Result<(), Error> {
-        let stmt = Statement::with_args(
-            "
+    pub async fn upsert_tag(&self, name: &str, creator_id: i32) -> Result<(), Error> {
+        let sql = "
             INSERT INTO tag (
                 name, creator_id
             )
             VALUES (?, ?)
             ON CONFLICT(name, creator_id) DO UPDATE 
             SET
-                name = EXCLUDED.name",
-            &[Value::from(name), Value::from(creator_id)],
-        );
-        self.execute(stmt).await?;
+                name = EXCLUDED.name";
+        self.execute(sql, params![name, creator_id]).await?;
         Ok(())
     }
-}
-
-pub fn parse_upsert_tag(creator_id: i32, content: &str) -> Vec<Statement> {
-    let mut stmts = Vec::new();
-    let tags = parse_document(content, true);
-    for tag in tags {
-        if let Some(node::Node::TagNode(TagNode { content })) = tag.node {
-            stmts.push(Statement::with_args(
-                "
-                insert into tag (
-                    name, creator_id
-                )
-                values (?, ?)
-                on conflict(name, creator_id) do update 
-                set
-                    name = excluded.name",
-                &[content, creator_id.to_string()],
-            ));
-        }
-    }
-    stmts
 }

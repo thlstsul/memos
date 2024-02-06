@@ -1,7 +1,5 @@
-use std::collections::VecDeque;
-
 use async_trait::async_trait;
-use libsql_client::{de, ResultSet, Statement};
+use libsql::{de, params::IntoParams, Rows};
 use serde::de::DeserializeOwned;
 use snafu::{ResultExt, Snafu};
 
@@ -18,60 +16,37 @@ pub mod user_setting;
 pub trait Dao {
     fn get_state(&self) -> &AppState;
 
-    async fn execute(&self, stmt: impl Into<Statement> + Send) -> Result<ResultSet, Error> {
-        self.get_state().execute(stmt).await.context(ExecuteFailed)
-    }
-
-    async fn query<T: DeserializeOwned>(
-        &self,
-        stmt: impl Into<Statement> + Send,
-    ) -> Result<Vec<T>, Error> {
-        self.get_state()
-            .execute(stmt)
-            .await
-            .context(ExecuteFailed)?
-            .rows
-            .iter()
-            .map(|row| de::from_row(row).context(DeserializeFailed))
-            .collect::<Result<Vec<T>, _>>()
-    }
-
-    async fn batch<I>(&self, stmts: I) -> Result<Vec<ResultSet>, Error>
+    async fn execute<P>(&self, sql: &str, params: P) -> Result<u64, Error>
     where
-        I: IntoIterator + Send,
-        I::Item: Into<Statement> + Send,
-        <I as IntoIterator>::IntoIter: Send,
+        P: IntoParams + Send,
     {
-        self.get_state().batch(stmts).await.context(ExecuteFailed)
+        self.get_state().execute(sql, params).await.context(Execute)
     }
 
-    async fn batch_query<I, T: DeserializeOwned>(&self, stmts: I) -> Result<VecDeque<Vec<T>>, Error>
+    async fn query<T: DeserializeOwned, P>(&self, sql: &str, params: P) -> Result<Vec<T>, Error>
     where
-        I: IntoIterator + Send,
-        I::Item: Into<Statement> + Send,
-        <I as IntoIterator>::IntoIter: Send,
+        P: IntoParams + Send,
     {
-        self.get_state()
-            .batch(stmts)
-            .await
-            .context(ExecuteFailed)?
-            .iter()
-            .map(|rs: &ResultSet| {
-                rs.rows
-                    .iter()
-                    .map(|row| de::from_row(row).context(DeserializeFailed))
-                    .collect::<Result<Vec<T>, _>>()
-            })
-            .collect()
+        let rows = self.get_state().query(sql, params).await.context(Execute)?;
+
+        de(rows)
     }
+}
+
+pub fn de<T: DeserializeOwned>(mut rows: Rows) -> Result<Vec<T>, Error> {
+    let mut rtn = Vec::new();
+    while let Some(row) = rows.next().context(GetNextRow)? {
+        rtn.push(de::from_row(&row).context(Deserialize)?);
+    }
+    Ok(rtn)
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
-    ExecuteFailed { source: anyhow::Error },
+    Execute { source: libsql::Error },
     #[snafu(display("Deserialize failed: {source}"), context(suffix(false)))]
-    DeserializeFailed { source: anyhow::Error },
-    #[snafu(display("Data does not exsit"), context(suffix(false)))]
-    Inexistent,
+    Deserialize { source: serde::de::value::Error },
+    #[snafu(display("Failed to get next row: {source}"), context(suffix(false)))]
+    GetNextRow { source: libsql::Error },
 }

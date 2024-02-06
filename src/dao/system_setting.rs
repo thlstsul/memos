@@ -1,5 +1,3 @@
-use libsql_client::Statement;
-
 use crate::{
     api::system::{SystemSetting, SystemSettingKey},
     state::AppState,
@@ -7,7 +5,6 @@ use crate::{
 
 use super::{Dao, Error};
 
-#[derive(Debug)]
 pub struct SystemSettingDao {
     pub state: AppState,
 }
@@ -20,18 +17,15 @@ impl Dao for SystemSettingDao {
 
 impl SystemSettingDao {
     pub async fn list_setting(&self) -> Result<Vec<SystemSetting>, Error> {
-        self.query("select * from system_setting").await
+        self.query("select * from system_setting", ()).await
     }
 
     pub async fn find_setting(
         &self,
         key: SystemSettingKey,
     ) -> Result<Option<SystemSetting>, Error> {
-        let stmt = Statement::with_args(
-            "select * from system_setting where name = ?",
-            &[key.to_string()],
-        );
-        let mut settings = self.query(stmt).await?;
+        let sql = "select * from system_setting where name = ?";
+        let mut settings = self.query(sql, [key.to_string()]).await?;
         Ok(settings.pop())
     }
 }

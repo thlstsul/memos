@@ -36,9 +36,9 @@ impl tag_service_server::TagService for TagService {
         let name = &request.get_ref().name;
 
         self.dao
-            .upsert_tag(name.clone(), creator_id)
+            .upsert_tag(name, creator_id)
             .await
-            .context(UpsertTagFailed)?;
+            .context(UpsertTag)?;
         Ok(Response::new(UpsertTagResponse {
             tag: Some(Tag {
                 name: name.clone(),
@@ -51,7 +51,7 @@ impl tag_service_server::TagService for TagService {
         request: Request<ListTagsRequest>,
     ) -> Result<Response<ListTagsResponse>, Status> {
         let user = get_current_user(&request)?;
-        let tags = self.dao.list_tags(user.id).await.context(ListTagFailed)?;
+        let tags = self.dao.list_tags(user.id).await.context(ListTag)?;
         Ok(Response::new(tags.into()))
     }
     async fn delete_tag(
@@ -61,9 +61,9 @@ impl tag_service_server::TagService for TagService {
         if let Some(tag) = &request.get_ref().tag {
             let user = get_current_user(&request)?;
             self.dao
-                .delete_tag(tag.name.clone(), user.id)
+                .delete_tag(&tag.name, user.id)
                 .await
-                .context(DeleteTagFailed)?;
+                .context(DeleteTag)?;
         }
 
         Ok(Response::new(DeleteTagResponse {}))
@@ -86,14 +86,14 @@ impl tag_service_server::TagService for TagService {
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
     #[snafu(display("Failed to get tag list: {source}"), context(suffix(false)))]
-    ListTagFailed { source: crate::dao::Error },
+    ListTag { source: crate::dao::Error },
 
     #[snafu(
         display("Failed to update/insert tag: {source}"),
         context(suffix(false))
     )]
-    UpsertTagFailed { source: crate::dao::Error },
+    UpsertTag { source: crate::dao::Error },
 
     #[snafu(display("Failed to delete tag: {source}"), context(suffix(false)))]
-    DeleteTagFailed { source: crate::dao::Error },
+    DeleteTag { source: crate::dao::Error },
 }

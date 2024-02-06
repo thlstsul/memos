@@ -18,7 +18,7 @@ impl SystemService {
     }
 
     pub async fn list_setting(&self) -> Result<Vec<SystemSetting>, Error> {
-        self.dao.list_setting().await.context(ListSettingFailed)
+        self.dao.list_setting().await.context(ListSetting)
     }
 
     pub async fn find_setting(
@@ -28,7 +28,7 @@ impl SystemService {
         self.dao
             .find_setting(key.clone())
             .await
-            .context(FindSettingFailed { key })
+            .context(FindSetting { key })
     }
 }
 
@@ -38,12 +38,12 @@ pub enum Error {
         display("Failed to get system setting list: {source}"),
         context(suffix(false))
     )]
-    ListSettingFailed { source: crate::dao::Error },
+    ListSetting { source: crate::dao::Error },
     #[snafu(
         display("Failed to find system setting with: {key}, {source}"),
         context(suffix(false))
     )]
-    FindSettingFailed {
+    FindSetting {
         key: SystemSettingKey,
         source: crate::dao::Error,
     },

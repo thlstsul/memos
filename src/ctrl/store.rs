@@ -1,14 +1,14 @@
 use async_trait::async_trait;
 use axum_login::tower_sessions::session::Id;
 use axum_login::tower_sessions::{ExpiredDeletion, MemoryStore, Session, SessionStore};
-use libsql_client::{Statement, Value};
+use libsql::{params, Value};
 use snafu::{ensure, ResultExt, Snafu};
 use time::OffsetDateTime;
 use tracing::info;
 
 use crate::state::AppState;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TursoStore {
     state: AppState,
     memory: MemoryStore,
@@ -54,7 +54,7 @@ impl TursoStore {
     /// Migrate the session schema.
     #[allow(dead_code)]
     pub async fn migrate(&self) -> Result<(), Error> {
-        let query = format!(
+        let sql = format!(
             r#"
             create table if not exists {}
             (
@@ -65,7 +65,7 @@ impl TursoStore {
             "#,
             self.table_name
         );
-        self.state.execute(query).await.context(Database)?;
+        self.state.execute(&sql, ()).await.context(Execute)?;
         Ok(())
     }
 }
@@ -73,14 +73,14 @@ impl TursoStore {
 #[async_trait]
 impl ExpiredDeletion for TursoStore {
     async fn delete_expired(&self) -> Result<(), Error> {
-        let query = format!(
+        let sql = format!(
             r#"
             delete from {table_name}
             where expiry_date < datetime('now', 'utc')
             "#,
             table_name = self.table_name
         );
-        self.state.execute(query).await.context(Database)?;
+        self.state.execute(&sql, ()).await.context(Execute)?;
         Ok(())
     }
 }
@@ -90,7 +90,7 @@ impl SessionStore for TursoStore {
     type Error = Error;
 
     async fn save(&self, session: &Session) -> Result<(), Self::Error> {
-        let query = format!(
+        let sql = format!(
             r#"
             insert into {}
               (id, data, expiry_date) values (?, ?, ?)
@@ -102,15 +102,17 @@ impl SessionStore for TursoStore {
         );
 
         let data = rmp_serde::to_vec(session).context(EncodeSession)?;
-        let stmt = Statement::with_args(
-            query,
-            &[
-                Value::from(session.id().to_string()),
-                Value::from(data),
-                Value::from(session.expiry_date().unix_timestamp()),
-            ],
-        );
-        self.state.execute(stmt).await.context(Database)?;
+        self.state
+            .execute(
+                &sql,
+                params![
+                    session.id().to_string(),
+                    data,
+                    session.expiry_date().unix_timestamp()
+                ],
+            )
+            .await
+            .context(Execute)?;
 
         let _ = self.memory.save(session).await;
 
@@ -122,40 +124,48 @@ impl SessionStore for TursoStore {
         if let Ok(Some(session)) = session {
             return Ok(Some(session));
         }
-        let query = format!(
+        let sql = format!(
             r#"
             select data from {}
             where id = ? and expiry_date > ?
             "#,
             self.table_name
         );
-        let stmt = Statement::with_args(
-            &query,
-            &[
-                Value::from(session_id.to_string()),
-                Value::from(OffsetDateTime::now_utc().unix_timestamp()),
-            ],
-        );
-        let data = self.state.execute(stmt).await.context(Database)?;
 
-        if let Some(row) = data.rows.first() {
-            if let Some(Value::Blob { value }) = row.values.first() {
+        let mut rows = self
+            .state
+            .query(
+                &sql,
+                params![
+                    session_id.to_string(),
+                    OffsetDateTime::now_utc().unix_timestamp()
+                ],
+            )
+            .await
+            .context(Execute)?;
+
+        if let Ok(Some(row)) = rows.next() {
+            if let Ok(Value::Blob(value)) = row.get_value(0) {
                 info!("Got valid session");
-                return Ok(Some(rmp_serde::from_slice(value).context(DecodeSession)?));
+                let session = rmp_serde::from_slice(&value).context(DecodeSession)?;
+                let _ = self.memory.save(&session).await;
+                return Ok(Some(session));
             }
         }
         Ok(None)
     }
 
     async fn delete(&self, session_id: &Id) -> Result<(), Self::Error> {
-        let query = format!(
+        let sql = format!(
             r#"
             delete from {} where id = ?
             "#,
             self.table_name
         );
-        let stmt = Statement::with_args(&query, &[session_id.to_string()]);
-        self.state.execute(stmt).await.context(Database)?;
+        self.state
+            .execute(&sql, [session_id.to_string()])
+            .await
+            .context(Execute)?;
 
         let _ = self.memory.delete(session_id).await;
         Ok(())
@@ -173,7 +183,7 @@ fn is_valid_table_name(name: &str) -> bool {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
-    Database { source: anyhow::Error },
+    Execute { source: libsql::Error },
     #[snafu(
         display(
             "Invalid table name '{table_name}'. Table names must be alphanumeric and may contain \

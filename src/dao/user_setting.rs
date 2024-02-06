@@ -1,10 +1,10 @@
-use libsql_client::{Statement, Value};
+use libsql::params;
 
 use crate::{api::user::UserSetting, state::AppState};
 
-use super::{Dao, Error};
+use super::Dao;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct UserSettingDao {
     pub state: AppState,
 }
@@ -16,28 +16,24 @@ impl Dao for UserSettingDao {
 }
 
 impl UserSettingDao {
-    pub async fn find_setting(&self, user_id: i32) -> Result<Vec<UserSetting>, Error> {
-        let stmt = Statement::with_args("select * from user_setting where user_id = ?", &[user_id]);
-        self.query(stmt).await
+    pub async fn find_setting(&self, user_id: i32) -> Result<Vec<UserSetting>, super::Error> {
+        let sql = "select * from user_setting where user_id = ?";
+        self.query(sql, [user_id]).await
     }
 
-    pub async fn upsert_setting(&self, settings: Vec<UserSetting>) -> Result<(), Error> {
-        let stmts: Vec<_> = settings
-            .into_iter()
-            .map(|setting| {
-                Statement::with_args(
-                    "insert into user_setting (user_id, key, value) values (?, ?, ?) 
-                    on conflict(user_id, key) do update set value = excluded.value",
-                    &[
-                        Value::from(setting.user_id),
-                        Value::from(setting.key.to_string()),
-                        Value::from(setting.value),
-                    ],
-                )
-            })
-            .collect();
+    pub async fn upsert_setting(&self, settings: Vec<UserSetting>) -> Result<(), libsql::Error> {
+        let mut stmt = self.get_state().prepare("insert into user_setting (user_id, key, value) values (?, ?, ?) on conflict(user_id, key) do update set value = excluded.value").await?;
+        self.get_state().execute("BEGIN DEFERRED", ()).await?;
+        for setting in settings {
+            stmt.execute(params![
+                setting.user_id,
+                setting.key.to_string(),
+                setting.value,
+            ])
+            .await?;
+        }
+        self.get_state().execute("COMMIT", ()).await?;
 
-        self.batch(stmts).await?;
         Ok(())
     }
 }

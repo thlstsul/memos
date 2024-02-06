@@ -84,7 +84,7 @@ impl AuthUser for User {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Backend {
     svc: UserService,
 }
@@ -105,7 +105,7 @@ impl AuthnBackend for Backend {
         &self,
         creds: Self::Credentials,
     ) -> Result<Option<Self::User>, Self::Error> {
-        let user = self.svc.sign_in(creds.username, creds.password).await;
+        let user = self.svc.sign_in(&creds.username, &creds.password).await;
         match user {
             Ok(user) => Ok(Some(user)),
             Err(Error::Login { .. }) => Ok(None),
@@ -124,7 +124,7 @@ impl AuthnBackend for Backend {
 // Note that we've supplied our concrete backend here.
 pub type AuthSession = axum_login::AuthSession<Backend>;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AuthLayer {
     auth_manager_layer: AuthManagerLayer<Backend, TursoStore>,
     public_path: Vec<String>,
