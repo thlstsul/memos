@@ -15,8 +15,9 @@ pub mod user;
 pub mod v1;
 pub mod v2;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct Count {
+    pub created_date: String,
     pub count: i32,
 }
 

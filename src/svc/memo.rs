@@ -198,15 +198,16 @@ impl memo_service_server::MemoService for MemoService {
         request: Request<GetUserMemosStatsRequest>,
     ) -> Result<Response<GetUserMemosStatsResponse>, Status> {
         let user = get_current_user(&request)?;
-        let count = self
+        let counts = self
             .memo_dao
             .count_memos(user.id)
             .await
             .context(CountMemo)?;
-        Ok(Response::new(GetUserMemosStatsResponse {
-            // 简化，后面这个api一定会改
-            stats: HashMap::from([("2024-01-01".to_owned(), count.count)]),
-        }))
+        let mut stats = HashMap::with_capacity(counts.len());
+        for count in counts {
+            stats.insert(count.created_date, count.count);
+        }
+        Ok(Response::new(GetUserMemosStatsResponse { stats }))
     }
 
     /// SetMemoResources sets resources for a memo.

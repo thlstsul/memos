@@ -175,10 +175,9 @@ impl MemoDao {
         self.query(&sql, args).await
     }
 
-    pub async fn count_memos(&self, creator_id: i32) -> Result<Count, super::Error> {
-        let sql = "select count(1) as count from memo where creator_id = ?";
-        let mut rs: Vec<Count> = self.query(sql, [creator_id]).await?;
-        Ok(rs.pop().unwrap_or(Count { count: 0 }))
+    pub async fn count_memos(&self, creator_id: i32) -> Result<Vec<Count>, super::Error> {
+        let sql = "select created_date, count(1) as count from (select date(created_ts, 'unixepoch') as created_date from memo where creator_id = ?) group by created_date";
+        self.query(sql, [creator_id]).await
     }
 
     pub async fn delete_memo(&self, memo_id: i32) -> Result<(), super::Error> {
