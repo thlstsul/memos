@@ -65,8 +65,8 @@ impl MemoDao {
             creator,
             creator_id,
             row_status,
-            created_ts_after,
-            created_ts_before,
+            display_time_after,
+            display_time_before,
             pinned,
             content_search,
             visibility_list,
@@ -95,13 +95,13 @@ impl MemoDao {
             wheres.push("memo.row_status = ?");
             args.push(Value::from(row_status.to_string()));
         }
-        if let Some(created_ts_before) = created_ts_before {
+        if let Some(display_time_before) = display_time_before {
             wheres.push("memo.created_ts < ?");
-            args.push(Value::from(created_ts_before));
+            args.push(Value::from(display_time_before));
         }
-        if let Some(created_ts_after) = created_ts_after {
+        if let Some(display_time_after) = display_time_after {
             wheres.push("memo.created_ts > ?");
-            args.push(Value::from(created_ts_after));
+            args.push(Value::from(display_time_after));
         }
         for content_search in content_search.iter() {
             wheres.push("memo.content LIKE ?");

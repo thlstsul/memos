@@ -27,8 +27,8 @@ pub struct FindMemo {
     // Standard fields
     pub creator_id: Option<i32>,
     pub row_status: Option<RowStatus>,
-    pub created_ts_after: Option<i64>,
-    pub created_ts_before: Option<i64>,
+    pub display_time_after: Option<i64>,
+    pub display_time_before: Option<i64>,
 
     // Domain specific fields
     pub pinned: bool,
@@ -63,8 +63,8 @@ pub struct Filter {
     pub content_search: Option<Vec<String>>,
     pub visibilities: Option<Vec<Visibility>>,
     pub order_by_pinned: Option<bool>,
-    pub created_ts_before: Option<i64>,
-    pub created_ts_after: Option<i64>,
+    pub display_time_before: Option<i64>,
+    pub display_time_after: Option<i64>,
     pub creator: Option<String>,
     pub row_status: Option<RowStatus>,
 }
@@ -76,8 +76,8 @@ impl Parse for Filter {
         let content_search: Expr = parse_quote!(content_search);
         let visibilities: Expr = parse_quote!(visibilities);
         let order_by_pinned: Expr = parse_quote!(order_by_pinned);
-        let created_ts_before: Expr = parse_quote!(created_ts_before);
-        let created_ts_after: Expr = parse_quote!(created_ts_after);
+        let display_time_before: Expr = parse_quote!(display_time_before);
+        let display_time_after: Expr = parse_quote!(display_time_after);
         let creator: Expr = parse_quote!(creator);
         let row_status: Expr = parse_quote!(row_status);
 
@@ -95,10 +95,10 @@ impl Parse for Filter {
                     filter.order_by_pinned = ast::get_bool(lit);
                 } else if ident == content_search {
                     filter.content_search = ast::get_string_list(lit);
-                } else if ident == created_ts_before {
-                    filter.created_ts_before = ast::get_i64(lit);
-                } else if ident == created_ts_after {
-                    filter.created_ts_after = ast::get_i64(lit);
+                } else if ident == display_time_before {
+                    filter.display_time_before = ast::get_i64(lit);
+                } else if ident == display_time_after {
+                    filter.display_time_after = ast::get_i64(lit);
                 }
             };
 
@@ -147,8 +147,8 @@ impl TryInto<FindMemo> for &ListMemosRequest {
             creator,
             creator_id: None,
             row_status: filter.row_status,
-            created_ts_after: filter.created_ts_after,
-            created_ts_before: filter.created_ts_before,
+            display_time_after: filter.display_time_after,
+            display_time_before: filter.display_time_before,
             pinned: false,
             content_search: filter.content_search.unwrap_or_default(),
             visibility_list: filter.visibilities.unwrap_or_default(),
@@ -257,7 +257,7 @@ mod test {
     fn parse_filter() {
         use crate::api::v2::RowStatus;
         let filter =
-        r#"visibilities == ['PUBLIC'] && row_status == "NORMAL" && creator == "users/THELOSTSOUL" && order_by_pinned == true && created_ts_before == 123"#
+        r#"visibilities == ['PUBLIC'] && row_status == "NORMAL" && creator == "users/THELOSTSOUL" && order_by_pinned == true && display_time_before == 123"#
             .replace("'", "\"");
         let filter = syn::parse_str::<crate::api::memo::Filter>(&filter).unwrap();
         assert_eq!(filter.row_status, Some(RowStatus::Active));
@@ -267,6 +267,6 @@ mod test {
         );
         assert_eq!(filter.creator, Some("users/THELOSTSOUL".to_owned()));
         assert_eq!(filter.order_by_pinned, Some(true));
-        assert_eq!(filter.created_ts_before, Some(123_i64));
+        assert_eq!(filter.display_time_before, Some(123_i64));
     }
 }
