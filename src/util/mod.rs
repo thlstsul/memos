@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::api::v2::{node, Node, TagNode};
 use nanoid::{alphabet, nanoid};
 use snafu::{ensure, Snafu};
@@ -24,12 +26,12 @@ pub fn uuid() -> String {
     nanoid!(16, &alphabet::SAFE)
 }
 
-pub fn parse_tag(content: impl AsRef<str>) -> Vec<String> {
-    let mut rtn = Vec::new();
+pub fn parse_tag(content: impl AsRef<str>) -> HashSet<String> {
+    let mut rtn = HashSet::new();
     let tags = ast::parse_document(content, true);
     for tag in tags {
         if let Some(node::Node::TagNode(TagNode { content })) = tag.node {
-            rtn.push(content);
+            rtn.insert(content);
         }
     }
     rtn
