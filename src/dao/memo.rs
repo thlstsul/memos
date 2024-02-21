@@ -176,7 +176,9 @@ impl MemoDao {
     }
 
     pub async fn count_memos(&self, creator_id: i32) -> Result<Vec<Count>, super::Error> {
-        let sql = "select created_date, count(1) as count from (select date(created_ts, 'unixepoch') as created_date from memo where creator_id = ?) group by created_date";
+        let sql = "select created_date, count(1) as count from (
+            select date(created_ts, 'unixepoch') as created_date from memo where creator_id = ?
+        ) group by created_date";
         self.query(sql, [creator_id]).await
     }
 
