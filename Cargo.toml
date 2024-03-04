@@ -41,5 +41,5 @@ nanoid = "0.4.0"
 
 [build-dependencies]
 protoc-bin-vendored = "3.0.0"
-proto-builder-trait = { git = "https://github.com/thlstsul/proto-builder-trait.git", branch = "thlstsul-patch-1", default-features = false, features = ["tonic"] }
+proto-builder-trait = { version = "0.6.0", default-features = false, features = ["tonic"] }
 tonic-build = "0.10.2"
