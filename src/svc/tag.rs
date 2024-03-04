@@ -1,6 +1,7 @@
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
 
+use crate::api::v2::tag_service_server::TagServiceServer;
 use crate::api::v2::{
     tag_service_server, DeleteTagRequest, DeleteTagResponse, GetTagSuggestionsRequest,
     GetTagSuggestionsResponse, ListTagsRequest, ListTagsResponse, RenameTagRequest,
@@ -21,6 +22,10 @@ impl TagService {
                 state: state.clone(),
             },
         }
+    }
+
+    pub fn server(state: &AppState) -> TagServiceServer<TagService> {
+        TagServiceServer::new(TagService::new(state))
     }
 }
 

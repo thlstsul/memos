@@ -2,6 +2,7 @@ use sm3::{Digest, Sm3};
 use snafu::{OptionExt, ResultExt, Snafu};
 use tonic::{Request, Response, Status};
 
+use crate::api::v2::user_service_server::UserServiceServer;
 use crate::api::v2::{
     user_service_server, CreateUserAccessTokenRequest, CreateUserAccessTokenResponse,
     CreateUserRequest, CreateUserResponse, DeleteUserAccessTokenRequest,
@@ -32,6 +33,10 @@ impl UserService {
                 state: state.clone(),
             },
         }
+    }
+
+    pub fn server(state: &AppState) -> UserServiceServer<UserService> {
+        UserServiceServer::new(UserService::new(state))
     }
 
     pub async fn sign_in(&self, name: &str, password: &str) -> Result<User, Error> {

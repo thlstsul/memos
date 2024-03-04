@@ -10,6 +10,7 @@ use tokio::{
 use tokio_util::io::ReaderStream;
 use tonic::{Request, Response, Status};
 
+use crate::api::v2::resource_service_server::ResourceServiceServer;
 use crate::api::v2::{
     GetResourceByNameRequest, GetResourceByNameResponse, GetResourceRequest, GetResourceResponse,
 };
@@ -43,6 +44,10 @@ impl ResourceService {
                 state: state.clone(),
             },
         }
+    }
+
+    pub fn server(state: &AppState) -> ResourceServiceServer<ResourceService> {
+        ResourceServiceServer::new(ResourceService::new(state))
     }
 
     pub async fn create_resource(&self, mut create: WholeResource) -> Result<Resource, Error> {

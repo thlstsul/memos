@@ -28,7 +28,10 @@ use tracing::error;
 use crate::{
     ctrl::{auth::AuthLayer, resource::stream_resource, store::TursoStore},
     state::AppState,
-    svc::ServiceFactory,
+    svc::{
+        auth::AuthService, inbox::InboxService, memo::MemoService, resource::ResourceService,
+        tag::TagService, webhook::WebhookService,
+    },
 };
 
 mod api;
@@ -95,13 +98,13 @@ async fn grpc_web(
     .map(|s| s.to_owned())
     .collect();
 
-    let user = ServiceFactory::get_user(&state);
-    let tag = ServiceFactory::get_tag(&state);
-    let auth = ServiceFactory::get_auth();
-    let memo = ServiceFactory::get_memo(&state);
-    let resource = ServiceFactory::get_resource(&state);
-    let inbox = ServiceFactory::get_inbox();
-    let webhook = ServiceFactory::get_webhook();
+    let user = UserService::server(&state);
+    let tag = TagService::server(&state);
+    let auth = AuthService::server();
+    let memo = MemoService::server(&state);
+    let resource = ResourceService::server(&state);
+    let inbox = InboxService::server();
+    let webhook = WebhookService::server();
 
     let axum_router = axum_router.with_state(state);
 

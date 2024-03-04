@@ -1,12 +1,19 @@
 use tonic::{Request, Response, Status};
 
 use crate::api::v2::{
-    inbox_service_server, DeleteInboxRequest, DeleteInboxResponse, ListInboxesRequest,
-    ListInboxesResponse, UpdateInboxRequest, UpdateInboxResponse,
+    inbox_service_server::{self, InboxServiceServer},
+    DeleteInboxRequest, DeleteInboxResponse, ListInboxesRequest, ListInboxesResponse,
+    UpdateInboxRequest, UpdateInboxResponse,
 };
 
 pub struct InboxService {
     // TODO
+}
+
+impl InboxService {
+    pub fn server() -> InboxServiceServer<InboxService> {
+        InboxServiceServer::new(InboxService {})
+    }
 }
 
 #[tonic::async_trait]

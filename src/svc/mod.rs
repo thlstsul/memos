@@ -2,21 +2,7 @@ use snafu::Snafu;
 use tonic::{Request, Status};
 use tracing::error;
 
-use crate::{
-    api::v2::{
-        auth_service_server::AuthServiceServer, inbox_service_server::InboxServiceServer,
-        memo_service_server::MemoServiceServer, resource_service_server::ResourceServiceServer,
-        tag_service_server::TagServiceServer, user_service_server::UserServiceServer,
-        webhook_service_server::WebhookServiceServer, User,
-    },
-    ctrl::auth::AuthSession,
-    state::AppState,
-};
-
-use self::{
-    auth::AuthService, inbox::InboxService, memo::MemoService, resource::ResourceService,
-    tag::TagService, user::UserService, webhook::WebhookService,
-};
+use crate::{api::v2::User, ctrl::auth::AuthSession};
 
 pub mod auth;
 pub mod inbox;
@@ -26,42 +12,6 @@ pub mod system;
 pub mod tag;
 pub mod user;
 pub mod webhook;
-
-pub struct ServiceFactory;
-
-impl ServiceFactory {
-    pub fn get_user(state: &AppState) -> UserServiceServer<UserService> {
-        let user = UserService::new(state);
-        UserServiceServer::new(user)
-    }
-
-    pub fn get_tag(state: &AppState) -> TagServiceServer<TagService> {
-        let tag = TagService::new(state);
-        TagServiceServer::new(tag)
-    }
-
-    pub fn get_auth() -> AuthServiceServer<AuthService> {
-        AuthServiceServer::new(AuthService)
-    }
-
-    pub fn get_memo(state: &AppState) -> MemoServiceServer<MemoService> {
-        let memo = MemoService::new(state);
-        MemoServiceServer::new(memo)
-    }
-
-    pub fn get_resource(state: &AppState) -> ResourceServiceServer<ResourceService> {
-        let resource = ResourceService::new(state);
-        ResourceServiceServer::new(resource)
-    }
-
-    pub fn get_inbox() -> InboxServiceServer<InboxService> {
-        InboxServiceServer::new(InboxService {})
-    }
-
-    pub fn get_webhook() -> WebhookServiceServer<WebhookService> {
-        WebhookServiceServer::new(WebhookService)
-    }
-}
 
 pub fn get_current_user<T>(request: &Request<T>) -> Result<&User, Error> {
     if let Some(AuthSession {

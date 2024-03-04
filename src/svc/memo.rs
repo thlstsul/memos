@@ -8,15 +8,15 @@ use crate::{
         pager::Paginator,
         system::{SystemSetting, SystemSettingKey},
         v2::{
-            memo_service_server, CreateMemoCommentRequest, CreateMemoCommentResponse,
-            CreateMemoRequest, CreateMemoResponse, DeleteMemoRequest, DeleteMemoResponse,
-            GetMemoByNameRequest, GetMemoByNameResponse, GetMemoRequest, GetMemoResponse,
-            GetUserMemosStatsRequest, GetUserMemosStatsResponse, ListMemoCommentsRequest,
-            ListMemoCommentsResponse, ListMemoRelationsRequest, ListMemoRelationsResponse,
-            ListMemoResourcesRequest, ListMemoResourcesResponse, ListMemosRequest,
-            ListMemosResponse, SetMemoRelationsRequest, SetMemoRelationsResponse,
-            SetMemoResourcesRequest, SetMemoResourcesResponse, UpdateMemoRequest,
-            UpdateMemoResponse, Visibility,
+            memo_service_server::{self, MemoServiceServer},
+            CreateMemoCommentRequest, CreateMemoCommentResponse, CreateMemoRequest,
+            CreateMemoResponse, DeleteMemoRequest, DeleteMemoResponse, GetMemoByNameRequest,
+            GetMemoByNameResponse, GetMemoRequest, GetMemoResponse, GetUserMemosStatsRequest,
+            GetUserMemosStatsResponse, ListMemoCommentsRequest, ListMemoCommentsResponse,
+            ListMemoRelationsRequest, ListMemoRelationsResponse, ListMemoResourcesRequest,
+            ListMemoResourcesResponse, ListMemosRequest, ListMemosResponse,
+            SetMemoRelationsRequest, SetMemoRelationsResponse, SetMemoResourcesRequest,
+            SetMemoResourcesResponse, UpdateMemoRequest, UpdateMemoResponse, Visibility,
         },
     },
     dao::memo::MemoDao,
@@ -45,6 +45,10 @@ impl MemoService {
             user_svc: UserService::new(state),
             sys_svc: SystemService::new(state),
         }
+    }
+
+    pub fn server(state: &AppState) -> MemoServiceServer<MemoService> {
+        MemoServiceServer::new(MemoService::new(state))
     }
 }
 

@@ -35,6 +35,7 @@ impl AppState {
 
     #[allow(dead_code)]
     pub async fn transaction(&self) -> Result<Transaction, Error> {
+        // TODO send
         self.repo.transaction().await
     }
 

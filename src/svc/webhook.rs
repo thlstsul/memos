@@ -1,11 +1,18 @@
 use crate::api::v2::{
-    webhook_service_server, CreateWebhookRequest, CreateWebhookResponse, DeleteWebhookRequest,
-    DeleteWebhookResponse, GetWebhookRequest, GetWebhookResponse, ListWebhooksRequest,
-    ListWebhooksResponse, UpdateWebhookRequest, UpdateWebhookResponse,
+    webhook_service_server::{self, WebhookServiceServer},
+    CreateWebhookRequest, CreateWebhookResponse, DeleteWebhookRequest, DeleteWebhookResponse,
+    GetWebhookRequest, GetWebhookResponse, ListWebhooksRequest, ListWebhooksResponse,
+    UpdateWebhookRequest, UpdateWebhookResponse,
 };
 use async_trait::async_trait;
 use tonic::{Request, Response, Status};
 pub struct WebhookService;
+
+impl WebhookService {
+    pub fn server() -> WebhookServiceServer<WebhookService> {
+        WebhookServiceServer::new(WebhookService)
+    }
+}
 
 #[async_trait]
 impl webhook_service_server::WebhookService for WebhookService {
