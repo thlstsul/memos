@@ -88,6 +88,7 @@ impl user_service_server::UserService for UserService {
         let user = Self::find_user(self, &name).await?;
         Ok(Response::new(user.into()))
     }
+
     async fn get_user_setting(
         &self,
         request: Request<GetUserSettingRequest>,
@@ -98,8 +99,11 @@ impl user_service_server::UserService for UserService {
             .find_setting(user.id)
             .await
             .context(QuerySetting)?;
-        Ok(Response::new(settings.into()))
+        Ok(Response::new(GetUserSettingResponse {
+            setting: Some(settings.into()),
+        }))
     }
+
     async fn update_user_setting(
         &self,
         request: Request<UpdateUserSettingRequest>,
@@ -111,27 +115,34 @@ impl user_service_server::UserService for UserService {
             .await
             .context(UpsertSetting)?;
 
+        let settings = self
+            .setting_dao
+            .find_setting(user.id)
+            .await
+            .context(QuerySetting)?;
+
         Ok(Response::new(UpdateUserSettingResponse {
-            setting: request.get_ref().setting.clone(),
+            setting: Some(settings.into()),
         }))
     }
+
     async fn list_users(
         &self,
         request: Request<ListUsersRequest>,
     ) -> Result<Response<ListUsersResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     async fn create_user(
         &self,
         request: Request<CreateUserRequest>,
     ) -> Result<Response<CreateUserResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     async fn update_user(
         &self,
         request: Request<UpdateUserRequest>,
     ) -> Result<Response<UpdateUserResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     /// ListUserAccessTokens returns a list of access tokens for a user.
     async fn list_user_access_tokens(
@@ -148,20 +159,20 @@ impl user_service_server::UserService for UserService {
         &self,
         request: Request<CreateUserAccessTokenRequest>,
     ) -> Result<Response<CreateUserAccessTokenResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     /// DeleteUserAccessToken deletes an access token for a user.
     async fn delete_user_access_token(
         &self,
         request: Request<DeleteUserAccessTokenRequest>,
     ) -> Result<Response<DeleteUserAccessTokenResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     async fn delete_user(
         &self,
         request: Request<DeleteUserRequest>,
     ) -> Result<Response<DeleteUserResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
 }
 
@@ -189,7 +200,7 @@ pub enum Error {
         display("Failed to update/insert user setting: {source}"),
         context(suffix(false))
     )]
-    UpsertSetting { source: libsql::Error },
+    UpsertSetting { source: crate::dao::Error },
 
     #[snafu(display("Invalid username: {source}"), context(suffix(false)))]
     InvalidUsername { source: crate::api::user::Error },

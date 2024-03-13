@@ -10,13 +10,16 @@ use crate::{
         v2::{
             memo_service_server::{self, MemoServiceServer},
             CreateMemoCommentRequest, CreateMemoCommentResponse, CreateMemoRequest,
-            CreateMemoResponse, DeleteMemoRequest, DeleteMemoResponse, GetMemoByNameRequest,
-            GetMemoByNameResponse, GetMemoRequest, GetMemoResponse, GetUserMemosStatsRequest,
-            GetUserMemosStatsResponse, ListMemoCommentsRequest, ListMemoCommentsResponse,
+            CreateMemoResponse, DeleteMemoReactionRequest, DeleteMemoReactionResponse,
+            DeleteMemoRequest, DeleteMemoResponse, ExportMemosRequest, ExportMemosResponse,
+            GetMemoByNameRequest, GetMemoByNameResponse, GetMemoRequest, GetMemoResponse,
+            GetUserMemosStatsRequest, GetUserMemosStatsResponse, ListMemoCommentsRequest,
+            ListMemoCommentsResponse, ListMemoReactionsRequest, ListMemoReactionsResponse,
             ListMemoRelationsRequest, ListMemoRelationsResponse, ListMemoResourcesRequest,
             ListMemoResourcesResponse, ListMemosRequest, ListMemosResponse,
             SetMemoRelationsRequest, SetMemoRelationsResponse, SetMemoResourcesRequest,
-            SetMemoResourcesResponse, UpdateMemoRequest, UpdateMemoResponse, Visibility,
+            SetMemoResourcesResponse, UpdateMemoRequest, UpdateMemoResponse,
+            UpsertMemoReactionRequest, UpsertMemoReactionResponse, Visibility,
         },
     },
     dao::memo::MemoDao,
@@ -164,12 +167,13 @@ impl memo_service_server::MemoService for MemoService {
         request: Request<UpdateMemoRequest>,
     ) -> Result<Response<UpdateMemoResponse>, Status> {
         let user = get_current_user(&request)?;
-        let update: UpdateMemo = request.get_ref().into();
+        let mut update: UpdateMemo = request.get_ref().into();
+        update.creator_id = user.id;
         let memo_id = update.id;
 
         let memo = self
             .memo_dao
-            .update_memo(user.id, update)
+            .update_memo(update)
             .await
             .context(UpdateMemoFailed)?;
 
@@ -251,35 +255,63 @@ impl memo_service_server::MemoService for MemoService {
         &self,
         request: Request<ListMemoRelationsRequest>,
     ) -> Result<Response<ListMemoRelationsResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     /// CreateMemoComment creates a comment for a memo.
     async fn create_memo_comment(
         &self,
         request: Request<CreateMemoCommentRequest>,
     ) -> Result<Response<CreateMemoCommentResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     /// ListMemoComments lists comments for a memo.
     async fn list_memo_comments(
         &self,
         request: Request<ListMemoCommentsRequest>,
     ) -> Result<Response<ListMemoCommentsResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     /// GetMemoByName gets a memo by name.
     async fn get_memo_by_name(
         &self,
         request: Request<GetMemoByNameRequest>,
     ) -> Result<Response<GetMemoByNameResponse>, Status> {
-        todo!()
+        unimplemented!()
+    }
+    /// ExportMemos exports memos.
+    async fn export_memos(
+        &self,
+        request: Request<ExportMemosRequest>,
+    ) -> Result<Response<ExportMemosResponse>, Status> {
+        unimplemented!()
+    }
+    /// ListMemoReactions lists reactions for a memo.
+    async fn list_memo_reactions(
+        &self,
+        request: Request<ListMemoReactionsRequest>,
+    ) -> Result<Response<ListMemoReactionsResponse>, Status> {
+        unimplemented!()
+    }
+    /// UpsertMemoReaction upserts a reaction for a memo.
+    async fn upsert_memo_reaction(
+        &self,
+        request: Request<UpsertMemoReactionRequest>,
+    ) -> Result<Response<UpsertMemoReactionResponse>, Status> {
+        unimplemented!()
+    }
+    /// DeleteMemoReaction deletes a reaction for a memo.
+    async fn delete_memo_reaction(
+        &self,
+        request: Request<DeleteMemoReactionRequest>,
+    ) -> Result<Response<DeleteMemoReactionResponse>, Status> {
+        unimplemented!()
     }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Failed to create memo: {source}"), context(suffix(false)))]
-    CreateMemoFailed { source: crate::dao::memo::Error },
+    CreateMemoFailed { source: crate::dao::Error },
     #[snafu(display("Failed to get memo: {source}"), context(suffix(false)))]
     GetMemo { source: crate::dao::Error },
     #[snafu(
@@ -289,7 +321,7 @@ pub enum Error {
     MaybeCreateMemo,
 
     #[snafu(display("Failed to update memo: {source}"), context(suffix(false)))]
-    UpdateMemoFailed { source: crate::dao::memo::Error },
+    UpdateMemoFailed { source: crate::dao::Error },
 
     #[snafu(display("Failed to delete memo: {source}"), context(suffix(false)))]
     DeleteMemo { source: crate::dao::Error },

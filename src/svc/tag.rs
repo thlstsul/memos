@@ -3,9 +3,10 @@ use tonic::{Request, Response, Status};
 
 use crate::api::v2::tag_service_server::TagServiceServer;
 use crate::api::v2::{
-    tag_service_server, DeleteTagRequest, DeleteTagResponse, GetTagSuggestionsRequest,
-    GetTagSuggestionsResponse, ListTagsRequest, ListTagsResponse, RenameTagRequest,
-    RenameTagResponse, Tag, UpsertTagRequest, UpsertTagResponse,
+    tag_service_server, BatchUpsertTagRequest, BatchUpsertTagResponse, DeleteTagRequest,
+    DeleteTagResponse, GetTagSuggestionsRequest, GetTagSuggestionsResponse, ListTagsRequest,
+    ListTagsResponse, RenameTagRequest, RenameTagResponse, Tag, UpsertTagRequest,
+    UpsertTagResponse,
 };
 use crate::dao::tag::TagDao;
 use crate::state::AppState;
@@ -51,6 +52,7 @@ impl tag_service_server::TagService for TagService {
             }),
         }))
     }
+
     async fn list_tags(
         &self,
         request: Request<ListTagsRequest>,
@@ -59,6 +61,7 @@ impl tag_service_server::TagService for TagService {
         let tags = self.dao.list_tags(user.id).await.context(ListTag)?;
         Ok(Response::new(tags.into()))
     }
+
     async fn delete_tag(
         &self,
         request: Request<DeleteTagRequest>,
@@ -73,17 +76,33 @@ impl tag_service_server::TagService for TagService {
 
         Ok(Response::new(DeleteTagResponse {}))
     }
+    /// BatchUpsertTag upserts multiple tags.
+    async fn batch_upsert_tag(
+        &self,
+        request: Request<BatchUpsertTagRequest>,
+    ) -> Result<Response<BatchUpsertTagResponse>, Status> {
+        let user = get_current_user(&request)?;
+
+        for req in &request.get_ref().requests {
+            self.dao
+                .upsert_tag(&req.name, user.id)
+                .await
+                .context(UpsertTag)?;
+        }
+
+        Ok(Response::new(BatchUpsertTagResponse {}))
+    }
     async fn get_tag_suggestions(
         &self,
         request: Request<GetTagSuggestionsRequest>,
     ) -> Result<Response<GetTagSuggestionsResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     async fn rename_tag(
         &self,
         request: Request<RenameTagRequest>,
     ) -> Result<Response<RenameTagResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
 }
 

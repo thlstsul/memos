@@ -1,5 +1,6 @@
 /target
 /api
+/server
 .shuttle-storage
 Secrets*.toml
 dumpfile.sql

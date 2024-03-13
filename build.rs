@@ -21,7 +21,7 @@ fn main() {
                 "memos.api.v2.ActivityVersionUpdatePayload",
                 "memos.api.v2.Inbox",
                 "memos.api.v2.MemoRelation",
-                // "memos.api.v2.Node",
+                "memos.api.v2.Reaction",
             ],
             false,
             true,
@@ -33,7 +33,6 @@ fn main() {
             true,
             None,
         )
-        .enum_attribute(".", "#[allow(clippy::enum_variant_names)]")
         .with_field_attributes(
             &[
                 "memos.api.v2.Activity.create_time",
@@ -60,6 +59,7 @@ fn main() {
                 "memos.api.v2.Memo.pinned",
                 "memos.api.v2.Memo.resources",
                 "memos.api.v2.Memo.relations",
+                "memos.api.v2.Memo.reactions",
                 "memos.api.v2.Resource.external_link",
             ],
             &["#[serde(default)]"],
@@ -103,16 +103,16 @@ fn main() {
         .compile(
             &[
                 "proto/api/v2/user_service.proto",
-                "proto/api/v2/workspace_service.proto",
                 "proto/api/v2/memo_service.proto",
+                "proto/api/v2/memo_relation_service.proto",
                 "proto/api/v2/resource_service.proto",
                 "proto/api/v2/tag_service.proto",
                 "proto/api/v2/activity_service.proto",
                 "proto/api/v2/inbox_service.proto",
                 "proto/api/v2/auth_service.proto",
                 "proto/api/v2/webhook_service.proto",
-                "proto/api/v2/markdown_service.proto",
-                "proto/api/v2/memo_relation_service.proto",
+                "proto/api/v2/workspace_service.proto",
+                "proto/api/v2/workspace_setting_service.proto",
             ],
             // https://github.com/googleapis/googleapis.git
             &["proto", "googleapis"],

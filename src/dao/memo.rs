@@ -1,5 +1,4 @@
 use libsql::{params, Value};
-use snafu::{ResultExt, Snafu};
 
 use crate::{
     api::{
@@ -9,10 +8,9 @@ use crate::{
         Count,
     },
     state::AppState,
-    util::parse_tag,
 };
 
-use super::{de, Dao};
+use super::{Dao, Error};
 
 pub struct MemoDao {
     pub state: AppState,
@@ -34,26 +32,11 @@ impl MemoDao {
             visibility,
         }: CreateMemo,
     ) -> Result<Option<Memo>, Error> {
-        let tags = parse_tag(&content);
-        if !tags.is_empty() {
-            let mut stmt = self
-                .get_state()
-                .prepare("insert into tag (name, creator_id) values (?, ?) on conflict(name, creator_id) do update set name = excluded.name")
-                .await
-                .context(PrepareStatement)?;
-            for tag in tags {
-                stmt.execute(params![tag, creator_id])
-                    .await
-                    .context(Execute)?;
-            }
-        }
-
-        let rows = self.get_state().query(
+        let mut memos: Vec<Memo> = self.query(
             "INSERT INTO memo (creator_id, resource_name, content, visibility) VALUES (?, ?, ?, ?) RETURNING id, resource_name as name, creator_id, created_ts as create_time, created_ts as display_time, updated_ts as update_time, row_status, content, visibility", 
             params![creator_id, resource_name, content, visibility.as_str_name()]
-        ).await.context(Execute)?;
+        ).await?;
 
-        let mut memos = de(rows).context(Deserialize)?;
         Ok(memos.pop())
     }
 
@@ -75,7 +58,7 @@ impl MemoDao {
             order_by_updated_ts,
             order_by_pinned,
         }: FindMemo,
-    ) -> Result<Vec<Memo>, super::Error> {
+    ) -> Result<Vec<Memo>, Error> {
         let mut wheres = vec!["1 = 1"];
         let mut args = Vec::new();
 
@@ -175,14 +158,14 @@ impl MemoDao {
         self.query(&sql, args).await
     }
 
-    pub async fn count_memos(&self, creator_id: i32) -> Result<Vec<Count>, super::Error> {
+    pub async fn count_memos(&self, creator_id: i32) -> Result<Vec<Count>, Error> {
         let sql = "select created_date, count(1) as count from (
             select date(created_ts, 'unixepoch') as created_date from memo where creator_id = ?
         ) group by created_date";
         self.query(sql, [creator_id]).await
     }
 
-    pub async fn delete_memo(&self, memo_id: i32) -> Result<(), super::Error> {
+    pub async fn delete_memo(&self, memo_id: i32) -> Result<(), Error> {
         let sql = "delete from memo where id = ?";
         self.execute(sql, [memo_id]).await?;
         Ok(())
@@ -190,9 +173,9 @@ impl MemoDao {
 
     pub async fn update_memo(
         &self,
-        creator_id: i32,
         UpdateMemo {
             id,
+            creator_id,
             content,
             visibility,
             row_status,
@@ -207,36 +190,20 @@ impl MemoDao {
                 set.push("visibility = ?");
                 args.push(Value::from(visibility.as_str_name().to_owned()));
             }
+
             if let Some(row_status) = row_status {
                 set.push("row_status = ?");
                 args.push(Value::from(row_status.as_str_name().to_owned()));
             }
 
             if let Some(content) = content {
-                let tags = parse_tag(&content);
-                if !tags.is_empty() {
-                    let mut stmt = self
-                        .get_state()
-                        .prepare("insert into tag (name, creator_id) values (?, ?) on conflict(name, creator_id) do update set name = excluded.name")
-                        .await
-                        .context(PrepareStatement)?;
-                    for tag in tags {
-                        stmt.execute(params![tag, creator_id])
-                            .await
-                            .context(Execute)?;
-                    }
-                }
-
                 set.push("content = ?");
                 args.push(Value::from(content));
             }
             if !set.is_empty() {
                 let update_sql = format!("UPDATE memo SET {} WHERE id = ?", set.join(", "));
                 args.push(Value::from(id));
-                self.get_state()
-                    .execute(&update_sql, args)
-                    .await
-                    .context(Execute)?;
+                self.execute(&update_sql, args).await?;
             }
         }
 
@@ -253,25 +220,10 @@ impl MemoDao {
 		        SET
 		        	pinned = EXCLUDED.pinned
             ";
-            self.get_state()
-                .execute(sql, [id, creator_id, if pinned { 1 } else { 0 }])
-                .await
-                .context(Execute)?;
+            self.execute(sql, [id, creator_id, if pinned { 1 } else { 0 }])
+                .await?;
         }
 
         Ok(())
     }
-}
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Execute failed: {source}"), context(suffix(false)))]
-    Execute { source: libsql::Error },
-    #[snafu(
-        display("Failed to prepare statement: {source}"),
-        context(suffix(false))
-    )]
-    PrepareStatement { source: libsql::Error },
-    #[snafu(display("Deserialize failed: {source}"), context(suffix(false)))]
-    Deserialize { source: super::Error },
 }

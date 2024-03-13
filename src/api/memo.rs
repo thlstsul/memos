@@ -1,7 +1,4 @@
-use crate::util::{
-    ast::{self, parse_document},
-    get_name_parent_token,
-};
+use crate::util::{ast, get_name_parent_token};
 
 use super::{
     v2::{
@@ -52,6 +49,7 @@ pub struct CreateMemo {
 #[derive(Debug, Default)]
 pub struct UpdateMemo {
     pub id: i32,
+    pub creator_id: i32,
     pub content: Option<String>,
     pub visibility: Option<Visibility>,
     pub row_status: Option<RowStatus>,
@@ -209,22 +207,18 @@ impl From<Option<Memo>> for GetMemoResponse {
 
 fn convert_memo(memo: &mut Memo) {
     memo.creator = format!("{}/{}", USER_NAME_PREFIX, memo.creator);
-    memo.nodes = parse_document(&memo.content, false);
 }
 
 impl From<&UpdateMemoRequest> for UpdateMemo {
     fn from(value: &UpdateMemoRequest) -> Self {
-        let mut update = UpdateMemo {
-            id: value.id,
-            ..Default::default()
-        };
+        let mut update = UpdateMemo::default();
 
         if let UpdateMemoRequest {
-            id,
             memo: Some(memo),
             update_mask: Some(field_mask),
         } = value
         {
+            update.id = memo.id;
             for path in &field_mask.paths {
                 match path.as_str() {
                     "content" => update.content = Some(memo.content.clone()),

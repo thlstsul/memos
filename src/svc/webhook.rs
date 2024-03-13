@@ -20,13 +20,13 @@ impl webhook_service_server::WebhookService for WebhookService {
         &self,
         request: Request<CreateWebhookRequest>,
     ) -> Result<Response<CreateWebhookResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     async fn get_webhook(
         &self,
         request: Request<GetWebhookRequest>,
     ) -> Result<Response<GetWebhookResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     async fn list_webhooks(
         &self,
@@ -38,12 +38,12 @@ impl webhook_service_server::WebhookService for WebhookService {
         &self,
         request: Request<UpdateWebhookRequest>,
     ) -> Result<Response<UpdateWebhookResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     async fn delete_webhook(
         &self,
         request: Request<DeleteWebhookRequest>,
     ) -> Result<Response<DeleteWebhookResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
 }

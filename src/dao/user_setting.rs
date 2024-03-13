@@ -2,7 +2,7 @@ use libsql::params;
 
 use crate::{api::user::UserSetting, state::AppState};
 
-use super::Dao;
+use super::{Dao, Error};
 
 #[derive(Clone)]
 pub struct UserSettingDao {
@@ -16,23 +16,21 @@ impl Dao for UserSettingDao {
 }
 
 impl UserSettingDao {
-    pub async fn find_setting(&self, user_id: i32) -> Result<Vec<UserSetting>, super::Error> {
+    pub async fn find_setting(&self, user_id: i32) -> Result<Vec<UserSetting>, Error> {
         let sql = "select * from user_setting where user_id = ?";
         self.query(sql, [user_id]).await
     }
 
-    pub async fn upsert_setting(&self, settings: Vec<UserSetting>) -> Result<(), libsql::Error> {
-        let mut stmt = self.get_state().prepare("insert into user_setting (user_id, key, value) values (?, ?, ?) on conflict(user_id, key) do update set value = excluded.value").await?;
-        self.get_state().execute("BEGIN DEFERRED", ()).await?;
+    pub async fn upsert_setting(&self, settings: Vec<UserSetting>) -> Result<(), Error> {
+        let sql = "insert into user_setting (user_id, key, value) values (?, ?, ?) on conflict(user_id, key) do update set value = excluded.value";
+
         for setting in settings {
-            stmt.execute(params![
-                setting.user_id,
-                setting.key.to_string(),
-                setting.value,
-            ])
+            self.execute(
+                sql,
+                params![setting.user_id, setting.key.to_string(), setting.value,],
+            )
             .await?;
         }
-        self.get_state().execute("COMMIT", ()).await?;
 
         Ok(())
     }

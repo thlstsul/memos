@@ -29,12 +29,12 @@ impl inbox_service_server::InboxService for InboxService {
         &self,
         request: Request<UpdateInboxRequest>,
     ) -> Result<Response<UpdateInboxResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
     async fn delete_inbox(
         &self,
         request: Request<DeleteInboxRequest>,
     ) -> Result<Response<DeleteInboxResponse>, Status> {
-        todo!()
+        unimplemented!()
     }
 }

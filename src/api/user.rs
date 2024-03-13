@@ -8,7 +8,7 @@ use super::{
 use serde::{Deserialize, Deserializer};
 use snafu::{ResultExt, Snafu};
 
-use crate::{api::v2::GetUserSettingResponse, util::get_name_parent_token};
+use crate::util::get_name_parent_token;
 
 #[derive(Debug, Deserialize)]
 pub struct UserSetting {
@@ -65,7 +65,7 @@ impl ToString for UserSettingKey {
     }
 }
 
-impl From<Vec<UserSetting>> for GetUserSettingResponse {
+impl From<Vec<UserSetting>> for super::v2::UserSetting {
     fn from(value: Vec<UserSetting>) -> Self {
         let mut setting = super::v2::UserSetting::default();
         for s in value {
@@ -77,9 +77,7 @@ impl From<Vec<UserSetting>> for GetUserSettingResponse {
                 _ => (),
             }
         }
-        Self {
-            setting: Some(setting),
-        }
+        setting
     }
 }
 

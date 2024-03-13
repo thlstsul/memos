@@ -1,4 +1,5 @@
 #![allow(unused_variables)]
+#![allow(clippy::enum_variant_names)]
 
 use axum::{error_handling::HandleErrorLayer, routing::get, BoxError, Router};
 use axum_login::{
@@ -6,11 +7,7 @@ use axum_login::{
     tower_sessions::{cookie::time::Duration, Expiry, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
-use ctrl::system;
-use ctrl::{
-    auth::{self, Backend},
-    resource,
-};
+use ctrl::{auth::Backend, resource};
 use hybrid::{GrpcWebService, ShuttleGrpcWeb};
 use hyper::StatusCode;
 use libsql::Connection;
@@ -26,11 +23,16 @@ use tower_http::{
 use tracing::error;
 
 use crate::{
-    ctrl::{auth::AuthLayer, resource::stream_resource, store::TursoStore},
+    ctrl::{auth::AuthLayer, resource::stream_resource, store::TursoStore, system},
     state::AppState,
     svc::{
-        auth::AuthService, inbox::InboxService, memo::MemoService, resource::ResourceService,
-        tag::TagService, webhook::WebhookService,
+        auth::AuthService,
+        inbox::InboxService,
+        memo::MemoService,
+        resource::ResourceService,
+        tag::TagService,
+        webhook::WebhookService,
+        workspace::{WorkspaceService, WorkspaceSettingService},
     },
 };
 
@@ -63,7 +65,7 @@ async fn grpc_web(
         }))
         .layer(auth_manager_layer.clone());
 
-    let public = Router::new().merge(auth::router()).merge(system::router());
+    let public = Router::new().merge(system::router());
     let protected = Router::new()
         .merge(resource::router())
         .route_layer(login_required!(Backend));
@@ -89,10 +91,12 @@ async fn grpc_web(
         .layer(TraceLayer::new_for_http());
 
     let public_path = vec![
+        "/memos.api.v2.AuthService/SignIn",
         "/memos.api.v2.AuthService/GetAuthStatus",
         "/memos.api.v2.MemoService/ListMemos",
         "/memos.api.v2.MemoService/ListMemoRelations",
         "/memos.api.v2.MemoService/ListMemoResources",
+        "/memos.api.v2.WorkspaceSettingService/GetWorkspaceSetting",
     ]
     .into_iter()
     .map(|s| s.to_owned())
@@ -105,6 +109,8 @@ async fn grpc_web(
     let resource = ResourceService::server(&state);
     let inbox = InboxService::server();
     let webhook = WebhookService::server();
+    let workspace = WorkspaceService::server();
+    let setting = WorkspaceSettingService::server(&state);
 
     let axum_router = axum_router.with_state(state);
 
@@ -118,7 +124,9 @@ async fn grpc_web(
         .add_service(memo)
         .add_service(resource)
         .add_service(inbox)
-        .add_service(webhook);
+        .add_service(webhook)
+        .add_service(workspace)
+        .add_service(setting);
 
     Ok(GrpcWebService {
         axum_router,

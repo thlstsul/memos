@@ -1,14 +1,7 @@
-use std::collections::HashSet;
-
-use crate::api::v2::{node, Node, TagNode};
 use nanoid::{alphabet, nanoid};
 use snafu::{ensure, Snafu};
 
 pub mod ast;
-
-pub trait IntoNode {
-    fn into(self) -> Vec<Node>;
-}
 
 pub fn get_name_parent_token(
     name: impl AsRef<str>,
@@ -24,17 +17,6 @@ pub fn get_name_parent_token(
 
 pub fn uuid() -> String {
     nanoid!(16, &alphabet::SAFE)
-}
-
-pub fn parse_tag(content: impl AsRef<str>) -> HashSet<String> {
-    let mut rtn = HashSet::new();
-    let tags = ast::parse_document(content, true);
-    for tag in tags {
-        if let Some(node::Node::TagNode(TagNode { content })) = tag.node {
-            rtn.insert(content);
-        }
-    }
-    rtn
 }
 
 #[derive(Debug, Snafu)]

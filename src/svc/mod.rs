@@ -12,6 +12,7 @@ pub mod system;
 pub mod tag;
 pub mod user;
 pub mod webhook;
+pub mod workspace;
 
 pub fn get_current_user<T>(request: &Request<T>) -> Result<&User, Error> {
     if let Some(AuthSession {
@@ -79,5 +80,12 @@ impl From<resource::Error> for Status {
             resource::Error::ResourceNotFound { .. } => Status::not_found(value.to_string()),
             _ => Status::internal(value.to_string()),
         }
+    }
+}
+
+impl From<auth::Error> for Status {
+    fn from(value: auth::Error) -> Self {
+        error!("{value}");
+        Status::internal(value.to_string())
     }
 }

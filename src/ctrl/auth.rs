@@ -3,74 +3,22 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use async_trait::async_trait;
-use axum::response::Redirect;
-use axum::routing::post;
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Result},
-};
-use axum::{Json, Router};
+use axum::{http::StatusCode, response::Result};
 use axum_login::tower_sessions::SessionManager;
 use axum_login::{AuthManager, AuthManagerLayer, AuthUser, AuthnBackend, UserId};
-use hyper::{header, Request, Response};
+use hyper::{Request, Response};
 use pin_project_lite::pin_project;
 use tower::{Layer, Service};
 use tower_cookies::CookieManager;
 use tracing::info;
 
-use crate::state::AppState;
+use crate::api::v2::SignInRequest;
 use crate::{
-    api::{v1::sign::SignRequest, v2::User},
+    api::v2::User,
     svc::user::{Error, UserService},
 };
 
 use super::store::TursoStore;
-
-pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/auth/signin", post(signin))
-        .route("/auth/signout", post(logout))
-}
-
-/// /auth/signin post json
-async fn signin(
-    mut auth_session: AuthSession,
-    Json(creds): Json<SignRequest>,
-) -> impl IntoResponse {
-    let user = match auth_session.authenticate(creds).await {
-        Ok(Some(user)) => user,
-        Ok(None) => {
-            let status_code = StatusCode::UNAUTHORIZED;
-            let message = "Incorrect login credentials, please try again";
-            return (
-                status_code,
-                [(header::CONTENT_TYPE, "text/json; charset=utf-8")],
-                format!(
-                    r#"{{
-                    "error": "code={}, message={}",
-                    "message": "{}"
-                    }}"#,
-                    status_code, message, message
-                ),
-            )
-                .into_response();
-        }
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-    };
-
-    if auth_session.login(&user).await.is_err() {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    }
-    Json(user).into_response()
-}
-
-/// /auth/signout
-async fn logout(mut auth_session: AuthSession) -> impl IntoResponse {
-    match auth_session.logout() {
-        Ok(_) => Redirect::to("/").into_response(),
-        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-    }
-}
 
 impl AuthUser for User {
     type Id = i32;
@@ -98,7 +46,7 @@ impl Backend {
 #[async_trait]
 impl AuthnBackend for Backend {
     type User = User;
-    type Credentials = SignRequest;
+    type Credentials = SignInRequest;
     type Error = Error;
 
     async fn authenticate(
