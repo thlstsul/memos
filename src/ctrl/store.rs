@@ -144,7 +144,7 @@ impl SessionStore for TursoStore {
             .await
             .context(Execute)?;
 
-        if let Ok(Some(row)) = rows.next() {
+        if let Ok(Some(row)) = rows.next().await {
             if let Ok(Value::Blob(value)) = row.get_value(0) {
                 info!("Got valid session");
                 let session = rmp_serde::from_slice(&value).context(DecodeSession)?;

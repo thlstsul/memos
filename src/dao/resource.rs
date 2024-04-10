@@ -42,7 +42,7 @@ impl ResourceDao {
         }: WholeResource,
     ) -> Result<Option<Resource>, super::Error> {
         let mut fields = vec!["resource_name", "filename", "type", "size", "creator_id"];
-        let mut placeholder = vec!["?", "?", "?", "?"];
+        let mut placeholder = vec!["?", "?", "?", "?", "?"];
         let mut args = vec![
             Value::from(resource_name),
             Value::from(filename),
@@ -94,7 +94,7 @@ impl ResourceDao {
         }
 
         let insert_sql = format!(
-            "insert into resource ({}) values ({}) returning id, resource_name as name, filename, type, size, created_ts as create_time, external_link",
+            "insert into resource ({}) values ({}) returning id, memo_id, resource_name as name, filename, type, size, created_ts as create_time, external_link",
             fields.join(", "),
             placeholder.join(", ")
         );
@@ -113,25 +113,27 @@ impl ResourceDao {
             return Ok(());
         }
 
-        if add_res_ids.is_empty() {
-            let mut stmt = self
-                .get_state()
+        let transaction = self.get_state().transaction().await?;
+        if !add_res_ids.is_empty() {
+            let mut stmt = transaction
                 .prepare("update resource set memo_id = ? where id = ?")
                 .await?;
             for add_id in add_res_ids {
                 stmt.execute([memo_id, add_id]).await?;
+                stmt.reset();
             }
         }
 
-        if del_res_ids.is_empty() {
-            let mut stmt = self
-                .get_state()
+        if !del_res_ids.is_empty() {
+            let mut stmt = transaction
                 .prepare("delete from resource where memo_id = ? and id = ?")
                 .await?;
             for del_id in del_res_ids {
                 stmt.execute([memo_id, del_id]).await?;
+                stmt.reset();
             }
         }
+        transaction.commit().await?;
 
         Ok(())
     }
@@ -220,7 +222,7 @@ impl ResourceDao {
             .context(PrepareStatement)?;
         for memo_id in memo_ids {
             let rows = stmt.query([memo_id]).await.context(Execute)?;
-            let res = de(rows).context(Deserialize)?;
+            let res = de(rows).await.context(Deserialize)?;
             rtn.insert(memo_id, res);
         }
 

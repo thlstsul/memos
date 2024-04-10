@@ -21,16 +21,21 @@ impl UserSettingDao {
         self.query(sql, [user_id]).await
     }
 
-    pub async fn upsert_setting(&self, settings: Vec<UserSetting>) -> Result<(), Error> {
-        let sql = "insert into user_setting (user_id, key, value) values (?, ?, ?) on conflict(user_id, key) do update set value = excluded.value";
-
+    pub async fn upsert_setting(&self, settings: Vec<UserSetting>) -> Result<(), libsql::Error> {
+        let transaction = self.get_state().transaction().await?;
+        let mut stmt = transaction
+                .prepare("insert into user_setting (user_id, key, value) values (?, ?, ?) on conflict(user_id, key) do update set value = excluded.value")
+                .await?;
         for setting in settings {
-            self.execute(
-                sql,
-                params![setting.user_id, setting.key.to_string(), setting.value,],
-            )
+            stmt.execute(params![
+                setting.user_id,
+                setting.key.to_string(),
+                setting.value,
+            ])
             .await?;
+            stmt.reset();
         }
+        transaction.commit().await?;
 
         Ok(())
     }

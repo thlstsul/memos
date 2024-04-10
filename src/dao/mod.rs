@@ -23,19 +23,23 @@ pub trait Dao {
         self.get_state().execute(sql, params).await.context(Execute)
     }
 
-    async fn query<T: DeserializeOwned, P>(&self, sql: &str, params: P) -> Result<Vec<T>, Error>
+    async fn query<T: DeserializeOwned + Send, P>(
+        &self,
+        sql: &str,
+        params: P,
+    ) -> Result<Vec<T>, Error>
     where
         P: IntoParams + Send,
     {
         let rows = self.get_state().query(sql, params).await.context(Execute)?;
 
-        de(rows)
+        de(rows).await
     }
 }
 
-pub fn de<T: DeserializeOwned>(mut rows: Rows) -> Result<Vec<T>, Error> {
+pub async fn de<T: DeserializeOwned>(mut rows: Rows) -> Result<Vec<T>, Error> {
     let mut rtn = Vec::new();
-    while let Some(row) = rows.next().context(GetNextRow)? {
+    while let Some(row) = rows.next().await.context(GetNextRow)? {
         rtn.push(de::from_row(&row).context(Deserialize)?);
     }
     Ok(rtn)

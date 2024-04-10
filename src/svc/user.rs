@@ -200,7 +200,7 @@ pub enum Error {
         display("Failed to update/insert user setting: {source}"),
         context(suffix(false))
     )]
-    UpsertSetting { source: crate::dao::Error },
+    UpsertSetting { source: libsql::Error },
 
     #[snafu(display("Invalid username: {source}"), context(suffix(false)))]
     InvalidUsername { source: crate::api::user::Error },
