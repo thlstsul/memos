@@ -224,6 +224,7 @@ impl ResourceDao {
             let rows = stmt.query([memo_id]).await.context(Execute)?;
             let res = de(rows).await.context(Deserialize)?;
             rtn.insert(memo_id, res);
+            stmt.reset();
         }
 
         Ok(rtn)
