@@ -1,32 +1,40 @@
-use crate::api::v2::{
+use std::sync::Arc;
+
+use crate::api::v1::gen::{
     webhook_service_server::{self, WebhookServiceServer},
-    CreateWebhookRequest, CreateWebhookResponse, DeleteWebhookRequest, DeleteWebhookResponse,
-    GetWebhookRequest, GetWebhookResponse, ListWebhooksRequest, ListWebhooksResponse,
-    UpdateWebhookRequest, UpdateWebhookResponse,
+    CreateWebhookRequest, DeleteWebhookRequest, GetWebhookRequest, ListWebhooksRequest,
+    ListWebhooksResponse, UpdateWebhookRequest, Webhook,
 };
 use async_trait::async_trait;
 use tonic::{Request, Response, Status};
-pub struct WebhookService;
 
-impl WebhookService {
-    pub fn server() -> WebhookServiceServer<WebhookService> {
-        WebhookServiceServer::new(WebhookService)
+use super::EmptyService;
+
+#[async_trait]
+pub trait WebhookService:
+    webhook_service_server::WebhookService + Clone + Send + Sync + 'static
+{
+    fn webhook_server(self: Arc<Self>) -> WebhookServiceServer<Self> {
+        WebhookServiceServer::from_arc(self)
     }
 }
 
 #[async_trait]
-impl webhook_service_server::WebhookService for WebhookService {
+impl WebhookService for EmptyService {}
+
+#[tonic::async_trait]
+impl webhook_service_server::WebhookService for EmptyService {
     async fn create_webhook(
         &self,
         request: Request<CreateWebhookRequest>,
-    ) -> Result<Response<CreateWebhookResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<Webhook>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     async fn get_webhook(
         &self,
         request: Request<GetWebhookRequest>,
-    ) -> Result<Response<GetWebhookResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<Webhook>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     async fn list_webhooks(
         &self,
@@ -37,13 +45,13 @@ impl webhook_service_server::WebhookService for WebhookService {
     async fn update_webhook(
         &self,
         request: Request<UpdateWebhookRequest>,
-    ) -> Result<Response<UpdateWebhookResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<Webhook>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     async fn delete_webhook(
         &self,
         request: Request<DeleteWebhookRequest>,
-    ) -> Result<Response<DeleteWebhookResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<()>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
 }

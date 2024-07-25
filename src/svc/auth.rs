@@ -1,42 +1,44 @@
+use std::sync::Arc;
+
+use async_trait::async_trait;
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
 
 use crate::{
-    api::v2::{
+    api::v1::gen::{
         auth_service_server::{self, AuthServiceServer},
-        GetAuthStatusRequest, GetAuthStatusResponse, SignInRequest, SignInResponse,
-        SignInWithSsoRequest, SignInWithSsoResponse, SignOutRequest, SignOutResponse,
-        SignUpRequest, SignUpResponse,
+        GetAuthStatusRequest, SignInRequest, SignInWithSsoRequest, SignOutRequest, SignUpRequest,
+        User,
     },
-    ctrl::auth::{AuthSession, Backend},
+    ctrl::AuthSession,
 };
 
-use super::get_current_user;
+use super::{EmptyService, RequestExt};
 
-pub struct AuthService;
-
-impl AuthService {
-    pub fn server() -> AuthServiceServer<AuthService> {
-        AuthServiceServer::new(AuthService)
+#[async_trait]
+pub trait AuthService: auth_service_server::AuthService + Clone + Send + Sync + 'static {
+    fn auth_server(self: Arc<Self>) -> AuthServiceServer<Self> {
+        AuthServiceServer::from_arc(self)
     }
 }
 
+#[async_trait]
+impl AuthService for EmptyService {}
+
 #[tonic::async_trait]
-impl auth_service_server::AuthService for AuthService {
+impl auth_service_server::AuthService for EmptyService {
     async fn get_auth_status(
         &self,
         request: Request<GetAuthStatusRequest>,
-    ) -> Result<Response<GetAuthStatusResponse>, Status> {
-        let user = get_current_user(&request)?;
-        Ok(Response::new(user.clone().into()))
+    ) -> Result<Response<User>, Status> {
+        let user = request.get_current_user()?;
+        let mut user: User = user.clone().into();
+        user.password = "".to_string();
+        Ok(Response::new(user))
     }
 
-    async fn sign_in(
-        &self,
-        mut request: Request<SignInRequest>,
-    ) -> Result<Response<SignInResponse>, Status> {
+    async fn sign_in(&self, mut request: Request<SignInRequest>) -> Result<Response<User>, Status> {
         let creds = request.get_ref().clone();
-        let mut resp_user = None;
         if let Some(session) = request.extensions_mut().get_mut::<AuthSession>() {
             let user = match session.authenticate(creds).await {
                 Ok(Some(user)) => user,
@@ -49,40 +51,35 @@ impl auth_service_server::AuthService for AuthService {
             };
 
             session.login(&user).await.context(Login)?;
-            resp_user = Some(user);
+            Ok(Response::new(user.into()))
+        } else {
+            Err(Status::internal("Auth layer uninitialized"))
         }
-        Ok(Response::new(SignInResponse { user: resp_user }))
     }
     /// SignInWithSSO signs in the user with the given SSO code.
     async fn sign_in_with_sso(
         &self,
         request: Request<SignInWithSsoRequest>,
-    ) -> Result<Response<SignInWithSsoResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<User>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     /// SignUp signs up the user with the given username and password.
-    async fn sign_up(
-        &self,
-        request: Request<SignUpRequest>,
-    ) -> Result<Response<SignUpResponse>, Status> {
-        unimplemented!()
+    async fn sign_up(&self, request: Request<SignUpRequest>) -> Result<Response<User>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     /// SignOut signs out the user.
-    async fn sign_out(
-        &self,
-        mut request: Request<SignOutRequest>,
-    ) -> Result<Response<SignOutResponse>, Status> {
+    async fn sign_out(&self, mut request: Request<SignOutRequest>) -> Result<Response<()>, Status> {
         if let Some(session) = request.extensions_mut().get_mut::<AuthSession>() {
             session.logout().context(Logout)?;
         }
-        Ok(Response::new(SignOutResponse {}))
+        Ok(Response::new(()))
     }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Failed to login: {source}"), context(suffix(false)))]
-    Login { source: axum_login::Error<Backend> },
+    Login { source: crate::ctrl::AuthError },
     #[snafu(display("Failed to logout: {source}"), context(suffix(false)))]
-    Logout { source: axum_login::Error<Backend> },
+    Logout { source: crate::ctrl::AuthError },
 }

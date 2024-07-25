@@ -1,8 +1,10 @@
 use std::path;
+use std::sync::Arc;
 use std::{collections::HashMap, io::Cursor};
 
+use async_trait::async_trait;
 use image::{io::Reader as ImageReader, ImageFormat, ImageOutputFormat};
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{ensure, OptionExt, ResultExt, Snafu};
 use tokio::{
     fs::{self, File, OpenOptions},
     io::AsyncWriteExt,
@@ -10,56 +12,61 @@ use tokio::{
 use tokio_util::io::ReaderStream;
 use tonic::{Request, Response, Status};
 
-use crate::api::v2::resource_service_server::ResourceServiceServer;
-use crate::api::v2::{
-    GetResourceByNameRequest, GetResourceByNameResponse, GetResourceRequest, GetResourceResponse,
-};
-use crate::util;
+use crate::api::v1::gen::GetResourceByUidRequest;
+use crate::dao::resource::ResourceRepository;
+use crate::dao::workspace::WorkspaceRepository;
+use crate::google::api::HttpBody;
+
+use crate::svc::workspace::WorkspaceSettingService;
 use crate::{
-    api::{
-        resource::{FindResource, WholeResource},
-        v2::{
-            resource_service_server, CreateResourceRequest, CreateResourceResponse,
-            DeleteResourceRequest, DeleteResourceResponse, ListResourcesRequest,
-            ListResourcesResponse, Resource, UpdateResourceRequest, UpdateResourceResponse,
-        },
+    api::prefix::ExtractName,
+    api::v1::gen::{
+        resource_service_server, resource_service_server::ResourceServiceServer,
+        CreateResourceRequest, DeleteResourceRequest, GetResourceBinaryRequest, GetResourceRequest,
+        ListResourcesRequest, ListResourcesResponse, Resource, SearchResourcesRequest,
+        SearchResourcesResponse, UpdateResourceRequest,
     },
-    dao::resource::ResourceDao,
-    state::AppState,
+    model::resource::{FindResource, Resource as ResourceModel},
 };
 
-use super::get_current_user;
+use super::{RequestExt, Service};
 
 const RESOURCE_PATH: &str = ".resource_cache";
 const THUMBNAIL_IMAGE_PATH: &str = ".thumbnail_cache";
+const MEBI_BYTE: usize = 1024 * 1024;
 
-pub struct ResourceService {
-    dao: ResourceDao,
+#[async_trait]
+pub trait ResourceService:
+    resource_service_server::ResourceService + Clone + Send + Sync + 'static
+{
+    fn resource_server(self: Arc<Self>) -> ResourceServiceServer<Self> {
+        ResourceServiceServer::from_arc(self)
+    }
+
+    async fn set_resources_memo(
+        &self,
+        memo_id: i32,
+        new_res_ids: Vec<i32>,
+        old_res_ids: Vec<i32>,
+    ) -> Result<(), Error>;
+    async fn get_resource_by_id(&self, id: i32) -> Result<ResourceModel, Error>;
+    async fn get_whole_resource(&self, id: i32) -> Result<ResourceModel, Error>;
+    async fn relate_resources(
+        &self,
+        memo_ids: Vec<i32>,
+    ) -> Result<HashMap<i32, Vec<ResourceModel>>, Error>;
+    async fn relate_resource(&self, memo_id: i32) -> Result<Vec<ResourceModel>, Error>;
+    async fn get_resource_stream(
+        &self,
+        id: i32,
+        filename: String,
+        thumbnail: bool,
+    ) -> Result<ReaderStream<File>, Error>;
 }
 
-impl ResourceService {
-    pub fn new(state: &AppState) -> Self {
-        Self {
-            dao: ResourceDao {
-                state: state.clone(),
-            },
-        }
-    }
-
-    pub fn server(state: &AppState) -> ResourceServiceServer<ResourceService> {
-        ResourceServiceServer::new(ResourceService::new(state))
-    }
-
-    pub async fn create_resource(&self, mut create: WholeResource) -> Result<Resource, Error> {
-        create.resource_name = util::uuid();
-        self.dao
-            .create_resource(create)
-            .await
-            .context(CreateResource)?
-            .context(MaybeCreateResource)
-    }
-
-    pub async fn set_memo_resources(
+#[async_trait]
+impl<R: ResourceRepository + WorkspaceRepository> ResourceService for Service<R> {
+    async fn set_resources_memo(
         &self,
         memo_id: i32,
         new_res_ids: Vec<i32>,
@@ -76,71 +83,43 @@ impl ResourceService {
             .copied()
             .collect();
 
-        self.dao
-            .set_memo_resources(memo_id, add_res_ids, del_res_ids)
-            .await
-            .context(SetMemoResources)
+        Ok(self
+            .repo
+            .set_resources_memo(memo_id, add_res_ids, del_res_ids)
+            .await?)
     }
 
-    pub async fn get_resource(&self, id: i32) -> Result<Resource, Error> {
+    async fn get_resource_by_id(&self, id: i32) -> Result<ResourceModel, Error> {
         let mut rs = self
-            .dao
+            .repo
             .list_resources(FindResource {
                 id: Some(id),
                 ..Default::default()
             })
-            .await
-            .context(GetResource)?;
+            .await?;
         rs.pop().context(ResourceNotFound)
     }
 
-    pub async fn get_resource_by_name(&self, name: String) -> Result<Resource, Error> {
-        let mut rs = self
-            .dao
-            .list_resources(FindResource {
-                name: Some(name),
-                ..Default::default()
-            })
-            .await
-            .context(GetResource)?;
-        rs.pop().context(ResourceNotFound)
+    async fn get_whole_resource(&self, id: i32) -> Result<ResourceModel, Error> {
+        self.repo.get_resource(id).await?.context(ResourceNotFound)
     }
 
-    pub async fn get_whole_resource(&self, id: i32) -> Result<WholeResource, Error> {
-        self.dao
-            .get_resource(id)
-            .await
-            .context(GetResource)?
-            .context(ResourceNotFound)
-    }
-
-    pub async fn relate_resources(
+    async fn relate_resources(
         &self,
         memo_ids: Vec<i32>,
-    ) -> Result<HashMap<i32, Vec<Resource>>, Error> {
-        self.dao
-            .relate_resources(memo_ids)
-            .await
-            .context(RelateResources)
+    ) -> Result<HashMap<i32, Vec<ResourceModel>>, Error> {
+        Ok(self.repo.relate_resources(memo_ids).await?)
     }
 
-    pub async fn relate_resource(&self, memo_id: i32) -> Result<Vec<Resource>, Error> {
-        let rs = self
-            .dao
-            .relate_resources(vec![memo_id])
-            .await
-            .context(RelateResources)?;
+    async fn relate_resource(&self, memo_id: i32) -> Result<Vec<ResourceModel>, Error> {
+        let rs = self.repo.relate_resources(vec![memo_id]).await?;
         Ok(rs.into_values().next().unwrap_or(vec![]))
     }
 
-    pub async fn get_resource_stream(
+    async fn get_resource_stream(
         &self,
-        Resource {
-            id,
-            filename,
-            r#type,
-            ..
-        }: Resource,
+        id: i32,
+        filename: String,
         thumbnail: bool,
     ) -> Result<ReaderStream<File>, Error> {
         let filename = format!("{}.{}", id, filename);
@@ -154,12 +133,12 @@ impl ResourceService {
         };
         if !exists {
             if thumbnail {
-                Self::creator_dir(THUMBNAIL_IMAGE_PATH).await?;
+                creator_dir(THUMBNAIL_IMAGE_PATH).await?;
             } else {
-                Self::creator_dir(RESOURCE_PATH).await?;
+                creator_dir(RESOURCE_PATH).await?;
             }
 
-            let WholeResource { blob, .. } = Self::get_whole_resource(self, id).await?;
+            let ResourceModel { blob, .. } = Self::get_whole_resource(self, id).await?;
             if thumbnail {
                 let mut bytes = Vec::new();
                 {
@@ -175,9 +154,9 @@ impl ResourceService {
                     img.write_to(&mut Cursor::new(&mut bytes), format)
                         .context(ImageEncode)?;
                 }
-                Self::save_file(&thumbnail_path, &bytes).await?;
+                save_file(&thumbnail_path, &bytes).await?;
             } else {
-                Self::save_file(&resource_path, &blob).await?;
+                save_file(&resource_path, &blob).await?;
             }
         }
 
@@ -190,43 +169,46 @@ impl ResourceService {
         let read_file = File::open(&read_path).await.context(OpenResource)?;
         Ok(ReaderStream::new(read_file))
     }
+}
 
-    async fn creator_dir(dir: impl AsRef<path::Path>) -> Result<(), Error> {
-        if !fs::try_exists(&dir).await.context(CreateCachedDir)? {
-            fs::create_dir(dir).await.context(CreateCachedDir)?;
-        }
-        Ok(())
+async fn creator_dir(dir: impl AsRef<path::Path>) -> Result<(), Error> {
+    if !fs::try_exists(&dir).await.context(CreateCachedDir)? {
+        fs::create_dir(dir).await.context(CreateCachedDir)?;
     }
+    Ok(())
+}
 
-    async fn save_file(path: impl AsRef<path::Path>, blob: &[u8]) -> Result<(), Error> {
-        let mut resource_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .read(false)
-            .open(&path)
-            .await
-            .context(OpenResource)?;
+async fn save_file(path: impl AsRef<path::Path>, blob: &[u8]) -> Result<(), Error> {
+    let mut resource_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .read(false)
+        .truncate(true)
+        .open(&path)
+        .await
+        .context(OpenResource)?;
 
-        resource_file.write_all(blob).await.context(WriteResource)?;
-        Ok(())
-    }
+    resource_file.write_all(blob).await.context(WriteResource)?;
+    Ok(())
 }
 
 #[tonic::async_trait]
-impl resource_service_server::ResourceService for ResourceService {
+impl<R: ResourceRepository + WorkspaceRepository> resource_service_server::ResourceService
+    for Service<R>
+{
     async fn list_resources(
         &self,
         request: Request<ListResourcesRequest>,
     ) -> Result<Response<ListResourcesResponse>, Status> {
-        let user = get_current_user(&request)?;
+        let user = request.get_current_user()?;
         let resources = self
-            .dao
+            .repo
             .list_resources(FindResource {
                 creator_id: Some(user.id),
                 ..Default::default()
             })
-            .await
-            .context(ListResource)?;
+            .await?;
+        let resources = resources.into_iter().map(|r| r.into()).collect();
 
         Ok(Response::new(ListResourcesResponse { resources }))
     }
@@ -234,78 +216,113 @@ impl resource_service_server::ResourceService for ResourceService {
     async fn delete_resource(
         &self,
         request: Request<DeleteResourceRequest>,
-    ) -> Result<Response<DeleteResourceResponse>, Status> {
-        let user = get_current_user(&request)?;
-        self.dao
-            .delete_resource(request.get_ref().id, user.id)
-            .await
-            .context(DeleteResource)?;
-        Ok(Response::new(DeleteResourceResponse {}))
+    ) -> Result<Response<()>, Status> {
+        let user = request.get_current_user()?;
+        let id = request.get_ref().get_id()?;
+        self.repo.delete_resource(id, user.id).await?;
+        Ok(Response::new(()))
     }
 
     async fn get_resource(
         &self,
         request: Request<GetResourceRequest>,
-    ) -> Result<Response<GetResourceResponse>, Status> {
-        let res = Self::get_resource(self, request.get_ref().id).await?;
-        Ok(Response::new(GetResourceResponse {
-            resource: Some(res),
-        }))
+    ) -> Result<Response<Resource>, Status> {
+        let id = request.get_ref().get_id()?;
+        let res = self.get_resource_by_id(id).await?;
+        Ok(Response::new(res.into()))
     }
 
-    async fn get_resource_by_name(
+    async fn get_resource_by_uid(
         &self,
-        request: Request<GetResourceByNameRequest>,
-    ) -> Result<Response<GetResourceByNameResponse>, Status> {
-        let res = Self::get_resource_by_name(self, request.into_inner().name).await?;
-        Ok(Response::new(GetResourceByNameResponse {
-            resource: Some(res),
-        }))
+        request: Request<GetResourceByUidRequest>,
+    ) -> Result<Response<Resource>, Status> {
+        todo!()
     }
 
     async fn update_resource(
         &self,
         request: Request<UpdateResourceRequest>,
-    ) -> Result<Response<UpdateResourceResponse>, Status> {
-        todo!()
+    ) -> Result<Response<Resource>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
 
     async fn create_resource(
         &self,
         request: Request<CreateResourceRequest>,
-    ) -> Result<Response<CreateResourceResponse>, Status> {
-        todo!()
+    ) -> Result<Response<Resource>, Status> {
+        let user = request.get_current_user()?;
+
+        if let Some(resource) = &request.get_ref().resource {
+            let mut create: ResourceModel = resource.clone().into();
+            create.creator_id = user.id;
+
+            let size = create.blob.len();
+            let limit = self.get_upload_size_limit().await;
+            let max_upload_size_bytes = limit * MEBI_BYTE;
+            ensure!(max_upload_size_bytes > size, FileSizeLimit { size: limit });
+
+            // 默认保存到 turso
+            let resource = self
+                .repo
+                .create_resource(create)
+                .await?
+                .context(MaybeCreateResource)?;
+            Ok(Response::new(resource.into()))
+        } else {
+            Err(Status::data_loss("null request"))
+        }
+    }
+
+    async fn search_resources(
+        &self,
+        request: Request<SearchResourcesRequest>,
+    ) -> Result<Response<SearchResourcesResponse>, Status> {
+        Err(Status::unimplemented("unimplemented"))
+    }
+
+    async fn get_resource_binary(
+        &self,
+        request: Request<GetResourceBinaryRequest>,
+    ) -> Result<Response<HttpBody>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Failed to create resource: {source}"), context(suffix(false)))]
-    CreateResource { source: crate::dao::Error },
     #[snafu(
         display("Maybe create resource failed, because return none"),
         context(suffix(false))
     )]
     MaybeCreateResource,
-    #[snafu(
-        display("Failed to set memo resources: {source}"),
-        context(suffix(false))
-    )]
-    SetMemoResources { source: libsql::Error },
-    #[snafu(display("Failed to get resource: {source}"), context(suffix(false)))]
-    GetResource { source: crate::dao::Error },
+    #[snafu(context(false))]
+    SetMemoResources {
+        source: crate::dao::resource::SetResourceError,
+    },
+    #[snafu(context(false))]
+    GetResource {
+        source: crate::dao::resource::GetResourceError,
+    },
     #[snafu(display("Resource not found"), context(suffix(false)))]
     ResourceNotFound,
-    #[snafu(display("Failed to list resource: {source}"), context(suffix(false)))]
-    ListResource { source: crate::dao::Error },
-    #[snafu(display("Failed to delete resource: {source}"), context(suffix(false)))]
-    DeleteResource { source: crate::dao::Error },
+    #[snafu(context(false))]
+    ListResource {
+        source: crate::dao::resource::ListResourceError,
+    },
+    #[snafu(context(false))]
+    DeleteResource {
+        source: crate::dao::resource::DeleteResourceError,
+    },
+    #[snafu(context(false))]
+    RelateResources {
+        source: crate::dao::resource::RelateResourceError,
+    },
+
     #[snafu(
-        display("Failed to relate resources: {source}"),
+        display("File size exceeds allowed limit of {size} MiB"),
         context(suffix(false))
     )]
-    RelateResources { source: crate::dao::resource::Error },
-
+    FileSizeLimit { size: usize },
     #[snafu(
         display("Failed to create cached dir: {source}"),
         context(suffix(false))

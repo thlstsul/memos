@@ -1,5 +1,6 @@
 /target
 /api
+/docs
 /server
 .shuttle-storage
 Secrets*.toml

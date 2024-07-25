@@ -1,229 +1,46 @@
-use libsql::{params, Value};
+use async_trait::async_trait;
+use snafu::Snafu;
 
-use crate::{
-    api::{
-        memo::{CreateMemo, FindMemo, UpdateMemo},
-        pager::Paginator,
-        v2::Memo,
-        Count,
-    },
-    state::AppState,
+use crate::model::{
+    memo::{CreateMemo, FindMemo, Memo, UpdateMemo},
+    Count,
 };
 
-use super::{Dao, Error};
-
-pub struct MemoDao {
-    pub state: AppState,
+#[async_trait]
+pub trait MemoRepository: Clone + Send + Sync + 'static {
+    async fn create_memo(&self, memo: CreateMemo) -> Result<Option<Memo>, CreateMemoError>;
+    async fn list_memos(&self, find: FindMemo) -> Result<Vec<Memo>, ListMemoError>;
+    async fn count_memos(&self, creator_id: i32) -> Result<Vec<Count>, CountMemoError>;
+    async fn delete_memo(&self, memo_id: i32) -> Result<(), DeleteMemoError>;
+    async fn update_memo(&self, update: UpdateMemo) -> Result<(), UpdateMemoError>;
 }
 
-impl Dao for MemoDao {
-    fn get_state(&self) -> &AppState {
-        &self.state
-    }
+#[derive(Debug, Snafu)]
+#[snafu(context(false), display("Failed to create memo: {source}"))]
+pub struct CreateMemoError {
+    source: anyhow::Error,
 }
 
-impl MemoDao {
-    pub async fn create_memo(
-        &self,
-        CreateMemo {
-            creator_id,
-            resource_name,
-            content,
-            visibility,
-        }: CreateMemo,
-    ) -> Result<Option<Memo>, Error> {
-        let mut memos: Vec<Memo> = self.query(
-            "INSERT INTO memo (creator_id, resource_name, content, visibility) VALUES (?, ?, ?, ?) RETURNING id, resource_name as name, creator_id, created_ts as create_time, created_ts as display_time, updated_ts as update_time, row_status, content, visibility", 
-            params![creator_id, resource_name, content, visibility.as_str_name()]
-        ).await?;
+#[derive(Debug, Snafu)]
+#[snafu(context(false), display("Failed to list memo: {source}"))]
+pub struct ListMemoError {
+    source: anyhow::Error,
+}
 
-        Ok(memos.pop())
-    }
+#[derive(Debug, Snafu)]
+#[snafu(context(false), display("Failed to count memo: {source}"))]
+pub struct CountMemoError {
+    source: anyhow::Error,
+}
 
-    pub async fn list_memos(
-        &self,
-        FindMemo {
-            id,
-            name,
-            creator,
-            creator_id,
-            row_status,
-            display_time_after,
-            display_time_before,
-            pinned,
-            content_search,
-            visibility_list,
-            exclude_content,
-            page_token,
-            order_by_updated_ts,
-            order_by_pinned,
-        }: FindMemo,
-    ) -> Result<Vec<Memo>, Error> {
-        let mut wheres = vec!["1 = 1"];
-        let mut args = Vec::new();
+#[derive(Debug, Snafu)]
+#[snafu(context(false), display("Failed to delete memo: {source}"))]
+pub struct DeleteMemoError {
+    source: anyhow::Error,
+}
 
-        if let Some(id) = id {
-            wheres.push("memo.id = ?");
-            args.push(Value::from(id));
-        }
-        if let Some(name) = name {
-            wheres.push("memo.resource_name = ?");
-            args.push(Value::from(name))
-        }
-        if let Some(creator_id) = creator_id {
-            wheres.push("memo.creator_id = ?");
-            args.push(Value::from(creator_id));
-        }
-        if let Some(row_status) = &row_status {
-            wheres.push("memo.row_status = ?");
-            args.push(Value::from(row_status.to_string()));
-        }
-        if let Some(display_time_before) = display_time_before {
-            wheres.push("memo.created_ts < ?");
-            args.push(Value::from(display_time_before));
-        }
-        if let Some(display_time_after) = display_time_after {
-            wheres.push("memo.created_ts > ?");
-            args.push(Value::from(display_time_after));
-        }
-        for content_search in content_search.iter() {
-            wheres.push("memo.content LIKE ?");
-            args.push(Value::from(format!("%{content_search}%")));
-        }
-        if pinned {
-            wheres.push("memo_organizer.pinned = 1");
-        }
-
-        let mut wheres: Vec<_> = wheres.into_iter().map(|s| s.to_owned()).collect();
-
-        if !visibility_list.is_empty() {
-            let mut l = Vec::new();
-            for visibility in visibility_list.iter() {
-                args.push(Value::from(visibility.as_str_name().to_owned()));
-                l.push("?");
-            }
-            wheres.push(format!("memo.visibility in ({})", l.join(", ")));
-        }
-
-        let mut orders = Vec::new();
-        if order_by_pinned {
-            orders.push("pinned DESC");
-        }
-        if order_by_updated_ts {
-            orders.push("memo.updated_ts DESC");
-        } else {
-            orders.push("memo.created_ts DESC");
-        }
-        orders.push("memo.id DESC");
-
-        let mut fields = vec![
-            "memo.id AS id",
-            "memo.resource_name as name",
-            "user.username AS creator",
-            "memo.creator_id AS creator_id",
-            "memo.created_ts AS create_time",
-            "memo.updated_ts AS update_time",
-            "memo.row_status AS row_status",
-            "memo.visibility AS visibility",
-            "CASE WHEN memo_organizer.pinned = 1 THEN 1 ELSE 0 END AS pinned",
-        ];
-
-        if !exclude_content {
-            fields.push("memo.content AS content");
-        }
-
-        if order_by_updated_ts {
-            fields.push("memo.updated_ts AS display_time");
-        } else {
-            fields.push("memo.created_ts AS display_time");
-        }
-
-        let mut sql = format!(
-            "select
-            {}
-            from memo
-		    left join memo_organizer on memo.id = memo_organizer.memo_id
-            left join user on memo.creator_id = user.id
-            where {}
-            group by memo.id
-            order by {}",
-            fields.join(",\n"),
-            wheres.join(" AND "),
-            orders.join(", ")
-        );
-
-        if let Some(page_token) = page_token {
-            sql = format!("{sql} {}", page_token.as_limit_sql());
-        }
-        self.query(&sql, args).await
-    }
-
-    pub async fn count_memos(&self, creator_id: i32) -> Result<Vec<Count>, Error> {
-        let sql = "select created_date, count(1) as count from (
-            select date(created_ts, 'unixepoch') as created_date from memo where creator_id = ?
-        ) group by created_date";
-        self.query(sql, [creator_id]).await
-    }
-
-    pub async fn delete_memo(&self, memo_id: i32) -> Result<(), Error> {
-        let sql = "delete from memo where id = ?";
-        self.execute(sql, [memo_id]).await?;
-        Ok(())
-    }
-
-    pub async fn update_memo(
-        &self,
-        UpdateMemo {
-            id,
-            creator_id,
-            content,
-            visibility,
-            row_status,
-            pinned,
-        }: UpdateMemo,
-    ) -> Result<(), Error> {
-        {
-            let mut set = Vec::new();
-            let mut args = Vec::new();
-
-            if let Some(visibility) = visibility {
-                set.push("visibility = ?");
-                args.push(Value::from(visibility.as_str_name().to_owned()));
-            }
-
-            if let Some(row_status) = row_status {
-                set.push("row_status = ?");
-                args.push(Value::from(row_status.as_str_name().to_owned()));
-            }
-
-            if let Some(content) = content {
-                set.push("content = ?");
-                args.push(Value::from(content));
-            }
-            if !set.is_empty() {
-                let update_sql = format!("UPDATE memo SET {} WHERE id = ?", set.join(", "));
-                args.push(Value::from(id));
-                self.execute(&update_sql, args).await?;
-            }
-        }
-
-        if let Some(pinned) = pinned {
-            // 置顶是单独操作的
-            let sql = "
-                INSERT INTO memo_organizer (
-		        	memo_id,
-		        	user_id,
-		        	pinned
-		        )
-		        VALUES (?, ?, ?)
-		        ON CONFLICT(memo_id, user_id) DO UPDATE 
-		        SET
-		        	pinned = EXCLUDED.pinned
-            ";
-            self.execute(sql, [id, creator_id, if pinned { 1 } else { 0 }])
-                .await?;
-        }
-
-        Ok(())
-    }
+#[derive(Debug, Snafu)]
+#[snafu(context(false), display("Failed to update memo: {source}"))]
+pub struct UpdateMemoError {
+    source: anyhow::Error,
 }

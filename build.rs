@@ -5,122 +5,82 @@ use proto_builder_trait::tonic::BuilderAttributes;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=proto/*");
+    println!(
+        "cargo:rustc-env=OUT_DIR={}",
+        std::env::var("OUT_DIR").unwrap()
+    );
 
     std::env::set_var("PROTOC", protoc_bin_vendored::protoc_bin_path().unwrap());
 
+    // Paths are specified in terms of the Protobuf type name (not the generated Rust type name).
     tonic_build::configure()
-        .out_dir("src/api/v2")
-        .with_serde(
-            &[
-                "memos.api.v2.Memo",
-                "memos.api.v2.Resource",
-                "memos.api.v2.Tag",
-                "memos.api.v2.Activity",
-                "memos.api.v2.ActivityPayload",
-                "memos.api.v2.ActivityMemoCommentPayload",
-                "memos.api.v2.ActivityVersionUpdatePayload",
-                "memos.api.v2.Inbox",
-                "memos.api.v2.MemoRelation",
-                "memos.api.v2.Reaction",
-            ],
-            false,
-            true,
-            None,
-        )
-        .with_serde(
-            &["memos.api.v2.User", "memos.api.v2.PageToken"],
-            true,
-            true,
-            None,
-        )
-        .with_field_attributes(
-            &[
-                "memos.api.v2.Activity.create_time",
-                "memos.api.v2.Inbox.create_time",
-                "memos.api.v2.Resource.create_time",
-                "memos.api.v2.Memo.create_time",
-                "memos.api.v2.Memo.update_time",
-                "memos.api.v2.Memo.display_time",
-            ],
-            &[r#"#[serde(with = "crate::api::time_serde")]"#],
-        )
-        .with_field_attributes(
-            &[
-                "memos.api.v2.User.password",
-                "memos.api.v2.User.name",
-                "memos.api.v2.Memo.nodes",
-            ],
-            &[r#"#[serde(skip)]"#],
-        )
-        .with_field_attributes(
-            &[
-                "memos.api.v2.Memo.creator",
-                "memos.api.v2.Memo.display_time",
-                "memos.api.v2.Memo.pinned",
-                "memos.api.v2.Memo.resources",
-                "memos.api.v2.Memo.relations",
-                "memos.api.v2.Memo.reactions",
-                "memos.api.v2.Resource.external_link",
-            ],
-            &["#[serde(default)]"],
-        )
-        .field_attribute(
-            "memos.api.v2.Resource.memo_id",
-            r#"#[serde(deserialize_with = "crate::api::option_serde::deserialize")]"#,
-        )
-        .field_attribute(
-            "memos.api.v2.Memo.row_status",
-            r#"#[serde(with = "crate::api::status_serde")]"#,
-        )
-        .field_attribute(
-            "memos.api.v2.Memo.visibility",
-            r#"#[serde(with = "crate::api::visibility_serde")]"#,
-        )
-        .field_attribute(
-            "memos.api.v2.Memo.pinned",
-            r#"#[serde(with = "crate::api::bool_serde")]"#,
-        )
-        .field_attribute(
-            "memos.api.v2.User.row_status",
-            r#"#[serde(with = "crate::api::status_serde", rename(serialize = "rowStatus"))]"#,
-        )
-        .field_attribute(
-            "memos.api.v2.User.role",
-            r#"#[serde(with = "crate::api::role_serde")]"#,
-        )
-        .field_attribute(
-            "memos.api.v2.User.create_time",
-            r#"#[serde(with = "crate::api::time_serde", rename(serialize = "createdTs"))]"#,
-        )
-        .field_attribute(
-            "memos.api.v2.User.update_time",
-            r#"#[serde(with = "crate::api::time_serde", rename(serialize = "updatedTs"))]"#,
-        )
-        .field_attribute(
-            "memos.api.v2.User.avatar_url",
-            r#"#[serde(rename(serialize = "avatarUrl"))]"#,
-        )
+        .out_dir("src/api/v1")
+        .with_serde(&["memos.api.v1.PageToken"], true, true, None)
         .compile(
             &[
-                "proto/api/v2/user_service.proto",
-                "proto/api/v2/memo_service.proto",
-                "proto/api/v2/memo_relation_service.proto",
-                "proto/api/v2/resource_service.proto",
-                "proto/api/v2/tag_service.proto",
-                "proto/api/v2/activity_service.proto",
-                "proto/api/v2/inbox_service.proto",
-                "proto/api/v2/auth_service.proto",
-                "proto/api/v2/webhook_service.proto",
-                "proto/api/v2/workspace_service.proto",
-                "proto/api/v2/workspace_setting_service.proto",
+                "proto/api/v1/activity_service.proto",
+                "proto/api/v1/auth_service.proto",
+                "proto/api/v1/idp_service.proto",
+                "proto/api/v1/inbox_service.proto",
+                "proto/api/v1/markdown_service.proto",
+                "proto/api/v1/memo_relation_service.proto",
+                "proto/api/v1/memo_service.proto",
+                "proto/api/v1/reaction_service.proto",
+                "proto/api/v1/resource_service.proto",
+                "proto/api/v1/user_service.proto",
+                "proto/api/v1/webhook_service.proto",
+                "proto/api/v1/workspace_service.proto",
+                "proto/api/v1/workspace_setting_service.proto",
             ],
             // https://github.com/googleapis/googleapis.git
             &["proto", "googleapis"],
         )
         .unwrap();
 
-    fs::remove_file("src/api/v2/google.api.rs").unwrap();
-    fs::rename("src/api/v2/memos.api.v2.rs", "src/api/v2/mod.rs").unwrap();
+    tonic_build::configure()
+        .out_dir("src/model")
+        .with_serde(
+            &[
+                "memos.store.ResourcePayload",
+                "memos.store.ResourcePayload.payload",
+                "memos.store.ResourcePayload.S3Object",
+                "memos.store.StorageS3Config",
+                "memos.store.MemoPayload",
+                "memos.store.MemoPayload.Property",
+                "memos.store.WorkspaceSetting",
+                "memos.store.WorkspaceSetting.value",
+                "memos.store.WorkspaceBasicSetting",
+                "memos.store.WorkspaceGeneralSetting",
+                "memos.store.WorkspaceStorageSetting",
+                "memos.store.WorkspaceMemoRelatedSetting",
+                "memos.store.WorkspaceCustomProfile",
+            ],
+            true,
+            true,
+            None,
+        )
+        .with_field_attributes(
+            &["memos.store.ResourcePayload.S3Object.last_presigned_time"],
+            &[r#"#[serde(with = "crate::model::time_serde")]"#],
+        )
+        .compile(
+            &[
+                "proto/store/activity.proto",
+                "proto/store/idp.proto",
+                "proto/store/inbox.proto",
+                "proto/store/memo.proto",
+                "proto/store/reaction.proto",
+                "proto/store/resource.proto",
+                "proto/store/user_setting.proto",
+                "proto/store/workspace_setting.proto",
+            ],
+            // https://github.com/googleapis/googleapis.git
+            &["proto"],
+        )
+        .unwrap();
+
+    fs::rename("src/api/v1/memos.api.v1.rs", "src/api/v1/gen.rs").unwrap();
+    fs::rename("src/model/memos.store.rs", "src/model/gen.rs").unwrap();
 
     Command::new("cargo").args(["fmt"]).output().unwrap();
 }

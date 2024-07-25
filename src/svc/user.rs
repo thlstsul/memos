@@ -1,90 +1,70 @@
+use std::sync::Arc;
+
+use crate::google::api::HttpBody;
+use crate::model::user::User as UserModel;
+use crate::{
+    api::{
+        prefix::ExtractName,
+        v1::gen::{
+            user_service_server::{self, UserServiceServer},
+            CreateUserAccessTokenRequest, CreateUserRequest, DeleteUserAccessTokenRequest,
+            DeleteUserRequest, GetUserAvatarBinaryRequest, GetUserRequest, GetUserSettingRequest,
+            ListUserAccessTokensRequest, ListUserAccessTokensResponse, ListUsersRequest,
+            ListUsersResponse, SearchUsersRequest, SearchUsersResponse, UpdateUserRequest,
+            UpdateUserSettingRequest, User, UserAccessToken, UserSetting,
+        },
+    },
+    dao::user::UserRepository,
+};
+use async_trait::async_trait;
 use sm3::{Digest, Sm3};
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{OptionExt, Snafu};
 use tonic::{Request, Response, Status};
 
-use crate::api::v2::user_service_server::UserServiceServer;
-use crate::api::v2::{
-    user_service_server, CreateUserAccessTokenRequest, CreateUserAccessTokenResponse,
-    CreateUserRequest, CreateUserResponse, DeleteUserAccessTokenRequest,
-    DeleteUserAccessTokenResponse, DeleteUserRequest, DeleteUserResponse, GetUserRequest,
-    GetUserResponse, GetUserSettingRequest, GetUserSettingResponse, ListUserAccessTokensRequest,
-    ListUserAccessTokensResponse, ListUsersRequest, ListUsersResponse, UpdateUserRequest,
-    UpdateUserResponse, UpdateUserSettingRequest, UpdateUserSettingResponse, User,
-};
-use crate::dao::user::UserDao;
-use crate::dao::user_setting::UserSettingDao;
-use crate::state::AppState;
+use super::{RequestExt, Service};
 
-use super::get_current_user;
+#[async_trait]
+pub trait UserService: user_service_server::UserService + Clone + Send + Sync + 'static {
+    fn user_server(self: Arc<Self>) -> UserServiceServer<Self> {
+        UserServiceServer::from_arc(self)
+    }
 
-#[derive(Clone)]
-pub struct UserService {
-    user_dao: UserDao,
-    setting_dao: UserSettingDao,
+    async fn sign_in(&self, name: &str, password: &str) -> Result<UserModel, Error>;
+    async fn petch_user(&self, id: i32) -> Result<UserModel, Error>;
+    async fn find_user(&self, name: &str) -> Result<UserModel, Error>;
 }
 
-impl UserService {
-    pub fn new(state: &AppState) -> Self {
-        Self {
-            user_dao: UserDao {
-                state: state.clone(),
-            },
-            setting_dao: UserSettingDao {
-                state: state.clone(),
-            },
-        }
-    }
-
-    pub fn server(state: &AppState) -> UserServiceServer<UserService> {
-        UserServiceServer::new(UserService::new(state))
-    }
-
-    pub async fn sign_in(&self, name: &str, password: &str) -> Result<User, Error> {
+#[async_trait]
+impl<R: UserRepository> UserService for Service<R> {
+    async fn sign_in(&self, name: &str, password: &str) -> Result<UserModel, Error> {
         let mut hasher = Sm3::new();
         hasher.update(password);
 
         let password_hash = hex::encode(hasher.finalize());
-        self.user_dao
+        self.repo
             .find_user(name, Some(&password_hash))
-            .await
-            .context(QueryUser)?
+            .await?
             .context(Login)
     }
 
-    pub async fn petch_user(&self, id: i32) -> Result<User, Error> {
-        self.user_dao
-            .petch_user(id)
-            .await
-            .context(QueryUser)?
-            .context(UserNotFound {
-                ident: id.to_string(),
-            })
+    async fn petch_user(&self, id: i32) -> Result<UserModel, Error> {
+        self.repo.petch_user(id).await?.context(UserNotFound {
+            ident: id.to_string(),
+        })
     }
 
-    pub async fn host_user(&self) -> Result<User, Error> {
-        self.user_dao
-            .host_user()
-            .await
-            .context(QueryUser)?
-            .context(UserNotFound { ident: "" })
-    }
-
-    pub async fn find_user(&self, name: &str) -> Result<User, Error> {
-        self.user_dao
+    async fn find_user(&self, name: &str) -> Result<UserModel, Error> {
+        self.repo
             .find_user(name, None)
-            .await
-            .context(QueryUser)?
+            .await?
             .context(UserNotFound { ident: name })
     }
 }
 
 #[tonic::async_trait]
-impl user_service_server::UserService for UserService {
-    async fn get_user(
-        &self,
-        request: Request<GetUserRequest>,
-    ) -> Result<Response<GetUserResponse>, Status> {
-        let name = request.into_inner().get_name().context(InvalidUsername)?;
+impl<R: UserRepository> user_service_server::UserService for Service<R> {
+    async fn get_user(&self, request: Request<GetUserRequest>) -> Result<Response<User>, Status> {
+        let name = request.into_inner().get_name();
         let user = Self::find_user(self, &name).await?;
         Ok(Response::new(user.into()))
     }
@@ -92,57 +72,42 @@ impl user_service_server::UserService for UserService {
     async fn get_user_setting(
         &self,
         request: Request<GetUserSettingRequest>,
-    ) -> Result<Response<GetUserSettingResponse>, Status> {
-        let user = get_current_user(&request)?;
-        let settings = self
-            .setting_dao
-            .find_setting(user.id)
-            .await
-            .context(QuerySetting)?;
-        Ok(Response::new(GetUserSettingResponse {
-            setting: Some(settings.into()),
-        }))
+    ) -> Result<Response<UserSetting>, Status> {
+        let user = request.get_current_user()?;
+        let settings = self.repo.find_user_setting(user.id).await?;
+        Ok(Response::new(settings.into()))
     }
 
     async fn update_user_setting(
         &self,
         request: Request<UpdateUserSettingRequest>,
-    ) -> Result<Response<UpdateUserSettingResponse>, Status> {
-        let user = get_current_user(&request)?;
+    ) -> Result<Response<UserSetting>, Status> {
+        let user = request.get_current_user()?;
         let settings = request.get_ref().as_settings(user.id);
-        self.setting_dao
-            .upsert_setting(settings)
-            .await
-            .context(UpsertSetting)?;
+        self.repo.upsert_user_setting(settings).await?;
 
-        let settings = self
-            .setting_dao
-            .find_setting(user.id)
-            .await
-            .context(QuerySetting)?;
+        let settings = self.repo.find_user_setting(user.id).await?;
 
-        Ok(Response::new(UpdateUserSettingResponse {
-            setting: Some(settings.into()),
-        }))
+        Ok(Response::new(settings.into()))
     }
 
     async fn list_users(
         &self,
         request: Request<ListUsersRequest>,
     ) -> Result<Response<ListUsersResponse>, Status> {
-        unimplemented!()
+        Err(Status::unimplemented("unimplemented"))
     }
     async fn create_user(
         &self,
         request: Request<CreateUserRequest>,
-    ) -> Result<Response<CreateUserResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<User>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     async fn update_user(
         &self,
         request: Request<UpdateUserRequest>,
-    ) -> Result<Response<UpdateUserResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<User>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     /// ListUserAccessTokens returns a list of access tokens for a user.
     async fn list_user_access_tokens(
@@ -158,21 +123,35 @@ impl user_service_server::UserService for UserService {
     async fn create_user_access_token(
         &self,
         request: Request<CreateUserAccessTokenRequest>,
-    ) -> Result<Response<CreateUserAccessTokenResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<UserAccessToken>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     /// DeleteUserAccessToken deletes an access token for a user.
     async fn delete_user_access_token(
         &self,
         request: Request<DeleteUserAccessTokenRequest>,
-    ) -> Result<Response<DeleteUserAccessTokenResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<()>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     async fn delete_user(
         &self,
         request: Request<DeleteUserRequest>,
-    ) -> Result<Response<DeleteUserResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<()>, Status> {
+        Err(Status::unimplemented("unimplemented"))
+    }
+
+    async fn search_users(
+        &self,
+        request: Request<SearchUsersRequest>,
+    ) -> Result<tonic::Response<SearchUsersResponse>, Status> {
+        Err(Status::unimplemented("unimplemented"))
+    }
+
+    async fn get_user_avatar_binary(
+        &self,
+        request: Request<GetUserAvatarBinaryRequest>,
+    ) -> Result<Response<HttpBody>, Status> {
+        todo!()
     }
 }
 
@@ -187,21 +166,13 @@ pub enum Error {
     #[snafu(display("User not found: {ident}"), context(suffix(false)))]
     UserNotFound { ident: String },
 
-    #[snafu(display("Failed to find user: {source}"), context(suffix(false)))]
-    QueryUser { source: crate::dao::Error },
+    #[snafu(context(false))]
+    QueryUser {
+        source: crate::dao::user::FindUserError,
+    },
 
-    #[snafu(
-        display("Failed to find user setting: {source}"),
-        context(suffix(false))
-    )]
-    QuerySetting { source: crate::dao::Error },
-
-    #[snafu(
-        display("Failed to update/insert user setting: {source}"),
-        context(suffix(false))
-    )]
-    UpsertSetting { source: libsql::Error },
-
-    #[snafu(display("Invalid username: {source}"), context(suffix(false)))]
-    InvalidUsername { source: crate::api::user::Error },
+    #[snafu(context(false))]
+    PetchUser {
+        source: crate::dao::user::PetchUserError,
+    },
 }

@@ -1,83 +1,57 @@
-use std::str::FromStr;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{
-    v2::{GetUserRequest, GetUserResponse, UpdateUserSettingRequest, User},
-    USER_NAME_PREFIX,
+use crate::{
+    api::{prefix, to_timestamp},
+    impl_extract_name,
+    model::{gen::UserSettingKey, user::UserSetting},
 };
 
-use serde::{Deserialize, Deserializer};
-use snafu::{ResultExt, Snafu};
+use super::{
+    prefix::FormatName,
+    v1::gen::{
+        user::Role, GetUserRequest, UpdateUserSettingRequest, User, UserSetting as UserSettingApi,
+    },
+};
 
-use crate::util::get_name_parent_token;
+impl_extract_name!(GetUserRequest, prefix::USER_NAME_PREFIX);
 
-#[derive(Debug, Deserialize)]
-pub struct UserSetting {
-    pub user_id: i32,
-    #[serde(deserialize_with = "deserialize_key")]
-    pub key: UserSettingKey,
-    pub value: String,
-}
-
-#[derive(Debug)]
-pub enum UserSettingKey {
-    Unspecified,
-    AccessTokens,
-    Locale,
-    Appearance,
-    Visibility,
-    TelegramUserId,
-}
-
-const UNSPECIFIED: &str = "USER_SETTING_KEY_UNSPECIFIED";
-const ACCESS_TOKENS: &str = "USER_SETTING_ACCESS_TOKENS";
-const LOCALE: &str = "USER_SETTING_LOCALE";
-const APPEARANCE: &str = "USER_SETTING_APPEARANCE";
-const VISIBILITY: &str = "USER_SETTING_MEMO_VISIBILITY";
-const TELEGRAM_USER_ID: &str = "USER_SETTING_TELEGRAM_USER_ID";
-
-impl FromStr for UserSettingKey {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let key = match s {
-            ACCESS_TOKENS => UserSettingKey::AccessTokens,
-            LOCALE => UserSettingKey::Locale,
-            APPEARANCE => UserSettingKey::Appearance,
-            VISIBILITY => UserSettingKey::Visibility,
-            TELEGRAM_USER_ID => UserSettingKey::TelegramUserId,
-            _ => UserSettingKey::Unspecified,
-        };
-        Ok(key)
-    }
-}
-
-impl ToString for UserSettingKey {
-    fn to_string(&self) -> String {
-        let key = match self {
-            UserSettingKey::Unspecified => UNSPECIFIED,
-            UserSettingKey::AccessTokens => ACCESS_TOKENS,
-            UserSettingKey::Locale => LOCALE,
-            UserSettingKey::Appearance => APPEARANCE,
-            UserSettingKey::Visibility => VISIBILITY,
-            UserSettingKey::TelegramUserId => TELEGRAM_USER_ID,
-        };
-        key.to_owned()
-    }
-}
-
-impl From<Vec<UserSetting>> for super::v2::UserSetting {
+impl From<Vec<UserSetting>> for UserSettingApi {
     fn from(value: Vec<UserSetting>) -> Self {
-        let mut setting = super::v2::UserSetting::default();
+        let mut setting = UserSettingApi::default();
         for s in value {
-            match s.key {
+            match s.key as UserSettingKey {
                 UserSettingKey::Locale => setting.locale = s.value,
                 UserSettingKey::Appearance => setting.appearance = s.value,
-                UserSettingKey::Visibility => setting.memo_visibility = s.value,
-                UserSettingKey::TelegramUserId => setting.telegram_user_id = s.value,
+                UserSettingKey::MemoVisibility => setting.memo_visibility = s.value,
                 _ => (),
             }
         }
         setting
+    }
+}
+
+impl From<crate::model::user::User> for User {
+    fn from(value: crate::model::user::User) -> Self {
+        Self {
+            name: value.get_name(),
+            id: value.id,
+            role: value.role as i32,
+            username: value.username,
+            email: value.email,
+            nickname: value.nickname,
+            avatar_url: value.avatar_url,
+            description: value.description,
+            password: value.password_hash,
+            row_status: value.row_status as i32,
+            create_time: to_timestamp(value.created_ts),
+            update_time: to_timestamp(value.updated_ts),
+        }
+    }
+}
+
+impl FormatName for crate::model::user::User {
+    fn get_name(&self) -> String {
+        format!("{}/{}", prefix::USER_NAME_PREFIX, self.id)
     }
 }
 
@@ -103,13 +77,8 @@ impl UpdateUserSettingRequest {
                     },
                     "memo_visibility" => UserSetting {
                         user_id,
-                        key: UserSettingKey::Visibility,
+                        key: UserSettingKey::MemoVisibility,
                         value: settings.memo_visibility.clone(),
-                    },
-                    "telegram_user_id" => UserSetting {
-                        user_id,
-                        key: UserSettingKey::TelegramUserId,
-                        value: settings.telegram_user_id.clone(),
                     },
                     _ => continue,
                 };
@@ -120,31 +89,23 @@ impl UpdateUserSettingRequest {
     }
 }
 
-impl GetUserRequest {
-    pub fn get_name(&self) -> Result<String, Error> {
-        get_name_parent_token(&self.name, USER_NAME_PREFIX).context(InvalidUsername)
+impl Serialize for Role {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let role = self.as_str_name();
+        serializer.serialize_str(role)
     }
 }
 
-impl From<User> for GetUserResponse {
-    fn from(value: User) -> Self {
-        let mut user = value;
-        user.name = format!("{}/{}", USER_NAME_PREFIX, user.username);
-        Self { user: Some(user) }
+impl<'de> Deserialize<'de> for Role {
+    fn deserialize<D>(deserializer: D) -> Result<Role, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let role = String::deserialize(deserializer)?;
+        let role = Role::from_str_name(&role).unwrap_or_default();
+        Ok(role)
     }
-}
-
-fn deserialize_key<'de, D>(deserializer: D) -> Result<UserSettingKey, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let key = String::deserialize(deserializer)?;
-    let key = UserSettingKey::from_str(&key).unwrap();
-    Ok(key)
-}
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Invalid username : {source}"), context(suffix(false)))]
-    InvalidUsername { source: crate::util::Error },
 }

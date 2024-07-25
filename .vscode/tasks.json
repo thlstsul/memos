@@ -1,0 +1,29 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"command": "cargo shuttle run",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "rust: shuttle run"
+		},
+		{
+			"command": "cargo shuttle deploy --allow-dirty",
+			"label": "rust: shuttle deploy",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"type": "shell"
+		},
+		{
+			"command": "cargo shuttle project restart --idle-minutes 0",
+			"label": "rust: shuttle restart",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"type": "shell",
+		}
+	]
+}

@@ -1,12 +1,7 @@
-use super::{
-    v2::{GetAuthStatusResponse, User},
-    USER_NAME_PREFIX,
-};
+use super::v1::gen::{GetAuthStatusResponse, User};
 
 impl From<User> for GetAuthStatusResponse {
     fn from(value: User) -> Self {
-        let mut user = value;
-        user.name = format!("{}/{}", USER_NAME_PREFIX, user.username);
-        Self { user: Some(user) }
+        Self { user: Some(value) }
     }
 }

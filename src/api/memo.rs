@@ -1,134 +1,39 @@
-use crate::util::{ast, get_name_parent_token};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use snafu::{ResultExt, Snafu};
+
+use crate::{
+    api::{prefix, to_timestamp},
+    impl_extract_name,
+    model::memo::{FindMemo, FindMemoPayload, SearchMemosFilter, UpdateMemo},
+    util::ast,
+};
 
 use super::{
-    v2::{
-        CreateMemoResponse, GetMemoResponse, ListMemosRequest, ListMemosResponse, Memo, PageToken,
-        RowStatus, UpdateMemoRequest, UpdateMemoResponse, Visibility,
+    prefix::{get_id_parent_token, ExtractName, FormatName},
+    v1::gen::{
+        DeleteMemoRequest, GetMemoRequest, ListMemoPropertiesRequest, ListMemosRequest, Memo,
+        MemoProperty, PageToken, RowStatus, SearchMemosRequest, SetMemoResourcesRequest,
+        UpdateMemoRequest, Visibility,
     },
-    USER_NAME_PREFIX,
-};
-use snafu::{ResultExt, Snafu};
-use syn::{
-    parse::{Parse, ParseStream},
-    parse_quote, BinOp, Expr,
 };
 
-#[derive(Debug, Default)]
-pub struct FindMemo {
-    pub id: Option<i32>,
-    pub name: Option<String>,
+const DEFAULT_PAGE_SIZE: i32 = 10;
 
-    // Temp fields
-    pub creator: Option<String>,
-
-    // Standard fields
-    pub creator_id: Option<i32>,
-    pub row_status: Option<RowStatus>,
-    pub display_time_after: Option<i64>,
-    pub display_time_before: Option<i64>,
-
-    // Domain specific fields
-    pub pinned: bool,
-    pub content_search: Vec<String>,
-    pub visibility_list: Vec<Visibility>,
-    pub exclude_content: bool,
-
-    // Pagination
-    pub page_token: Option<PageToken>,
-    pub order_by_updated_ts: bool,
-    pub order_by_pinned: bool,
-}
-
-pub struct CreateMemo {
-    pub creator_id: i32,
-    pub resource_name: String,
-    pub content: String,
-    pub visibility: Visibility,
-}
-
-#[derive(Debug, Default)]
-pub struct UpdateMemo {
-    pub id: i32,
-    pub creator_id: i32,
-    pub content: Option<String>,
-    pub visibility: Option<Visibility>,
-    pub row_status: Option<RowStatus>,
-    pub pinned: Option<bool>,
-}
-
-#[derive(Debug, Default)]
-pub struct Filter {
-    pub content_search: Option<Vec<String>>,
-    pub visibilities: Option<Vec<Visibility>>,
-    pub order_by_pinned: Option<bool>,
-    pub display_time_before: Option<i64>,
-    pub display_time_after: Option<i64>,
-    pub creator: Option<String>,
-    pub row_status: Option<RowStatus>,
-}
-
-impl Parse for Filter {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut binary = Expr::parse(input)?;
-
-        let content_search: Expr = parse_quote!(content_search);
-        let visibilities: Expr = parse_quote!(visibilities);
-        let order_by_pinned: Expr = parse_quote!(order_by_pinned);
-        let display_time_before: Expr = parse_quote!(display_time_before);
-        let display_time_after: Expr = parse_quote!(display_time_after);
-        let creator: Expr = parse_quote!(creator);
-        let row_status: Expr = parse_quote!(row_status);
-
-        let mut filter = Filter::default();
-
-        while let Expr::Binary(ref bin) = binary {
-            let mut get_value = |ident: Expr, lit: Expr| {
-                if ident == creator {
-                    filter.creator = ast::get_string(lit);
-                } else if ident == row_status {
-                    filter.row_status = ast::get_row_status(lit);
-                } else if ident == visibilities {
-                    filter.visibilities = ast::get_visibilities(lit);
-                } else if ident == order_by_pinned {
-                    filter.order_by_pinned = ast::get_bool(lit);
-                } else if ident == content_search {
-                    filter.content_search = ast::get_string_list(lit);
-                } else if ident == display_time_before {
-                    filter.display_time_before = ast::get_i64(lit);
-                } else if ident == display_time_after {
-                    filter.display_time_after = ast::get_i64(lit);
-                }
-            };
-
-            let left = *bin.left.clone();
-            let right = *bin.right.clone();
-
-            if matches!(bin.op, BinOp::And(_)) {
-                if let Expr::Binary(bin) = right {
-                    let ident = *bin.left;
-                    let lit = *bin.right;
-                    get_value(ident, lit);
-                }
-                binary = left;
-            } else {
-                get_value(left, right);
-                break;
-            }
-        }
-
-        Ok(filter)
-    }
-}
+impl_extract_name!(Memo, prefix::MEMO_NAME_PREFIX);
+impl_extract_name!(GetMemoRequest, prefix::MEMO_NAME_PREFIX);
+impl_extract_name!(DeleteMemoRequest, prefix::MEMO_NAME_PREFIX);
+impl_extract_name!(SetMemoResourcesRequest, prefix::MEMO_NAME_PREFIX);
+impl_extract_name!(ListMemoPropertiesRequest, prefix::MEMO_NAME_PREFIX);
 
 impl TryInto<FindMemo> for &ListMemosRequest {
     type Error = Error;
 
     fn try_into(self) -> Result<FindMemo, Self::Error> {
         let filter = &self.filter.replace('\'', "\"");
-        let filter = syn::parse_str::<Filter>(filter).context(FilterDecode)?;
-        let creator = filter
+        let filter = syn::parse_str::<SearchMemosFilter>(filter).context(FilterDecode)?;
+        let creator_id = filter
             .creator
-            .map(|s| get_name_parent_token(s, USER_NAME_PREFIX))
+            .map(|s| get_id_parent_token(s, prefix::USER_NAME_PREFIX))
             .transpose()
             .context(InvalidUsername)?;
         let page_token = if !self.page_token.is_empty() {
@@ -141,72 +46,97 @@ impl TryInto<FindMemo> for &ListMemosRequest {
         };
         Ok(FindMemo {
             id: None,
-            name: None,
-            creator,
-            creator_id: None,
+            uid: None,
+            creator_id,
             row_status: filter.row_status,
-            display_time_after: filter.display_time_after,
-            display_time_before: filter.display_time_before,
-            pinned: false,
             content_search: filter.content_search.unwrap_or_default(),
             visibility_list: filter.visibilities.unwrap_or_default(),
             exclude_content: false,
             page_token: Some(page_token),
-            order_by_updated_ts: false,
             order_by_pinned: filter.order_by_pinned.unwrap_or_default(),
+            created_ts_after: None,
+            created_ts_before: None,
+            //  默认使用更新时间过滤
+            order_by_updated_ts: true,
+            updated_ts_after: filter.display_time_after,
+            updated_ts_before: filter.display_time_before,
+            payload_find: if filter.tag.is_some()
+                || filter.has_code.is_some()
+                || filter.has_link.is_some()
+                || filter.has_task_list.is_some()
+                || filter.has_incomplete_tasks.is_some()
+            {
+                Some(FindMemoPayload {
+                    raw: None,
+                    tag: filter.tag,
+                    has_link: filter.has_link.unwrap_or_default(),
+                    has_task_list: filter.has_task_list.unwrap_or_default(),
+                    has_code: filter.has_code.unwrap_or_default(),
+                    has_incomplete_tasks: filter.has_incomplete_tasks.unwrap_or_default(),
+                })
+            } else {
+                None
+            },
+            exclude_comments: true,
+            random: filter.random.unwrap_or_default(),
+            only_payload: false,
         })
     }
 }
 
-impl From<Memo> for CreateMemoResponse {
-    fn from(val: Memo) -> Self {
-        let mut memo = val;
-        convert_memo(&mut memo);
-        CreateMemoResponse { memo: Some(memo) }
-    }
-}
+impl TryInto<FindMemo> for &SearchMemosRequest {
+    type Error = Error;
 
-impl From<Vec<Memo>> for ListMemosResponse {
-    fn from(val: Vec<Memo>) -> Self {
-        let mut memos = val;
-        for memo in memos.iter_mut() {
-            convert_memo(memo)
-        }
-        ListMemosResponse {
-            memos,
-            ..Default::default()
-        }
-    }
-}
-
-impl From<Option<Memo>> for UpdateMemoResponse {
-    fn from(val: Option<Memo>) -> Self {
-        UpdateMemoResponse {
-            memo: if let Some(mut memo) = val {
-                convert_memo(&mut memo);
-                Some(memo)
+    fn try_into(self) -> Result<FindMemo, Self::Error> {
+        let filter = &self.filter.replace('\'', "\"");
+        let filter = syn::parse_str::<SearchMemosFilter>(filter).context(FilterDecode)?;
+        let creator_id = filter
+            .creator
+            .map(|s| get_id_parent_token(s, prefix::USER_NAME_PREFIX))
+            .transpose()
+            .context(InvalidUsername)?;
+        let page_token = PageToken {
+            limit: DEFAULT_PAGE_SIZE,
+            offset: 0,
+        };
+        Ok(FindMemo {
+            id: None,
+            uid: None,
+            creator_id,
+            row_status: filter.row_status,
+            content_search: filter.content_search.unwrap_or_default(),
+            visibility_list: filter.visibilities.unwrap_or_default(),
+            exclude_content: false,
+            page_token: Some(page_token),
+            order_by_pinned: filter.order_by_pinned.unwrap_or_default(),
+            created_ts_after: None,
+            created_ts_before: None,
+            //  默认使用更新时间过滤
+            order_by_updated_ts: true,
+            updated_ts_after: filter.display_time_after,
+            updated_ts_before: filter.display_time_before,
+            payload_find: if filter.tag.is_some()
+                || filter.has_code.is_some()
+                || filter.has_link.is_some()
+                || filter.has_task_list.is_some()
+                || filter.has_incomplete_tasks.is_some()
+            {
+                Some(FindMemoPayload {
+                    raw: None,
+                    tag: filter.tag,
+                    has_link: filter.has_link.unwrap_or_default(),
+                    has_task_list: filter.has_task_list.unwrap_or_default(),
+                    has_code: filter.has_code.unwrap_or_default(),
+                    has_incomplete_tasks: filter.has_incomplete_tasks.unwrap_or_default(),
+                })
             } else {
                 None
             },
-        }
+            exclude_comments: true,
+            random: filter.random.unwrap_or_default(),
+            only_payload: false,
+        })
     }
-}
-
-impl From<Option<Memo>> for GetMemoResponse {
-    fn from(val: Option<Memo>) -> Self {
-        GetMemoResponse {
-            memo: if let Some(mut memo) = val {
-                convert_memo(&mut memo);
-                Some(memo)
-            } else {
-                None
-            },
-        }
-    }
-}
-
-fn convert_memo(memo: &mut Memo) {
-    memo.creator = format!("{}/{}", USER_NAME_PREFIX, memo.creator);
 }
 
 impl From<&UpdateMemoRequest> for UpdateMemo {
@@ -218,7 +148,7 @@ impl From<&UpdateMemoRequest> for UpdateMemo {
             update_mask: Some(field_mask),
         } = value
         {
-            update.id = memo.id;
+            update.id = memo.get_id().unwrap_or_default();
             for path in &field_mask.paths {
                 match path.as_str() {
                     "content" => update.content = Some(memo.content.clone()),
@@ -233,10 +163,80 @@ impl From<&UpdateMemoRequest> for UpdateMemo {
     }
 }
 
+impl From<crate::model::memo::Memo> for Memo {
+    fn from(value: crate::model::memo::Memo) -> Self {
+        let name = value.get_name();
+        let content = value.content;
+        let snippet = format!("{}...", content.get(0..99).unwrap_or(""));
+        let nodes = ast::parse_document(&content);
+        #[allow(deprecated)]
+        Self {
+            name,
+            uid: value.uid,
+            row_status: value.row_status as i32,
+            creator: format!("{}/{}", prefix::USER_NAME_PREFIX, value.creator_id),
+            create_time: to_timestamp(value.created_ts),
+            update_time: to_timestamp(value.updated_ts),
+            display_time: to_timestamp(value.updated_ts),
+            content,
+            nodes,
+            visibility: value.visibility as i32,
+            tags: vec![],
+            pinned: value.pinned,
+            parent_id: None,
+            resources: vec![],
+            relations: vec![],
+            reactions: vec![],
+            property: value.payload.property.map(|p| p.into()),
+            parent: None,
+            snippet,
+        }
+    }
+}
+
+impl FormatName for crate::model::memo::Memo {
+    fn get_name(&self) -> String {
+        format!("{}/{}", prefix::MEMO_NAME_PREFIX, self.id)
+    }
+}
+
+impl From<crate::model::gen::memo_payload::Property> for MemoProperty {
+    fn from(value: crate::model::gen::memo_payload::Property) -> Self {
+        Self {
+            tags: value.tags,
+            has_link: value.has_link,
+            has_task_list: value.has_task_list,
+            has_code: value.has_code,
+            has_incomplete_tasks: value.has_incomplete_tasks,
+        }
+    }
+}
+
+impl Serialize for Visibility {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let visibility = self.as_str_name();
+        serializer.serialize_str(visibility)
+    }
+}
+
+impl<'de> Deserialize<'de> for Visibility {
+    fn deserialize<D>(deserializer: D) -> Result<Visibility, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let visibility = String::deserialize(deserializer)?;
+        let visibility = Visibility::from_str_name(&visibility).unwrap_or_default();
+        Ok(visibility)
+    }
+}
+
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Invalid username : {source}"), context(suffix(false)))]
-    InvalidUsername { source: crate::util::Error },
+    InvalidUsername { source: prefix::Error },
     #[snafu(display("Failed to decode filter : {source}"), context(suffix(false)))]
     FilterDecode { source: syn::Error },
     #[snafu(
@@ -244,23 +244,4 @@ pub enum Error {
         context(suffix(false))
     )]
     PageTokenDecode { source: serde_json::Error },
-}
-
-mod test {
-    #[test]
-    fn parse_filter() {
-        use crate::api::v2::RowStatus;
-        let filter =
-        r#"visibilities == ['PUBLIC'] && row_status == "NORMAL" && creator == "users/THELOSTSOUL" && order_by_pinned == true && display_time_before == 123"#
-            .replace("'", "\"");
-        let filter = syn::parse_str::<crate::api::memo::Filter>(&filter).unwrap();
-        assert_eq!(filter.row_status, Some(RowStatus::Active));
-        assert_eq!(
-            filter.visibilities,
-            Some(vec![crate::api::v2::Visibility::Public])
-        );
-        assert_eq!(filter.creator, Some("users/THELOSTSOUL".to_owned()));
-        assert_eq!(filter.order_by_pinned, Some(true));
-        assert_eq!(filter.display_time_before, Some(123_i64));
-    }
 }

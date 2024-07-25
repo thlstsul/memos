@@ -1,23 +1,27 @@
+use std::sync::Arc;
+
+use async_trait::async_trait;
 use tonic::{Request, Response, Status};
 
-use crate::api::v2::{
+use crate::api::v1::gen::{
     inbox_service_server::{self, InboxServiceServer},
-    DeleteInboxRequest, DeleteInboxResponse, ListInboxesRequest, ListInboxesResponse,
-    UpdateInboxRequest, UpdateInboxResponse,
+    DeleteInboxRequest, Inbox, ListInboxesRequest, ListInboxesResponse, UpdateInboxRequest,
 };
 
-pub struct InboxService {
-    // TODO
-}
+use super::EmptyService;
 
-impl InboxService {
-    pub fn server() -> InboxServiceServer<InboxService> {
-        InboxServiceServer::new(InboxService {})
+#[async_trait]
+pub trait InboxService: inbox_service_server::InboxService + Clone + Send + Sync + 'static {
+    fn inbox_server(self: Arc<Self>) -> InboxServiceServer<Self> {
+        InboxServiceServer::from_arc(self)
     }
 }
 
+#[async_trait]
+impl InboxService for EmptyService {}
+
 #[tonic::async_trait]
-impl inbox_service_server::InboxService for InboxService {
+impl inbox_service_server::InboxService for EmptyService {
     async fn list_inboxes(
         &self,
         request: Request<ListInboxesRequest>,
@@ -28,13 +32,13 @@ impl inbox_service_server::InboxService for InboxService {
     async fn update_inbox(
         &self,
         request: Request<UpdateInboxRequest>,
-    ) -> Result<Response<UpdateInboxResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<Inbox>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     async fn delete_inbox(
         &self,
         request: Request<DeleteInboxRequest>,
-    ) -> Result<Response<DeleteInboxResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<()>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
 }

@@ -1,140 +1,117 @@
-use snafu::{OptionExt, ResultExt, Snafu};
-use std::collections::HashMap;
-use tonic::{Request, Response, Status};
-
+use crate::api::prefix::ExtractName;
+use crate::api::v1::gen::{GetMemoByUidRequest, RowStatus};
+use crate::dao::resource::ResourceRepository;
+use crate::util::ast;
 use crate::{
-    api::{
+    api::v1::gen::{
+        memo_service_server::{self, MemoServiceServer},
+        CreateMemoCommentRequest, CreateMemoRequest, DeleteMemoReactionRequest, DeleteMemoRequest,
+        DeleteMemoTagRequest, ExportMemosRequest, ExportMemosResponse, GetMemoRequest,
+        GetUserMemosStatsRequest, GetUserMemosStatsResponse, ListMemoCommentsRequest,
+        ListMemoCommentsResponse, ListMemoPropertiesRequest, ListMemoPropertiesResponse,
+        ListMemoReactionsRequest, ListMemoReactionsResponse, ListMemoRelationsRequest,
+        ListMemoRelationsResponse, ListMemoResourcesRequest, ListMemoResourcesResponse,
+        ListMemoTagsRequest, ListMemoTagsResponse, ListMemosRequest, ListMemosResponse, Memo,
+        Reaction, RebuildMemoPropertyRequest, RenameMemoTagRequest, SearchMemosRequest,
+        SearchMemosResponse, SetMemoRelationsRequest, SetMemoResourcesRequest, UpdateMemoRequest,
+        UpsertMemoReactionRequest,
+    },
+    dao::{memo::MemoRepository, user::UserRepository, workspace::WorkspaceRepository},
+    model::{
         memo::{CreateMemo, FindMemo, UpdateMemo},
         pager::Paginator,
-        system::{SystemSetting, SystemSettingKey},
-        v2::{
-            memo_service_server::{self, MemoServiceServer},
-            CreateMemoCommentRequest, CreateMemoCommentResponse, CreateMemoRequest,
-            CreateMemoResponse, DeleteMemoReactionRequest, DeleteMemoReactionResponse,
-            DeleteMemoRequest, DeleteMemoResponse, ExportMemosRequest, ExportMemosResponse,
-            GetMemoByNameRequest, GetMemoByNameResponse, GetMemoRequest, GetMemoResponse,
-            GetUserMemosStatsRequest, GetUserMemosStatsResponse, ListMemoCommentsRequest,
-            ListMemoCommentsResponse, ListMemoReactionsRequest, ListMemoReactionsResponse,
-            ListMemoRelationsRequest, ListMemoRelationsResponse, ListMemoResourcesRequest,
-            ListMemoResourcesResponse, ListMemosRequest, ListMemosResponse,
-            SetMemoRelationsRequest, SetMemoRelationsResponse, SetMemoResourcesRequest,
-            SetMemoResourcesResponse, UpdateMemoRequest, UpdateMemoResponse,
-            UpsertMemoReactionRequest, UpsertMemoReactionResponse, Visibility,
-        },
     },
-    dao::memo::MemoDao,
-    state::AppState,
     util,
 };
+use async_trait::async_trait;
+use snafu::{OptionExt, ResultExt, Snafu};
+use std::{collections::HashMap, sync::Arc};
+use tonic::{Request, Response, Status};
 
-use super::{
-    get_current_user, resource::ResourceService, system::SystemService, user::UserService,
-};
+use super::resource::ResourceService;
+use super::workspace::WorkspaceSettingService;
+use super::{RequestExt, Service};
 
-pub struct MemoService {
-    memo_dao: MemoDao,
-    res_svc: ResourceService,
-    user_svc: UserService,
-    sys_svc: SystemService,
+#[async_trait]
+pub trait MemoService: memo_service_server::MemoService + Clone + Send + Sync + 'static {
+    fn memo_server(self: Arc<Self>) -> MemoServiceServer<Self> {
+        MemoServiceServer::from_arc(self)
+    }
 }
 
-impl MemoService {
-    pub fn new(state: &AppState) -> Self {
-        Self {
-            memo_dao: MemoDao {
-                state: state.clone(),
-            },
-            res_svc: ResourceService::new(state),
-            user_svc: UserService::new(state),
-            sys_svc: SystemService::new(state),
-        }
-    }
-
-    pub fn server(state: &AppState) -> MemoServiceServer<MemoService> {
-        MemoServiceServer::new(MemoService::new(state))
-    }
+#[async_trait]
+impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceRepository> MemoService
+    for Service<T>
+{
 }
 
 #[tonic::async_trait]
-impl memo_service_server::MemoService for MemoService {
+impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceRepository>
+    memo_service_server::MemoService for Service<T>
+{
     async fn create_memo(
         &self,
         request: Request<CreateMemoRequest>,
-    ) -> Result<Response<CreateMemoResponse>, Status> {
-        let user = get_current_user(&request)?;
+    ) -> Result<Response<Memo>, Status> {
+        let user = request.get_current_user()?;
         let req = request.get_ref();
+        let payload = ast::get_memo_property(&req.content);
         let create = CreateMemo {
             creator_id: user.id,
-            resource_name: util::uuid(),
+            uid: util::uuid(),
             content: req.content.clone(),
             visibility: req.visibility(),
+            payload,
         };
-        let memo = self
-            .memo_dao
+
+        let memo: Memo = self
+            .repo
             .create_memo(create)
-            .await
-            .context(CreateMemoFailed)?
-            .context(MaybeCreateMemo)?;
-        Ok(Response::new(memo.into()))
+            .await?
+            .context(MaybeCreateMemo)?
+            .into();
+
+        Ok(Response::new(memo))
     }
 
-    async fn get_memo(
-        &self,
-        request: Request<GetMemoRequest>,
-    ) -> Result<Response<GetMemoResponse>, Status> {
+    async fn get_memo(&self, request: Request<GetMemoRequest>) -> Result<Response<Memo>, Status> {
+        let id = request.get_ref().get_id()?;
         let mut memos = self
-            .memo_dao
+            .repo
             .list_memos(FindMemo {
-                id: Some(request.get_ref().id),
+                id: Some(id),
                 ..Default::default()
             })
-            .await
-            .context(GetMemo)?;
+            .await?;
 
-        let mut memo = memos.pop();
+        let mut memo: Memo = memos.pop().context(MemoNotFound)?.into();
 
-        if let Some(ref mut memo) = memo {
-            let relate_resources = self.res_svc.relate_resource(memo.id).await?;
-            memo.resources = relate_resources;
-        }
-        // TODO relate
+        let relate_resources = self.relate_resource(id).await?;
+        memo.resources = relate_resources.into_iter().map(|r| r.into()).collect();
+        // TODO relate/reaction
 
-        Ok(Response::new(memo.into()))
+        Ok(Response::new(memo))
+    }
+
+    async fn get_memo_by_uid(
+        &self,
+        request: Request<GetMemoByUidRequest>,
+    ) -> Result<Response<Memo>, Status> {
+        todo!()
     }
 
     async fn list_memos(
         &self,
         request: Request<ListMemosRequest>,
     ) -> Result<Response<ListMemosResponse>, Status> {
-        let user = get_current_user(&request);
+        let user = request.get_current_user();
         let mut find: FindMemo = request.get_ref().try_into().context(InvalidMemoFilter)?;
-        if let Some(ref creator) = find.creator {
-            let user = self.user_svc.find_user(creator).await?;
-            find.creator_id = Some(user.id);
-        }
-        if let Ok(user) = user {
-            if find.creator_id.is_some() {
-                if Some(user.id) != find.creator_id {
-                    find.visibility_list = vec![Visibility::Public, Visibility::Protected];
-                }
-            } else {
-                find.creator_id = Some(user.id);
-            }
-        } else {
-            find.visibility_list = vec![Visibility::Public];
-        }
-        if find.id.is_none() {
-            if let Some(SystemSetting { value, .. }) = self
-                .sys_svc
-                .find_setting(SystemSettingKey::MemoDisplayWithUpdatedTs)
-                .await?
-            {
-                find.order_by_updated_ts = value == "true";
-            }
-        }
-
+        find.completed(
+            user.ok().map(|u| u.id),
+            self.is_display_with_update_time().await,
+        );
         let page_token = find.page_token.clone();
-        let mut memos = self.memo_dao.list_memos(find).await.context(ListMemo)?;
+        let mut memos = self.repo.list_memos(find).await?;
 
         // 是否有下一页
         let mut next_page_token = String::new();
@@ -144,60 +121,162 @@ impl memo_service_server::MemoService for MemoService {
             }
         }
 
-        {
-            let memo_ids = memos.iter().map(|m| m.id).collect();
-            let mut relate_resources = self.res_svc.relate_resources(memo_ids).await?;
-            for memo in memos.iter_mut() {
-                if let Some(value) = relate_resources.remove(&memo.id) {
-                    memo.resources = value;
-                }
+        let memo_ids = memos.iter().map(|m| m.id).collect();
+        let mut relate_resources = self.relate_resources(memo_ids).await?;
+        let mut memo_list = Vec::new();
+        for memo in memos {
+            let resources = relate_resources.remove(&memo.id);
+            let mut memo: Memo = memo.into();
+            if let Some(resources) = resources {
+                memo.resources = resources.into_iter().map(|r| r.into()).collect();
             }
+            memo_list.push(memo);
         }
-        // TODO relate
+        // TODO relate/reaction
 
-        // convert memo
-        let mut resp: ListMemosResponse = memos.into();
-        resp.next_page_token = next_page_token;
-        Ok(Response::new(resp))
+        Ok(Response::new(ListMemosResponse {
+            memos: memo_list,
+            next_page_token,
+        }))
     }
 
     /// UpdateMemo updates a memo.
     async fn update_memo(
         &self,
         request: Request<UpdateMemoRequest>,
-    ) -> Result<Response<UpdateMemoResponse>, Status> {
-        let user = get_current_user(&request)?;
+    ) -> Result<Response<Memo>, Status> {
+        let user = request.get_current_user()?;
         let mut update: UpdateMemo = request.get_ref().into();
         update.creator_id = user.id;
         let memo_id = update.id;
 
-        let memo = self
-            .memo_dao
-            .update_memo(update)
-            .await
-            .context(UpdateMemoFailed)?;
+        self.repo.update_memo(update).await?;
 
         let mut memos = self
-            .memo_dao
+            .repo
             .list_memos(FindMemo {
                 id: Some(memo_id),
                 ..Default::default()
             })
-            .await
-            .context(ListMemo)?;
-        Ok(Response::new(memos.pop().into()))
+            .await?;
+        let memo = memos.pop().context(MemoNotFound)?;
+
+        let resources = self.relate_resource(memo.id).await?;
+        let mut memo: Memo = memo.into();
+        memo.resources = resources.into_iter().map(|r| r.into()).collect();
+        // TODO relate/reaction
+
+        Ok(Response::new(memo))
     }
 
     /// DeleteMemo deletes a memo by id.
     async fn delete_memo(
         &self,
         request: Request<DeleteMemoRequest>,
-    ) -> Result<Response<DeleteMemoResponse>, Status> {
-        self.memo_dao
-            .delete_memo(request.get_ref().id)
-            .await
-            .context(DeleteMemo)?;
-        Ok(Response::new(DeleteMemoResponse {}))
+    ) -> Result<Response<()>, Status> {
+        self.repo.delete_memo(request.get_ref().get_id()?).await?;
+        Ok(Response::new(()))
+    }
+
+    async fn search_memos(
+        &self,
+        request: Request<SearchMemosRequest>,
+    ) -> Result<Response<SearchMemosResponse>, Status> {
+        let user = request.get_current_user();
+        let mut find: FindMemo = request.get_ref().try_into().context(InvalidMemoFilter)?;
+        find.completed(
+            user.ok().map(|u| u.id),
+            self.is_display_with_update_time().await,
+        );
+        let page_token = find.page_token.clone();
+        let memos = self.repo.list_memos(find).await?;
+
+        let memo_ids = memos.iter().map(|m| m.id).collect();
+        let mut relate_resources = self.relate_resources(memo_ids).await?;
+        let mut memo_list = Vec::new();
+        for memo in memos {
+            let resources = relate_resources.remove(&memo.id);
+            let mut memo: Memo = memo.into();
+            if let Some(resources) = resources {
+                memo.resources = resources.into_iter().map(|r| r.into()).collect();
+            }
+            memo_list.push(memo);
+        }
+        // TODO relate/reaction
+
+        Ok(Response::new(SearchMemosResponse { memos: memo_list }))
+    }
+
+    async fn rebuild_memo_property(
+        &self,
+        request: Request<RebuildMemoPropertyRequest>,
+    ) -> Result<Response<()>, Status> {
+        todo!()
+    }
+
+    async fn list_memo_tags(
+        &self,
+        request: Request<ListMemoTagsRequest>,
+    ) -> Result<Response<ListMemoTagsResponse>, Status> {
+        let mut tag_amounts = HashMap::new();
+        let payloads = self
+            .repo
+            .list_memos(FindMemo {
+                row_status: Some(RowStatus::Active),
+                only_payload: true,
+                exclude_content: true,
+                exclude_comments: true,
+                ..Default::default()
+            })
+            .await?;
+
+        for p in payloads {
+            if let Some(property) = p.payload.property {
+                for tag in property.tags {
+                    let count = tag_amounts.remove(&tag).unwrap_or(0);
+                    tag_amounts.insert(tag, count + 1);
+                }
+            }
+        }
+        Ok(Response::new(ListMemoTagsResponse { tag_amounts }))
+    }
+
+    async fn rename_memo_tag(
+        &self,
+        request: Request<RenameMemoTagRequest>,
+    ) -> Result<Response<()>, Status> {
+        todo!()
+    }
+
+    async fn delete_memo_tag(
+        &self,
+        request: Request<DeleteMemoTagRequest>,
+    ) -> Result<Response<()>, Status> {
+        todo!()
+    }
+
+    async fn list_memo_properties(
+        &self,
+        request: Request<ListMemoPropertiesRequest>,
+    ) -> Result<Response<ListMemoPropertiesResponse>, Status> {
+        let id = request.get_ref().get_id().ok();
+        let payloads = self
+            .repo
+            .list_memos(FindMemo {
+                id,
+                row_status: Some(RowStatus::Active),
+                only_payload: true,
+                exclude_content: true,
+                exclude_comments: true,
+                ..Default::default()
+            })
+            .await?;
+
+        let properties = payloads
+            .into_iter()
+            .filter_map(|p| p.payload.property.map(|p| p.into()))
+            .collect();
+        Ok(Response::new(ListMemoPropertiesResponse { properties }))
     }
 
     /// GetUserMemosStats gets stats of memos for a user.
@@ -205,12 +284,8 @@ impl memo_service_server::MemoService for MemoService {
         &self,
         request: Request<GetUserMemosStatsRequest>,
     ) -> Result<Response<GetUserMemosStatsResponse>, Status> {
-        let user = get_current_user(&request)?;
-        let counts = self
-            .memo_dao
-            .count_memos(user.id)
-            .await
-            .context(CountMemo)?;
+        let user = request.get_current_user()?;
+        let counts = self.repo.count_memos(user.id).await?;
         let mut stats = HashMap::with_capacity(counts.len());
         for count in counts {
             stats.insert(count.created_date, count.count);
@@ -222,115 +297,123 @@ impl memo_service_server::MemoService for MemoService {
     async fn set_memo_resources(
         &self,
         request: Request<SetMemoResourcesRequest>,
-    ) -> Result<Response<SetMemoResourcesResponse>, Status> {
-        let memo_id = request.get_ref().id;
+    ) -> Result<Response<()>, Status> {
+        let memo_id = request.get_ref().get_id()?;
         let resources = &request.get_ref().resources;
-        let relate_resources = self.res_svc.relate_resource(memo_id).await?;
+        let relate_resources = self.relate_resource(memo_id).await?;
 
-        let new_res_ids = resources.iter().map(|s| s.id).collect();
+        let new_res_ids = resources
+            .iter()
+            .map(|s| s.get_id().unwrap_or_default())
+            .collect();
         let old_res_ids = relate_resources.iter().map(|s| s.id).collect();
 
-        self.res_svc
-            .set_memo_resources(memo_id, new_res_ids, old_res_ids)
+        self.set_resources_memo(memo_id, new_res_ids, old_res_ids)
             .await?;
-        Ok(Response::new(SetMemoResourcesResponse {}))
+        Ok(Response::new(()))
     }
+
     /// ListMemoResources lists resources for a memo.
     async fn list_memo_resources(
         &self,
         request: Request<ListMemoResourcesRequest>,
     ) -> Result<Response<ListMemoResourcesResponse>, Status> {
-        todo!()
+        Err(Status::unimplemented("unimplemented"))
     }
     /// SetMemoRelations sets relations for a memo.
     async fn set_memo_relations(
         &self,
         request: Request<SetMemoRelationsRequest>,
-    ) -> Result<Response<SetMemoRelationsResponse>, Status> {
+    ) -> Result<Response<()>, Status> {
         // TODO
-        Ok(Response::new(SetMemoRelationsResponse {}))
+        Ok(Response::new(()))
     }
     /// ListMemoRelations lists relations for a memo.
     async fn list_memo_relations(
         &self,
         request: Request<ListMemoRelationsRequest>,
     ) -> Result<Response<ListMemoRelationsResponse>, Status> {
-        unimplemented!()
+        Err(Status::unimplemented("unimplemented"))
     }
     /// CreateMemoComment creates a comment for a memo.
     async fn create_memo_comment(
         &self,
         request: Request<CreateMemoCommentRequest>,
-    ) -> Result<Response<CreateMemoCommentResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<Memo>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     /// ListMemoComments lists comments for a memo.
     async fn list_memo_comments(
         &self,
         request: Request<ListMemoCommentsRequest>,
     ) -> Result<Response<ListMemoCommentsResponse>, Status> {
-        unimplemented!()
-    }
-    /// GetMemoByName gets a memo by name.
-    async fn get_memo_by_name(
-        &self,
-        request: Request<GetMemoByNameRequest>,
-    ) -> Result<Response<GetMemoByNameResponse>, Status> {
-        unimplemented!()
+        Err(Status::unimplemented("unimplemented"))
     }
     /// ExportMemos exports memos.
     async fn export_memos(
         &self,
         request: Request<ExportMemosRequest>,
     ) -> Result<Response<ExportMemosResponse>, Status> {
-        unimplemented!()
+        Err(Status::unimplemented("unimplemented"))
     }
     /// ListMemoReactions lists reactions for a memo.
     async fn list_memo_reactions(
         &self,
         request: Request<ListMemoReactionsRequest>,
     ) -> Result<Response<ListMemoReactionsResponse>, Status> {
-        unimplemented!()
+        Err(Status::unimplemented("unimplemented"))
     }
     /// UpsertMemoReaction upserts a reaction for a memo.
     async fn upsert_memo_reaction(
         &self,
         request: Request<UpsertMemoReactionRequest>,
-    ) -> Result<Response<UpsertMemoReactionResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<Reaction>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
     /// DeleteMemoReaction deletes a reaction for a memo.
     async fn delete_memo_reaction(
         &self,
         request: Request<DeleteMemoReactionRequest>,
-    ) -> Result<Response<DeleteMemoReactionResponse>, Status> {
-        unimplemented!()
+    ) -> Result<Response<()>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Failed to create memo: {source}"), context(suffix(false)))]
-    CreateMemoFailed { source: crate::dao::Error },
-    #[snafu(display("Failed to get memo: {source}"), context(suffix(false)))]
-    GetMemo { source: crate::dao::Error },
+    #[snafu(context(false))]
+    CreateMemo {
+        source: crate::dao::memo::CreateMemoError,
+    },
+
     #[snafu(
         display("Maybe create memo failed, because return none"),
         context(suffix(false))
     )]
     MaybeCreateMemo,
 
-    #[snafu(display("Failed to update memo: {source}"), context(suffix(false)))]
-    UpdateMemoFailed { source: crate::dao::Error },
+    #[snafu(display("Memo not found"), context(suffix(false)))]
+    MemoNotFound,
 
-    #[snafu(display("Failed to delete memo: {source}"), context(suffix(false)))]
-    DeleteMemo { source: crate::dao::Error },
+    #[snafu(context(false))]
+    UpdateMemo {
+        source: crate::dao::memo::UpdateMemoError,
+    },
 
-    #[snafu(display("Failed to find memo list: {source}"), context(suffix(false)))]
-    ListMemo { source: crate::dao::Error },
+    #[snafu(context(false))]
+    DeleteMemo {
+        source: crate::dao::memo::DeleteMemoError,
+    },
 
-    #[snafu(display("Failed to count memo: {source}"), context(suffix(false)))]
-    CountMemo { source: crate::dao::Error },
+    #[snafu(context(false))]
+    ListMemo {
+        source: crate::dao::memo::ListMemoError,
+    },
+
+    #[snafu(context(false))]
+    CountMemo {
+        source: crate::dao::memo::CountMemoError,
+    },
 
     #[snafu(display("Invalid memo filter: {source}"), context(suffix(false)))]
     InvalidMemoFilter { source: crate::api::memo::Error },

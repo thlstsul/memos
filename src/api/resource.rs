@@ -1,30 +1,55 @@
-use serde::Deserialize;
+use tracing::error;
 
-#[derive(Debug, Default)]
-pub struct FindResource {
-    pub id: Option<i32>,
-    pub name: Option<String>,
-    pub creator_id: Option<i32>,
-    pub filename: Option<String>,
-    pub memo_id: Option<i32>,
-    pub limit: Option<isize>,
-    pub offset: Option<isize>,
-    pub has_relate_memo: bool,
+use crate::{
+    api::{
+        prefix::{self, get_name_parent_token},
+        to_timestamp,
+    },
+    impl_extract_name,
+};
+
+use super::{
+    prefix::FormatName,
+    v1::gen::{DeleteResourceRequest, GetResourceRequest, Resource},
+};
+
+impl_extract_name!(GetResourceRequest, prefix::RESOURCE_NAME_PREFIX);
+impl_extract_name!(DeleteResourceRequest, prefix::RESOURCE_NAME_PREFIX);
+impl_extract_name!(Resource, prefix::RESOURCE_NAME_PREFIX);
+
+impl Resource {
+    pub fn get_memo(&self) -> Option<i32> {
+        self.memo
+            .as_ref()
+            .and_then(|m| {
+                get_name_parent_token(m, prefix::MEMO_NAME_PREFIX)
+                    .inspect_err(|e| error!("{e}"))
+                    .ok()
+            })
+            .and_then(|s| s.parse().inspect_err(|e| error!("{e}")).ok())
+    }
 }
 
-#[derive(Debug, Default, Deserialize)]
-pub struct WholeResource {
-    pub filename: String,
-    pub r#type: String,
-    pub size: usize,
-    pub creator_id: i32,
-    pub blob: Vec<u8>,
-    pub external_link: String,
-    pub internal_path: String,
-    pub id: i32,
-    pub resource_name: String,
-    pub created_ts: i64,
-    pub updated_ts: i64,
-    #[serde(deserialize_with = "crate::api::option_serde::deserialize")]
-    pub memo_id: Option<i32>,
+impl From<crate::model::resource::Resource> for Resource {
+    fn from(value: crate::model::resource::Resource) -> Self {
+        Self {
+            name: value.get_name(),
+            uid: value.uid,
+            create_time: to_timestamp(value.created_ts),
+            filename: value.filename,
+            content: value.blob,
+            external_link: value.reference,
+            r#type: value.r#type,
+            size: value.size as i64,
+            memo: value
+                .memo_id
+                .map(|id| format!("{}/{}", prefix::MEMO_NAME_PREFIX, id)),
+        }
+    }
+}
+
+impl FormatName for crate::model::resource::Resource {
+    fn get_name(&self) -> String {
+        format!("{}/{}", prefix::RESOURCE_NAME_PREFIX, self.id)
+    }
 }

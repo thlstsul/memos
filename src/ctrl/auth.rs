@@ -1,10 +1,11 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use async_trait::async_trait;
 use axum::{http::StatusCode, response::Result};
-use axum_login::tower_sessions::SessionManager;
+use axum_login::tower_sessions::{SessionManager, SessionStore};
 use axum_login::{AuthManager, AuthManagerLayer, AuthUser, AuthnBackend, UserId};
 use hyper::{Request, Response};
 use pin_project_lite::pin_project;
@@ -12,13 +13,11 @@ use tower::{Layer, Service};
 use tower_cookies::CookieManager;
 use tracing::info;
 
-use crate::api::v2::SignInRequest;
-use crate::{
-    api::v2::User,
-    svc::user::{Error, UserService},
-};
+use crate::api::v1::gen::SignInRequest;
+use crate::model::user::User;
+use crate::svc::user::{Error, UserService};
 
-use super::store::TursoStore;
+use super::AuthSession;
 
 impl AuthUser for User {
     type Id = i32;
@@ -28,23 +27,23 @@ impl AuthUser for User {
     }
 
     fn session_auth_hash(&self) -> &[u8] {
-        self.password.as_bytes()
+        self.password_hash.as_bytes()
     }
 }
 
 #[derive(Clone)]
-pub struct Backend {
-    svc: UserService,
+pub struct Backend<U: UserService> {
+    svc: Arc<U>,
 }
 
-impl Backend {
-    pub fn new(svc: UserService) -> Self {
+impl<U: UserService> Backend<U> {
+    pub fn new(svc: Arc<U>) -> Self {
         Self { svc }
     }
 }
 
 #[async_trait]
-impl AuthnBackend for Backend {
+impl<U: UserService> AuthnBackend for Backend<U> {
     type User = User;
     type Credentials = SignInRequest;
     type Error = Error;
@@ -67,20 +66,15 @@ impl AuthnBackend for Backend {
     }
 }
 
-// We use a type alias for convenience.
-//
-// Note that we've supplied our concrete backend here.
-pub type AuthSession = axum_login::AuthSession<Backend>;
-
 #[derive(Clone)]
-pub struct AuthLayer {
-    auth_manager_layer: AuthManagerLayer<Backend, TursoStore>,
+pub struct AuthLayer<T: UserService, SS: SessionStore> {
+    auth_manager_layer: AuthManagerLayer<Backend<T>, SS>,
     public_path: Vec<String>,
 }
 
-impl AuthLayer {
+impl<T: UserService, SS: SessionStore> AuthLayer<T, SS> {
     pub fn new(
-        auth_manager_layer: AuthManagerLayer<Backend, TursoStore>,
+        auth_manager_layer: AuthManagerLayer<Backend<T>, SS>,
         public_path: Vec<String>,
     ) -> Self {
         Self {
@@ -90,8 +84,8 @@ impl AuthLayer {
     }
 }
 
-impl<S> Layer<S> for AuthLayer {
-    type Service = CookieManager<SessionManager<AuthManager<AuthService<S>, Backend>, TursoStore>>;
+impl<S, T: UserService, SS: SessionStore> Layer<S> for AuthLayer<T, SS> {
+    type Service = CookieManager<SessionManager<AuthManager<AuthService<S>, Backend<T>>, SS>>;
 
     fn layer(&self, inner: S) -> Self::Service {
         let auth_service = AuthService {

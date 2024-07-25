@@ -1,27 +1,5 @@
-use crate::util::get_name_parent_token;
+use crate::{api::prefix, impl_extract_name};
 
-use super::{v2::Inbox, INBOX_NAME_PREFIX};
-use snafu::{ResultExt, Snafu};
+use super::v1::gen::Inbox;
 
-impl Inbox {
-    #[allow(dead_code)]
-    pub fn get_id(&self) -> Result<i32, Error> {
-        get_name_parent_token(&self.name, INBOX_NAME_PREFIX)
-            .context(InvalidRequest)?
-            .parse()
-            .context(InvalidInboxId {
-                name: self.name.clone(),
-            })
-    }
-}
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Invalid request: {source}"), context(suffix(false)))]
-    InvalidRequest { source: crate::util::Error },
-    #[snafu(display("Invalid inbox id: {name}, {source}"), context(suffix(false)))]
-    InvalidInboxId {
-        name: String,
-        source: std::num::ParseIntError,
-    },
-}
+impl_extract_name!(Inbox, prefix::INBOX_NAME_PREFIX);

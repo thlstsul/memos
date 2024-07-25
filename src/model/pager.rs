@@ -1,4 +1,4 @@
-use super::v2::PageToken;
+use crate::api::v1::gen::PageToken;
 
 pub trait Paginator: Sized {
     fn as_limit_sql(&self) -> String;

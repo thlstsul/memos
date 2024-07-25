@@ -1,2 +1,1 @@
-pub mod resource;
-pub mod system;
+pub mod gen;
