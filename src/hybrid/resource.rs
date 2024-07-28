@@ -1,13 +1,11 @@
 use axum::{
-    body::StreamBody,
+    body::Body,
     extract::{Path, Query, State},
     response::{IntoResponse, Response, Result},
     routing::get,
     Router,
 };
 use hyper::StatusCode;
-use tokio::fs::File;
-use tokio_util::io::ReaderStream;
 use tracing::error;
 
 use crate::{model::resource::ResourceQry, svc::resource::ResourceService};
@@ -32,7 +30,8 @@ async fn stream_resource<RS: ResourceService>(
         .res_service
         .get_resource_stream(id, res.filename, thumbnail)
         .await?;
-    let body = StreamBody::new(stream);
+
+    let body = Body::from_stream(stream);
     Ok(Resource {
         _filename: filename,
         r#type,
@@ -43,7 +42,7 @@ async fn stream_resource<RS: ResourceService>(
 struct Resource {
     pub _filename: String,
     pub r#type: String,
-    pub body: StreamBody<ReaderStream<File>>,
+    pub body: Body,
 }
 
 impl IntoResponse for Resource {

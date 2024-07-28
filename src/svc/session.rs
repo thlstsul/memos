@@ -1,12 +1,14 @@
 use async_trait::async_trait;
-use axum_login::tower_sessions::session::Id;
-use axum_login::tower_sessions::{self, ExpiredDeletion, MemoryStore};
-use snafu::{ensure, ResultExt, Snafu};
+use axum_login::tower_sessions::session::{Id, Record};
+use axum_login::tower_sessions::{
+    self, session_store::Error as StoreError, ExpiredDeletion, MemoryStore,
+};
+use snafu::{ensure, Snafu};
 use tracing::info;
 
 use crate::dao::session::SessionRepository;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SessionStore<S: SessionRepository> {
     repo: S,
     memory: MemoryStore,
@@ -59,44 +61,62 @@ impl<S: SessionRepository> SessionStore<S> {
 
 #[async_trait]
 impl<S: SessionRepository> ExpiredDeletion for SessionStore<S> {
-    async fn delete_expired(&self) -> Result<(), Error> {
-        self.repo.delete_expired_session().await?;
+    async fn delete_expired(&self) -> Result<(), StoreError> {
+        self.repo
+            .delete_expired_session()
+            .await
+            .map_err(|e| StoreError::Backend(e.to_string()))?;
         Ok(())
     }
 }
 
 #[async_trait]
 impl<S: SessionRepository> tower_sessions::SessionStore for SessionStore<S> {
-    type Error = Error;
-
-    async fn save(&self, session: &tower_sessions::Session) -> Result<(), Self::Error> {
-        let create = session.try_into().context(EncodeSession)?;
-        self.repo.create_session(create).await?;
-        let _ = self.memory.save(session).await;
+    async fn save(&self, session_record: &Record) -> Result<(), StoreError> {
+        let create = session_record
+            .try_into()
+            .map_err(|e: rmp_serde::encode::Error| StoreError::Encode(e.to_string()))?;
+        self.repo
+            .create_session(create)
+            .await
+            .map_err(|e| StoreError::Backend(e.to_string()))?;
+        let _ = self.memory.save(session_record).await;
 
         Ok(())
     }
 
-    async fn load(&self, session_id: &Id) -> Result<Option<tower_sessions::Session>, Self::Error> {
+    async fn load(&self, session_id: &Id) -> Result<Option<Record>, StoreError> {
         let session = self.memory.load(session_id).await;
         if let Ok(Some(session)) = session {
             return Ok(Some(session));
         }
-        let session = self.repo.get_session(session_id.to_string()).await?;
+        let session = self
+            .repo
+            .get_session(session_id.to_string())
+            .await
+            .map_err(|e| StoreError::Backend(e.to_string()))?;
 
         if let Some(session) = session {
             info!("Got valid session");
-            let session = rmp_serde::from_slice(&session.data).context(DecodeSession)?;
+            let session = rmp_serde::from_slice(&session.data)
+                .map_err(|e| StoreError::Decode(e.to_string()))?;
             let _ = self.memory.save(&session).await;
             return Ok(Some(session));
         }
         Ok(None)
     }
 
-    async fn delete(&self, session_id: &Id) -> Result<(), Self::Error> {
-        self.repo.delete_session(session_id.to_string()).await?;
+    async fn delete(&self, session_id: &Id) -> Result<(), StoreError> {
+        self.repo
+            .delete_session(session_id.to_string())
+            .await
+            .map_err(|e| StoreError::Backend(e.to_string()))?;
         let _ = self.memory.delete(session_id).await;
         Ok(())
+    }
+
+    async fn create(&self, session_record: &mut Record) -> Result<(), StoreError> {
+        self.save(session_record).await
     }
 }
 
@@ -111,22 +131,6 @@ fn is_valid_table_name(name: &str) -> bool {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(context(false))]
-    CreateSession {
-        source: crate::dao::session::CreateSessionError,
-    },
-    #[snafu(context(false))]
-    GetSession {
-        source: crate::dao::session::GetSessionError,
-    },
-    #[snafu(context(false))]
-    DeleteSession {
-        source: crate::dao::session::DeleteSessionError,
-    },
-    #[snafu(context(false))]
-    DeleteExpiredSession {
-        source: crate::dao::session::DeleteExpiredSessionError,
-    },
-    #[snafu(context(false))]
     MigrateSessionTable {
         source: crate::dao::session::MigrateSessionTableError,
     },
@@ -139,8 +143,4 @@ pub enum Error {
         context(suffix(false))
     )]
     InvalidTable { table_name: String },
-    #[snafu(display("Encode session failed: {source}"), context(suffix(false)))]
-    EncodeSession { source: rmp_serde::encode::Error },
-    #[snafu(display("Decode session failed: {source}"), context(suffix(false)))]
-    DecodeSession { source: rmp_serde::decode::Error },
 }

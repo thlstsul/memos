@@ -1,10 +1,10 @@
+use crate::model::session::Session;
 use async_trait::async_trait;
 use snafu::Snafu;
-
-use crate::model::session::Session;
+use std::fmt::Debug;
 
 #[async_trait]
-pub trait SessionRepository: Clone + Send + Sync + 'static {
+pub trait SessionRepository: Debug + Clone + Send + Sync + 'static {
     async fn create_session(&self, session: Session) -> Result<(), CreateSessionError>;
     async fn get_session(&self, session_id: String) -> Result<Option<Session>, GetSessionError>;
     async fn delete_session(&self, session_id: String) -> Result<(), DeleteSessionError>;

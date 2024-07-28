@@ -16,7 +16,7 @@ impl WorkspaceRepository for Turso {
         &self,
         key: WorkspaceSettingKey,
     ) -> Result<Option<WorkspaceSettingValue>, FindWorkspaceSettingError> {
-        let sql = "select * from system_setting where name = ?";
+        let sql = "select value from system_setting where name = ?";
         let mut settings: Vec<SystemSetting> = self.query(sql, [key.as_str_name()]).await?;
 
         let value = settings.pop().and_then(|s| match key {

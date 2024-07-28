@@ -8,15 +8,15 @@ pub struct Session {
     pub expiry_date: i64,
 }
 
-impl TryInto<Session> for &tower_sessions::Session {
+impl TryInto<Session> for &tower_sessions::session::Record {
     type Error = rmp_serde::encode::Error;
 
     fn try_into(self) -> Result<Session, Self::Error> {
         let data = rmp_serde::to_vec(self)?;
         Ok(Session {
-            id: self.id().to_string(),
+            id: self.id.to_string(),
             data,
-            expiry_date: self.expiry_date().unix_timestamp(),
+            expiry_date: self.expiry_date.unix_timestamp(),
         })
     }
 }

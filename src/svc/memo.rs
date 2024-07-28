@@ -110,7 +110,7 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
             user.ok().map(|u| u.id),
             self.is_display_with_update_time().await,
         );
-        let page_token = find.page_token.clone();
+        let page_token = find.page_token;
         let mut memos = self.repo.list_memos(find).await?;
 
         // 是否有下一页
@@ -188,7 +188,7 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
             user.ok().map(|u| u.id),
             self.is_display_with_update_time().await,
         );
-        let page_token = find.page_token.clone();
+        let page_token = find.page_token;
         let memos = self.repo.list_memos(find).await?;
 
         let memo_ids = memos.iter().map(|m| m.id).collect();

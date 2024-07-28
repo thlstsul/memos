@@ -1,7 +1,3 @@
-/// TODO tonic 未升级hyper 1.0，已可升级
-/// fork from https://github.com/snoyberg/tonic-example
-/// fork from https://github.com/tokio-rs/axum/examples/rest-grpc-multiplex
-/// axum::Router impl Service 可以省一层
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::Poll;
@@ -12,22 +8,28 @@ use crate::ctrl::auth::Backend;
 use crate::svc::markdown::MarkdownService;
 use crate::svc::user::UserService;
 use crate::svc::EmptyService;
-use axum::{error_handling::HandleErrorLayer, BoxError, Router};
+use axum::{BoxError, Router};
+use axum_login::tower_sessions::SessionManager;
+use axum_login::AuthManager;
 use axum_login::{
     tower_sessions::{cookie::time::Duration, Expiry, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
-use hyper::header::CONTENT_TYPE;
-use hyper::HeaderMap;
-use hyper::StatusCode;
-use hyper::{body::HttpBody, Body, Request, Response};
+use http_body::Body;
+use http_body_util::BodyExt;
+use hyper::server::conn::http1::Builder;
+use hyper::{body::Incoming, header::CONTENT_TYPE, Request, Response};
+use hyper_util::rt::TokioIo;
+use hyper_util::service::TowerToHyperService;
 use pin_project::pin_project;
-use shuttle_runtime::{CustomError, Error};
+use shuttle_runtime::Error;
+use tokio::net::TcpListener;
+use tonic::service::Routes;
 use tonic::transport::Server;
-use tonic_web::GrpcWebLayer;
-use tower::layer::util::{Identity, Stack};
+use tonic::{body::BoxBody, Status};
+use tonic_web::{GrpcWebLayer, GrpcWebService};
 use tower::Service;
-use tower::ServiceBuilder;
+use tower_cookies::CookieManager;
 use tower_http::classify::{ServerErrorsAsFailures, SharedClassifier};
 use tower_http::{
     services::{ServeDir, ServeFile},
@@ -50,14 +52,21 @@ use crate::{
 
 mod resource;
 
+pub type ShuttleGrpcWeb = Result<GrpcRestService, Error>;
 type Repo = crate::dao::turso::Turso;
 type RepoService = crate::svc::Service<Repo>;
 type SessionStore = crate::svc::session::SessionStore<Repo>;
-type GrpcRouter = tonic::transport::server::Router<
-    Stack<
-        AuthLayer<RepoService, SessionStore>,
-        Stack<GrpcWebLayer, Stack<TraceLayer<SharedClassifier<ServerErrorsAsFailures>>, Identity>>,
+type RestService = axum::Router;
+type GrpcService = tower_http::trace::Trace<
+    GrpcWebService<
+        CookieManager<
+            SessionManager<
+                AuthManager<crate::ctrl::auth::AuthService<Routes>, Backend<RepoService>>,
+                SessionStore,
+            >,
+        >,
     >,
+    SharedClassifier<ServerErrorsAsFailures>,
 >;
 
 #[derive(Debug, Clone)]
@@ -66,12 +75,12 @@ struct AppState<RS: ResourceService> {
     res_service: Arc<RS>,
 }
 
-pub struct GrpcWebService {
-    axum_router: axum::Router,
-    tonic_router: GrpcRouter,
+pub struct GrpcRestService {
+    rest: RestService,
+    grpc: GrpcService,
 }
 
-impl GrpcWebService {
+impl GrpcRestService {
     pub fn new(repo: Repo) -> Self {
         let session_store = SessionStore::new(repo.clone());
         let session_layer = SessionManagerLayer::new(session_store)
@@ -81,17 +90,11 @@ impl GrpcWebService {
         let svc = Arc::new(RepoService::new(repo));
         let backend = Backend::new(svc.clone());
         let auth_manager_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
-        let auth_service = ServiceBuilder::new()
-            .layer(HandleErrorLayer::new(|e: BoxError| async move {
-                error!("{e}");
-                StatusCode::BAD_REQUEST
-            }))
-            .layer(auth_manager_layer.clone());
 
         let index_file = ServeFile::new("web/dist/index.html").precompressed_br();
         let axum_router = Router::new()
             .merge(resource::router())
-            .layer(auth_service)
+            .layer(auth_manager_layer.clone())
             .route_service("/home", index_file.clone())
             .route_service("/auth", index_file.clone())
             .route_service("/explore", index_file.clone())
@@ -107,17 +110,14 @@ impl GrpcWebService {
             .layer(TraceLayer::new_for_http());
 
         let public_path = vec![
-            "/memos.api.v1.AuthService/SignIn",
-            "/memos.api.v1.AuthService/GetAuthStatus",
-            "/memos.api.v1.MemoService/ListMemos",
-            "/memos.api.v1.MemoService/ListMemoRelations",
-            "/memos.api.v1.MemoService/ListMemoResources",
-            "/memos.api.v1.WorkspaceSettingService/GetWorkspaceSetting",
-            "/memos.api.v1.WorkspaceService/GetWorkspaceProfile",
-        ]
-        .into_iter()
-        .map(|s| s.to_owned())
-        .collect();
+            "/memos.api.v1.AuthService/SignIn".to_string(),
+            "/memos.api.v1.AuthService/GetAuthStatus".to_string(),
+            "/memos.api.v1.MemoService/ListMemos".to_string(),
+            "/memos.api.v1.MemoService/ListMemoRelations".to_string(),
+            "/memos.api.v1.MemoService/ListMemoResources".to_string(),
+            "/memos.api.v1.WorkspaceSettingService/GetWorkspaceSetting".to_string(),
+            "/memos.api.v1.WorkspaceService/GetWorkspaceProfile".to_string(),
+        ];
 
         let user = svc.clone().user_server();
         let memo = svc.clone().memo_server();
@@ -149,140 +149,145 @@ impl GrpcWebService {
             .add_service(inbox)
             .add_service(webhook)
             .add_service(workspace)
-            .add_service(setting);
+            .add_service(setting)
+            .into_service();
 
         Self {
-            axum_router,
-            tonic_router,
+            rest: axum_router,
+            grpc: tonic_router,
         }
     }
 }
 
 #[shuttle_runtime::async_trait]
-impl shuttle_runtime::Service for GrpcWebService {
+impl shuttle_runtime::Service for GrpcRestService {
     /// Takes the router that is returned by the user in their [shuttle_runtime::main] function
     /// and binds to an address passed in by shuttle.
     async fn bind(mut self, addr: SocketAddr) -> Result<(), Error> {
-        let web = self.axum_router;
-        let grpc = self.tonic_router.into_service();
-        let hybrid_service = HybridService { web, grpc };
+        let hybrid_service = HybridService {
+            rest: self.rest,
+            grpc: self.grpc,
+        };
 
-        let server = hyper::Server::bind(&addr).serve(tower::make::Shared::new(hybrid_service));
-        server.await.map_err(CustomError::new)?;
-        Ok(())
+        let listener = TcpListener::bind(addr).await?;
+
+        loop {
+            match listener.accept().await {
+                Ok((stream, _)) => {
+                    let io = TokioIo::new(stream);
+                    let service = TowerToHyperService::new(hybrid_service.clone());
+                    tokio::task::spawn(async move {
+                        if let Err(err) = Builder::new().serve_connection(io, service).await {
+                            error!("Failed to serve connection: {err}");
+                        }
+                    });
+                }
+                Err(err) => error!("Failed to accept: {err}"),
+            }
+        }
     }
 }
 
-pub type ShuttleGrpcWeb = Result<GrpcWebService, Error>;
-
 #[derive(Debug, Clone)]
-struct HybridService<Web, Grpc> {
-    web: Web,
+struct HybridService<Rest, Grpc> {
+    rest: Rest,
     grpc: Grpc,
 }
 
-impl<Web, Grpc, WebBody, GrpcBody> Service<Request<Body>> for HybridService<Web, Grpc>
+impl<Rest, Grpc, WebBody, GrpcBody> Service<Request<Incoming>> for HybridService<Rest, Grpc>
 where
-    Web: Service<Request<Body>, Response = Response<WebBody>>,
-    Grpc: Service<Request<Body>, Response = Response<GrpcBody>>,
-    Web::Error: Into<BoxError>,
+    Rest: Service<Request<Incoming>, Response = Response<WebBody>>,
+    Grpc: Service<Request<BoxBody>, Response = Response<GrpcBody>>,
+    Rest::Error: Into<BoxError>,
     Grpc::Error: Into<BoxError>,
 {
     type Response = Response<HybridBody<WebBody, GrpcBody>>;
     type Error = BoxError;
-    type Future = HybridFuture<Web::Future, Grpc::Future>;
+    type Future = HybridFuture<Rest::Future, Grpc::Future>;
 
     fn poll_ready(
         &mut self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
-        match self.web.poll_ready(cx) {
-            Poll::Ready(Ok(())) => match self.grpc.poll_ready(cx) {
-                Poll::Ready(Ok(())) => Poll::Ready(Ok(())),
-                Poll::Ready(Err(e)) => Poll::Ready(Err(e.into())),
-                Poll::Pending => Poll::Pending,
-            },
-            Poll::Ready(Err(e)) => Poll::Ready(Err(e.into())),
-            Poll::Pending => Poll::Pending,
+        match (self.rest.poll_ready(cx), self.grpc.poll_ready(cx)) {
+            (Poll::Ready(Ok(())), Poll::Ready(Ok(()))) => Poll::Ready(Ok(())),
+            (_, Poll::Ready(Err(e))) => Poll::Ready(Err(e.into())),
+            (Poll::Ready(Err(e)), _) => Poll::Ready(Err(e.into())),
+            (_, Poll::Pending) => Poll::Pending,
+            (Poll::Pending, _) => Poll::Pending,
         }
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request<Incoming>) -> Self::Future {
         let content_type = req.headers().get(CONTENT_TYPE).map(|x| x.as_bytes());
         if content_type == Some(b"application/grpc-web+proto")
             || content_type == Some(b"application/grpc-web")
         {
+            let req = req.map(|b| {
+                b.map_err(|e| Status::from_error(Box::new(e)))
+                    .boxed_unsync()
+            });
             HybridFuture::Grpc(self.grpc.call(req))
         } else {
-            HybridFuture::Web(self.web.call(req))
+            HybridFuture::Rest(self.rest.call(req))
         }
     }
 }
 
 #[pin_project(project = HybridBodyProj)]
-enum HybridBody<WebBody, GrpcBody> {
-    Web(#[pin] WebBody),
+enum HybridBody<RestBody, GrpcBody> {
+    Rest(#[pin] RestBody),
     Grpc(#[pin] GrpcBody),
 }
 
-impl<WebBody, GrpcBody> HttpBody for HybridBody<WebBody, GrpcBody>
+impl<RestBody, GrpcBody> Body for HybridBody<RestBody, GrpcBody>
 where
-    WebBody: HttpBody + Send + Unpin,
-    GrpcBody: HttpBody<Data = WebBody::Data> + Send + Unpin,
-    WebBody::Error: std::error::Error + Send + Sync + 'static,
+    RestBody: Body + Send + Unpin,
+    GrpcBody: Body<Data = RestBody::Data> + Send + Unpin,
+    RestBody::Error: std::error::Error + Send + Sync + 'static,
     GrpcBody::Error: std::error::Error + Send + Sync + 'static,
 {
-    type Data = WebBody::Data;
+    type Data = RestBody::Data;
     type Error = BoxError;
 
     fn is_end_stream(&self) -> bool {
         match self {
-            HybridBody::Web(b) => b.is_end_stream(),
+            HybridBody::Rest(b) => b.is_end_stream(),
             HybridBody::Grpc(b) => b.is_end_stream(),
         }
     }
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
-        cx: &mut std::task::Context,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>> {
         match self.project() {
-            HybridBodyProj::Web(b) => b.poll_data(cx).map_err(|e| e.into()),
-            HybridBodyProj::Grpc(b) => b.poll_data(cx).map_err(|e| e.into()),
-        }
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        match self.project() {
-            HybridBodyProj::Web(b) => b.poll_trailers(cx).map_err(|e| e.into()),
-            HybridBodyProj::Grpc(b) => b.poll_trailers(cx).map_err(|e| e.into()),
+            HybridBodyProj::Rest(b) => b.poll_frame(cx).map_err(|e| e.into()),
+            HybridBodyProj::Grpc(b) => b.poll_frame(cx).map_err(|e| e.into()),
         }
     }
 }
 
 #[pin_project(project = HybridFutureProj)]
-enum HybridFuture<WebFuture, GrpcFuture> {
-    Web(#[pin] WebFuture),
+enum HybridFuture<RestFuture, GrpcFuture> {
+    Rest(#[pin] RestFuture),
     Grpc(#[pin] GrpcFuture),
 }
 
-impl<WebFuture, GrpcFuture, WebBody, GrpcBody, WebError, GrpcError> Future
-    for HybridFuture<WebFuture, GrpcFuture>
+impl<RestFuture, GrpcFuture, RestBody, GrpcBody, RestError, GrpcError> Future
+    for HybridFuture<RestFuture, GrpcFuture>
 where
-    WebFuture: Future<Output = Result<Response<WebBody>, WebError>>,
+    RestFuture: Future<Output = Result<Response<RestBody>, RestError>>,
     GrpcFuture: Future<Output = Result<Response<GrpcBody>, GrpcError>>,
-    WebError: Into<BoxError>,
+    RestError: Into<BoxError>,
     GrpcError: Into<BoxError>,
 {
-    type Output = Result<Response<HybridBody<WebBody, GrpcBody>>, BoxError>;
+    type Output = Result<Response<HybridBody<RestBody, GrpcBody>>, BoxError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context) -> Poll<Self::Output> {
         match self.project() {
-            HybridFutureProj::Web(a) => match a.poll(cx) {
-                Poll::Ready(Ok(res)) => Poll::Ready(Ok(res.map(HybridBody::Web))),
+            HybridFutureProj::Rest(a) => match a.poll(cx) {
+                Poll::Ready(Ok(res)) => Poll::Ready(Ok(res.map(HybridBody::Rest))),
                 Poll::Ready(Err(e)) => Poll::Ready(Err(e.into())),
                 Poll::Pending => Poll::Pending,
             },

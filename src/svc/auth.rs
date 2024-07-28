@@ -70,7 +70,7 @@ impl auth_service_server::AuthService for EmptyService {
     /// SignOut signs out the user.
     async fn sign_out(&self, mut request: Request<SignOutRequest>) -> Result<Response<()>, Status> {
         if let Some(session) = request.extensions_mut().get_mut::<AuthSession>() {
-            session.logout().context(Logout)?;
+            session.logout().await.context(Logout)?;
         }
         Ok(Response::new(()))
     }

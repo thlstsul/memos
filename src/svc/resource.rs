@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::{collections::HashMap, io::Cursor};
 
 use async_trait::async_trait;
-use image::{io::Reader as ImageReader, ImageFormat, ImageOutputFormat};
+use image::{ImageFormat, ImageReader};
 use snafu::{ensure, OptionExt, ResultExt, Snafu};
 use tokio::{
     fs::{self, File, OpenOptions},
@@ -148,9 +148,7 @@ impl<R: ResourceRepository + WorkspaceRepository> ResourceService for Service<R>
                         .decode()
                         .context(ImageDecode)?;
                     let img = img.thumbnail(512, 512);
-                    let format: ImageOutputFormat = ImageFormat::from_path(&filename)
-                        .context(ImageEncode)?
-                        .into();
+                    let format = ImageFormat::from_path(&filename).context(ImageEncode)?;
                     img.write_to(&mut Cursor::new(&mut bytes), format)
                         .context(ImageEncode)?;
                 }

@@ -1,13 +1,14 @@
 #![allow(unused_variables)]
 #![allow(clippy::enum_variant_names)]
 
-use hybrid::{GrpcWebService, ShuttleGrpcWeb};
+use hybrid::{GrpcRestService, ShuttleGrpcWeb};
 use libsql::Database;
 use shuttle_runtime::SecretStore;
 
 use crate::dao::turso::Turso;
 
 mod google {
+    #[allow(clippy::doc_lazy_continuation)]
     pub mod api {
         include!("api/v1/google.api.rs");
     }
@@ -29,5 +30,5 @@ async fn grpc_web(
 ) -> ShuttleGrpcWeb {
     let repo = Turso::new(repo);
 
-    Ok(GrpcWebService::new(repo))
+    Ok(GrpcRestService::new(repo))
 }

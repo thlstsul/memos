@@ -10,7 +10,7 @@ pub mod session;
 pub mod user;
 pub mod workspace;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Turso {
     repo: Arc<Database>,
 }
