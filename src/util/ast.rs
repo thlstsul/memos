@@ -114,20 +114,14 @@ fn parse_property<'a>(node: &'a AstNode<'a>) -> MemoPayload {
         NodeValue::Text(content) => {
             let re = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+$|#\S+\s").unwrap());
             let matches = re.find_iter(content);
-            let mut i = 0;
             let mut tags = Vec::new();
             for mat in matches {
-                i = if mat.end() == content.len() {
+                let i = if mat.end() == content.len() {
                     mat.end()
                 } else {
                     mat.end() - 1
                 };
                 if let Some(tag) = content.get(mat.start() + 1..i) {
-                    tags.push(tag.to_string());
-                }
-            }
-            if i != content.len() {
-                if let Some(tag) = content.get(i..content.len()) {
                     tags.push(tag.to_string());
                 }
             }
@@ -392,8 +386,11 @@ mod test {
     fn parse_ast() {
         let buffer = r#"
 #LIST
-aaaaaa"#;
+aaaaaa
+#LINK [](https://memo.shuttleapp.rs)"#;
         let nodes = super::parse_document(buffer);
         println!("{nodes:?}");
+        let payload = super::get_memo_property(buffer);
+        println!("{payload:?}")
     }
 }
