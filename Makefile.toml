@@ -9,7 +9,7 @@ dependencies = ["build"]
 [tasks.deploy]
 install_crate = "cargo-shuttle"
 command = "cargo"
-args = ["shuttle", "deploy"]
+args = ["shuttle", "deploy", "--ad"]
 dependencies = ["build"]
 
 [tasks.restart]
