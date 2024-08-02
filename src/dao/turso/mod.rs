@@ -1,5 +1,6 @@
 use anyhow::Result;
 use std::sync::Arc;
+use tracing::info;
 
 use libsql::{de, params::IntoParams, Database, Rows, Statement, Transaction, TransactionBehavior};
 use serde::de::DeserializeOwned;
@@ -21,12 +22,14 @@ impl Turso {
     }
 
     pub async fn execute(&self, sql: impl AsRef<str>, params: impl IntoParams) -> Result<u64> {
+        info!("{}", sql.as_ref());
         let conn = self.repo.connect()?;
         Ok(conn.execute(sql.as_ref(), params).await?)
     }
 
     #[allow(dead_code)]
     pub async fn execute_batch(&self, sql: impl AsRef<str>) -> Result<()> {
+        info!("{}", sql.as_ref());
         let conn = self.repo.connect()?;
         Ok(conn.execute_batch(sql.as_ref()).await?)
     }
@@ -36,6 +39,7 @@ impl Turso {
         sql: impl AsRef<str>,
         params: P,
     ) -> Result<Vec<T>> {
+        info!("{}", sql.as_ref());
         let conn = self.repo.connect()?;
         let rows = conn.query(sql.as_ref(), params).await?;
 
@@ -43,11 +47,13 @@ impl Turso {
     }
 
     pub async fn query_rows(&self, sql: impl AsRef<str>, params: impl IntoParams) -> Result<Rows> {
+        info!("{}", sql.as_ref());
         let conn = self.repo.connect()?;
         Ok(conn.query(sql.as_ref(), params).await?)
     }
 
     pub async fn prepare(&self, sql: impl AsRef<str>) -> Result<Statement> {
+        info!("{}", sql.as_ref());
         let conn = self.repo.connect()?;
         Ok(conn.prepare(sql.as_ref()).await?)
     }
@@ -75,6 +81,7 @@ impl Turso {
     }
 
     pub async fn tx_prepare(tx: &Transaction, sql: impl AsRef<str>) -> Result<Statement> {
+        info!("{}", sql.as_ref());
         Ok(tx.prepare(sql.as_ref()).await?)
     }
 

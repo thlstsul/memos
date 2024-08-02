@@ -108,7 +108,7 @@ impl MemoRepository for Turso {
 
         if let Some(FindMemoPayload {
             raw,
-            tag,
+            tags,
             has_link,
             has_task_list,
             has_code,
@@ -119,10 +119,12 @@ impl MemoRepository for Turso {
                 wheres.push("memo.payload = ?");
                 args.push(Value::from(raw));
             }
-            if let Some(tag) = tag {
+            if let Some(tags) = tags {
                 tables.push("JSON_EACH(memo.payload, '$.property.tags')");
-                wheres.push("JSON_EACH.value = ?");
-                args.push(Value::from(tag));
+                for tag in tags {
+                    wheres.push("JSON_EACH.value = ?");
+                    args.push(Value::from(tag));
+                }
             }
             if has_link {
                 wheres.push("JSON_EXTRACT(memo.payload, '$.property.has_link') IS TRUE");

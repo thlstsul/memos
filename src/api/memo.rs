@@ -57,7 +57,7 @@ impl TryInto<FindMemo> for &ListMemosRequest {
             order_by_updated_ts: true,
             updated_ts_after: filter.display_time_after,
             updated_ts_before: filter.display_time_before,
-            payload_find: if filter.tag.is_some()
+            payload_find: if filter.tag_search.is_some()
                 || filter.has_code.is_some()
                 || filter.has_link.is_some()
                 || filter.has_task_list.is_some()
@@ -65,7 +65,7 @@ impl TryInto<FindMemo> for &ListMemosRequest {
             {
                 Some(FindMemoPayload {
                     raw: None,
-                    tag: filter.tag,
+                    tags: filter.tag_search,
                     has_link: filter.has_link.unwrap_or_default(),
                     has_task_list: filter.has_task_list.unwrap_or_default(),
                     has_code: filter.has_code.unwrap_or_default(),

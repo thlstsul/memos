@@ -60,7 +60,7 @@ pub struct FindMemo {
 #[derive(Debug, Default)]
 pub struct FindMemoPayload {
     pub raw: Option<String>,
-    pub tag: Option<String>,
+    pub tags: Option<Vec<String>>,
     pub has_link: bool,
     pub has_task_list: bool,
     pub has_code: bool,
@@ -90,7 +90,7 @@ pub struct UpdateMemo {
 pub struct SearchMemosFilter {
     pub content_search: Option<Vec<String>>,
     pub visibilities: Option<Vec<Visibility>>,
-    pub tag: Option<String>,
+    pub tag_search: Option<Vec<String>>,
     pub order_by_pinned: Option<bool>,
     pub display_time_before: Option<i64>,
     pub display_time_after: Option<i64>,
@@ -127,8 +127,8 @@ impl Parse for SearchMemosFilter {
                     filter.display_time_before = ast::get_int(lit);
                 } else if ident == parse_quote!(display_time_after) {
                     filter.display_time_after = ast::get_int(lit);
-                } else if ident == parse_quote!(tag) {
-                    filter.tag = ast::get_string(lit);
+                } else if ident == parse_quote!(tag_search) {
+                    filter.tag_search = ast::get_string_list(lit);
                 } else if ident == parse_quote!(uid) {
                     filter.uid = ast::get_string(lit);
                 } else if ident == parse_quote!(random) {
@@ -316,14 +316,14 @@ mod test {
         use crate::model::memo::SearchMemosFilter;
 
         let filter =
-        r#"visibilities == ['PUBLIC'] && row_status == "NORMAL" && creator == "users/THELOSTSOUL" && order_by_pinned == true && display_time_before == 123 && tag == "TODO""#
+        r#"visibilities == ['PUBLIC'] && row_status == "NORMAL" && creator == "users/THELOSTSOUL" && order_by_pinned == true && display_time_before == 123 && tag_search == ["TODO"]"#
             .replace('\'', "\"");
         let filter = syn::parse_str::<SearchMemosFilter>(&filter).unwrap();
         assert_eq!(filter.row_status, Some(RowStatus::Active));
         assert_eq!(filter.visibilities, Some(vec![Visibility::Public]));
-        assert_eq!(filter.creator, Some("users/THELOSTSOUL".to_owned()));
+        assert_eq!(filter.creator, Some("users/THELOSTSOUL".to_string()));
         assert_eq!(filter.order_by_pinned, Some(true));
         assert_eq!(filter.display_time_before, Some(123_i64));
-        assert_eq!(filter.tag, Some("TODO".to_owned()));
+        assert_eq!(filter.tag_search, Some(vec!["TODO".to_string()]));
     }
 }
