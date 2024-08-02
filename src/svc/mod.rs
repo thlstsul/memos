@@ -3,9 +3,7 @@ use tonic::{Code, Request, Status};
 use tracing::error;
 
 use crate::ctrl::AuthSession;
-use crate::dao::memo::{
-    CountMemoError, CreateMemoError, DeleteMemoError, ListMemoError, UpdateMemoError,
-};
+use crate::dao::memo::{CreateMemoError, DeleteMemoError, ListMemoError, UpdateMemoError};
 use crate::dao::resource::{
     CreateResourceError, DeleteResourceError, GetResourceError, ListResourceError,
     RelateResourceError, SetResourceError,
@@ -107,7 +105,6 @@ into_status!(crate::api::prefix::Error, Code::InvalidArgument);
 into_status!(CurrentUserError, Code::Unauthenticated);
 into_status!(auth::Error, Code::Internal);
 into_status!(CreateMemoError, Code::Internal);
-into_status!(CountMemoError, Code::Internal);
 into_status!(DeleteMemoError, Code::Internal);
 into_status!(ListMemoError, Code::Internal);
 into_status!(UpdateMemoError, Code::Internal);

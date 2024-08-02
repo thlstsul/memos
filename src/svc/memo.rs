@@ -1,5 +1,5 @@
-use crate::api::prefix::ExtractName;
-use crate::api::v1::gen::{GetMemoByUidRequest, RowStatus};
+use crate::api::prefix::{ExtractName, FormatName};
+use crate::api::v1::gen::{GetMemoByUidRequest, MemoPropertyEntity, RowStatus};
 use crate::dao::resource::ResourceRepository;
 use crate::util::ast;
 use crate::{
@@ -7,13 +7,12 @@ use crate::{
         memo_service_server::{self, MemoServiceServer},
         CreateMemoCommentRequest, CreateMemoRequest, DeleteMemoReactionRequest, DeleteMemoRequest,
         DeleteMemoTagRequest, ExportMemosRequest, ExportMemosResponse, GetMemoRequest,
-        GetUserMemosStatsRequest, GetUserMemosStatsResponse, ListMemoCommentsRequest,
-        ListMemoCommentsResponse, ListMemoPropertiesRequest, ListMemoPropertiesResponse,
-        ListMemoReactionsRequest, ListMemoReactionsResponse, ListMemoRelationsRequest,
-        ListMemoRelationsResponse, ListMemoResourcesRequest, ListMemoResourcesResponse,
-        ListMemoTagsRequest, ListMemoTagsResponse, ListMemosRequest, ListMemosResponse, Memo,
-        Reaction, RebuildMemoPropertyRequest, RenameMemoTagRequest, SearchMemosRequest,
-        SearchMemosResponse, SetMemoRelationsRequest, SetMemoResourcesRequest, UpdateMemoRequest,
+        ListMemoCommentsRequest, ListMemoCommentsResponse, ListMemoPropertiesRequest,
+        ListMemoPropertiesResponse, ListMemoReactionsRequest, ListMemoReactionsResponse,
+        ListMemoRelationsRequest, ListMemoRelationsResponse, ListMemoResourcesRequest,
+        ListMemoResourcesResponse, ListMemoTagsRequest, ListMemoTagsResponse, ListMemosRequest,
+        ListMemosResponse, Memo, Reaction, RebuildMemoPropertyRequest, RenameMemoTagRequest,
+        SetMemoRelationsRequest, SetMemoResourcesRequest, UpdateMemoRequest,
         UpsertMemoReactionRequest,
     },
     dao::{memo::MemoRepository, user::UserRepository, workspace::WorkspaceRepository},
@@ -24,6 +23,7 @@ use crate::{
     util,
 };
 use async_trait::async_trait;
+use prost_types::Timestamp;
 use snafu::{OptionExt, ResultExt, Snafu};
 use std::{collections::HashMap, sync::Arc};
 use tonic::{Request, Response, Status};
@@ -178,35 +178,6 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
         Ok(Response::new(()))
     }
 
-    async fn search_memos(
-        &self,
-        request: Request<SearchMemosRequest>,
-    ) -> Result<Response<SearchMemosResponse>, Status> {
-        let user = request.get_current_user();
-        let mut find: FindMemo = request.get_ref().try_into().context(InvalidMemoFilter)?;
-        find.completed(
-            user.ok().map(|u| u.id),
-            self.is_display_with_update_time().await,
-        );
-        let page_token = find.page_token;
-        let memos = self.repo.list_memos(find).await?;
-
-        let memo_ids = memos.iter().map(|m| m.id).collect();
-        let mut relate_resources = self.relate_resources(memo_ids).await?;
-        let mut memo_list = Vec::new();
-        for memo in memos {
-            let resources = relate_resources.remove(&memo.id);
-            let mut memo: Memo = memo.into();
-            if let Some(resources) = resources {
-                memo.resources = resources.into_iter().map(|r| r.into()).collect();
-            }
-            memo_list.push(memo);
-        }
-        // TODO relate/reaction
-
-        Ok(Response::new(SearchMemosResponse { memos: memo_list }))
-    }
-
     async fn rebuild_memo_property(
         &self,
         request: Request<RebuildMemoPropertyRequest>,
@@ -272,25 +243,28 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
             })
             .await?;
 
-        let properties = payloads
+        let is_display_with_update_time = self.is_display_with_update_time().await;
+        let entities = payloads
             .into_iter()
-            .filter_map(|p| p.payload.property.map(|p| p.into()))
+            .map(|p| {
+                let name = p.get_name();
+                let property = p.payload.property.map(|p| p.into());
+                let display_time = if is_display_with_update_time {
+                    p.updated_ts
+                } else {
+                    p.created_ts
+                };
+                MemoPropertyEntity {
+                    name,
+                    property,
+                    display_time: Some(Timestamp {
+                        seconds: display_time,
+                        nanos: 0,
+                    }),
+                }
+            })
             .collect();
-        Ok(Response::new(ListMemoPropertiesResponse { properties }))
-    }
-
-    /// GetUserMemosStats gets stats of memos for a user.
-    async fn get_user_memos_stats(
-        &self,
-        request: Request<GetUserMemosStatsRequest>,
-    ) -> Result<Response<GetUserMemosStatsResponse>, Status> {
-        let user = request.get_current_user()?;
-        let counts = self.repo.count_memos(user.id).await?;
-        let mut stats = HashMap::with_capacity(counts.len());
-        for count in counts {
-            stats.insert(count.created_date, count.count);
-        }
-        Ok(Response::new(GetUserMemosStatsResponse { stats }))
+        Ok(Response::new(ListMemoPropertiesResponse { entities }))
     }
 
     /// SetMemoResources sets resources for a memo.
@@ -408,11 +382,6 @@ pub enum Error {
     #[snafu(context(false))]
     ListMemo {
         source: crate::dao::memo::ListMemoError,
-    },
-
-    #[snafu(context(false))]
-    CountMemo {
-        source: crate::dao::memo::CountMemoError,
     },
 
     #[snafu(display("Invalid memo filter: {source}"), context(suffix(false)))]

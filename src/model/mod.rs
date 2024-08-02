@@ -1,5 +1,3 @@
-use serde::Deserialize;
-
 pub mod gen;
 pub mod memo;
 pub mod pager;
@@ -7,12 +5,6 @@ pub mod resource;
 pub mod session;
 pub mod system;
 pub mod user;
-
-#[derive(Deserialize, Default)]
-pub struct Count {
-    pub created_date: String,
-    pub count: i32,
-}
 
 pub mod bool_serde {
     use serde::{self, Deserialize, Deserializer, Serializer};

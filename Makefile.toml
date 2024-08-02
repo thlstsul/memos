@@ -1,0 +1,29 @@
+# cargo-make
+
+[tasks.run]
+install_crate = "cargo-shuttle"
+command = "cargo"
+args = ["shuttle", "run"]
+dependencies = ["build"]
+
+[tasks.deploy]
+install_crate = "cargo-shuttle"
+command = "cargo"
+args = ["shuttle", "deploy"]
+dependencies = ["build"]
+
+[tasks.restart]
+install_crate = "cargo-shuttle"
+command = "cargo"
+args = ["shuttle", "project", "restart", "--idle-minutes", "0"]
+
+[tasks.install]
+cwd = "./web"
+command = "pnpm"
+args = ["install"]
+
+[tasks.build]
+cwd = "./web"
+command = "pnpm"
+args = ["build", "--mode", "release"]
+dependencies = ["install"]

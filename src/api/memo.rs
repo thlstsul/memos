@@ -12,12 +12,9 @@ use super::{
     prefix::{get_id_parent_token, ExtractName, FormatName},
     v1::gen::{
         DeleteMemoRequest, GetMemoRequest, ListMemoPropertiesRequest, ListMemosRequest, Memo,
-        MemoProperty, PageToken, RowStatus, SearchMemosRequest, SetMemoResourcesRequest,
-        UpdateMemoRequest, Visibility,
+        MemoProperty, PageToken, RowStatus, SetMemoResourcesRequest, UpdateMemoRequest, Visibility,
     },
 };
-
-const DEFAULT_PAGE_SIZE: i32 = 10;
 
 impl_extract_name!(Memo, prefix::MEMO_NAME_PREFIX);
 impl_extract_name!(GetMemoRequest, prefix::MEMO_NAME_PREFIX);
@@ -43,61 +40,6 @@ impl TryInto<FindMemo> for &ListMemosRequest {
                 limit: self.page_size,
                 offset: 0,
             }
-        };
-        Ok(FindMemo {
-            id: None,
-            uid: None,
-            creator_id,
-            row_status: filter.row_status,
-            content_search: filter.content_search.unwrap_or_default(),
-            visibility_list: filter.visibilities.unwrap_or_default(),
-            exclude_content: false,
-            page_token: Some(page_token),
-            order_by_pinned: filter.order_by_pinned.unwrap_or_default(),
-            created_ts_after: None,
-            created_ts_before: None,
-            //  默认使用更新时间过滤
-            order_by_updated_ts: true,
-            updated_ts_after: filter.display_time_after,
-            updated_ts_before: filter.display_time_before,
-            payload_find: if filter.tag.is_some()
-                || filter.has_code.is_some()
-                || filter.has_link.is_some()
-                || filter.has_task_list.is_some()
-                || filter.has_incomplete_tasks.is_some()
-            {
-                Some(FindMemoPayload {
-                    raw: None,
-                    tag: filter.tag,
-                    has_link: filter.has_link.unwrap_or_default(),
-                    has_task_list: filter.has_task_list.unwrap_or_default(),
-                    has_code: filter.has_code.unwrap_or_default(),
-                    has_incomplete_tasks: filter.has_incomplete_tasks.unwrap_or_default(),
-                })
-            } else {
-                None
-            },
-            exclude_comments: true,
-            random: filter.random.unwrap_or_default(),
-            only_payload: false,
-        })
-    }
-}
-
-impl TryInto<FindMemo> for &SearchMemosRequest {
-    type Error = Error;
-
-    fn try_into(self) -> Result<FindMemo, Self::Error> {
-        let filter = &self.filter.replace('\'', "\"");
-        let filter = syn::parse_str::<SearchMemosFilter>(filter).context(FilterDecode)?;
-        let creator_id = filter
-            .creator
-            .map(|s| get_id_parent_token(s, prefix::USER_NAME_PREFIX))
-            .transpose()
-            .context(InvalidUsername)?;
-        let page_token = PageToken {
-            limit: DEFAULT_PAGE_SIZE,
-            offset: 0,
         };
         Ok(FindMemo {
             id: None,

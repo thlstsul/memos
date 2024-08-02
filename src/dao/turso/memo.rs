@@ -2,14 +2,12 @@ use async_trait::async_trait;
 use libsql::{params, Value};
 
 use crate::dao::memo::{
-    CountMemoError, CreateMemoError, DeleteMemoError, ListMemoError, MemoRepository,
-    UpdateMemoError,
+    CreateMemoError, DeleteMemoError, ListMemoError, MemoRepository, UpdateMemoError,
 };
 use crate::model::memo::FindMemoPayload;
 use crate::model::{
     memo::{CreateMemo, FindMemo, Memo, UpdateMemo},
     pager::Paginator,
-    Count,
 };
 
 use super::Turso;
@@ -153,7 +151,12 @@ impl MemoRepository for Turso {
         orders.push("memo.id DESC");
 
         let mut fields = if only_payload {
-            vec!["memo.payload AS payload"]
+            vec![
+                "memo.id AS id",
+                "memo.payload AS payload",
+                "memo.created_ts AS created_ts",
+                "memo.updated_ts AS updated_ts",
+            ]
         } else {
             vec![
                 "memo.id AS id",
@@ -195,13 +198,6 @@ impl MemoRepository for Turso {
             sql = format!("{sql} {}", page_token.as_limit_sql());
         }
         Ok(self.query(&sql, args).await?)
-    }
-
-    async fn count_memos(&self, creator_id: i32) -> Result<Vec<Count>, CountMemoError> {
-        let sql = "select created_date, count(1) as count from (
-            select date(created_ts, 'unixepoch') as created_date from memo where creator_id = ?
-        ) group by created_date";
-        Ok(self.query(sql, [creator_id]).await?)
     }
 
     async fn delete_memo(&self, memo_id: i32) -> Result<(), DeleteMemoError> {

@@ -23,8 +23,7 @@ use crate::{
     api::v1::gen::{
         resource_service_server, resource_service_server::ResourceServiceServer,
         CreateResourceRequest, DeleteResourceRequest, GetResourceBinaryRequest, GetResourceRequest,
-        ListResourcesRequest, ListResourcesResponse, Resource, SearchResourcesRequest,
-        SearchResourcesResponse, UpdateResourceRequest,
+        ListResourcesRequest, ListResourcesResponse, Resource, UpdateResourceRequest,
     },
     model::resource::{FindResource, Resource as ResourceModel},
 };
@@ -269,13 +268,6 @@ impl<R: ResourceRepository + WorkspaceRepository> resource_service_server::Resou
         } else {
             Err(Status::data_loss("null request"))
         }
-    }
-
-    async fn search_resources(
-        &self,
-        request: Request<SearchResourcesRequest>,
-    ) -> Result<Response<SearchResourcesResponse>, Status> {
-        Err(Status::unimplemented("unimplemented"))
     }
 
     async fn get_resource_binary(
