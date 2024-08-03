@@ -93,7 +93,11 @@ impl From<&UpdateMemoRequest> for UpdateMemo {
             update.id = memo.get_id().unwrap_or_default();
             for path in &field_mask.paths {
                 match path.as_str() {
-                    "content" => update.content = Some(memo.content.clone()),
+                    "content" => {
+                        let content = memo.content.clone();
+                        update.payload = Some(ast::get_memo_property(&content));
+                        update.content = Some(content);
+                    }
                     "visibility" => update.visibility = Visibility::try_from(memo.visibility).ok(),
                     "row_status" => update.row_status = RowStatus::try_from(memo.row_status).ok(),
                     "pinned" => update.pinned = Some(memo.pinned),
