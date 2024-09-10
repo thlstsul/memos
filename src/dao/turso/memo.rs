@@ -178,13 +178,7 @@ impl MemoRepository for Turso {
         }
 
         let mut sql = format!(
-            "select
-            {f}
-            from {t}
-		    {j}
-            where {w}
-            group by memo.id
-            order by {o}",
+            "select {f} from {t} {j} where {w} group by memo.id order by {o}",
             f = fields.join(",\n"),
             t = tables.join(", "),
             j = if !only_payload {

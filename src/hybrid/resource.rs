@@ -5,7 +5,7 @@ use axum::{
     routing::get,
     Router,
 };
-use hyper::StatusCode;
+use hyper::{header::CONTENT_TYPE, StatusCode};
 use tracing::error;
 
 use crate::{model::resource::ResourceQry, svc::resource::ResourceService};
@@ -47,7 +47,7 @@ struct Resource {
 
 impl IntoResponse for Resource {
     fn into_response(self) -> Response {
-        let headers = [("Content-Type", self.r#type)];
+        let headers = [(CONTENT_TYPE, self.r#type)];
 
         (headers, self.body).into_response()
     }
@@ -58,7 +58,7 @@ impl IntoResponse for crate::svc::resource::Error {
         error!("{self}");
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            [("Content-Type", "text/json; charset=utf-8")],
+            [(CONTENT_TYPE, "text/json; charset=utf-8")],
             format!(
                 r#"{{"error": "code={}, message={}", "message": "{}"}}"#,
                 StatusCode::INTERNAL_SERVER_ERROR,

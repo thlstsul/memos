@@ -98,8 +98,7 @@ impl GrpcRestService {
             .route_service("/home", index_file.clone())
             .route_service("/auth", index_file.clone())
             .route_service("/explore", index_file.clone())
-            .route_service("/resource", index_file.clone())
-            .route_service("/timeline", index_file.clone())
+            .route_service("/resources", index_file.clone())
             .route_service("/setting", index_file)
             .nest_service(
                 "/",
