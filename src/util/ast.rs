@@ -116,7 +116,7 @@ fn parse_property<'a>(node: &'a AstNode<'a>) -> MemoPayload {
             let matches = re.find_iter(content);
             let mut tags = Vec::new();
             for mat in matches {
-                let i = if mat.end() == content.len() {
+                let i = if mat.end() == content.len() && !content.ends_with(' ') {
                     mat.end()
                 } else {
                     mat.end() - 1
@@ -201,38 +201,39 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
         }],
         NodeValue::Text(content) => {
             let mut nodes = Vec::new();
-            let re = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+$|#\S+\s").unwrap());
-            let matches = re.find_iter(content);
+            let tag_regex = TAG_REGEX.get_or_init(|| Regex::new(r"#\S+$|#\S+\s").unwrap());
+            let tag_matches = tag_regex.find_iter(content);
             let mut i = 0;
-            for mat in matches {
-                if i < mat.start() {
+            let length = content.len();
+            for tag_match in tag_matches {
+                if i < tag_match.start() {
                     nodes.push(Node {
                         r#type: NodeType::Text.into(),
-                        node: content.get(i..mat.start()).map(|c| {
+                        node: content.get(i..tag_match.start()).map(|c| {
                             node::Node::TextNode(TextNode {
                                 content: c.to_owned(),
                             })
                         }),
                     });
                 }
-                i = if mat.end() == content.len() {
-                    mat.end()
+                i = if tag_match.end() == length && !content.ends_with(' ') {
+                    tag_match.end()
                 } else {
-                    mat.end() - 1
+                    tag_match.end() - 1
                 };
                 nodes.push(Node {
                     r#type: NodeType::Tag.into(),
-                    node: content.get(mat.start() + 1..i).map(|c| {
+                    node: content.get(tag_match.start() + 1..i).map(|c| {
                         node::Node::TagNode(TagNode {
                             content: c.to_owned(),
                         })
                     }),
                 });
             }
-            if i != content.len() {
+            if i != length {
                 nodes.push(Node {
                     r#type: NodeType::Text.into(),
-                    node: content.get(i..content.len()).map(|c| {
+                    node: content.get(i..length).map(|c| {
                         node::Node::TextNode(TextNode {
                             content: c.to_owned(),
                         })
@@ -384,13 +385,29 @@ mod test {
 
     #[test]
     fn parse_ast() {
-        let buffer = r#"
-#LIST
-aaaaaa
-#LINK [](https://memo.shuttleapp.rs)"#;
+        use crate::model::gen::memo_payload::Property;
+        use crate::model::gen::MemoPayload;
+        use crate::util::ast::node::Node;
+        use crate::util::ast::ParagraphNode;
+        use crate::util::ast::TagNode;
+
+        let buffer = r#"#LINK [](https://memo.shuttleapp.rs)"#;
         let nodes = super::parse_document(buffer);
         println!("{nodes:?}");
-        let payload = super::get_memo_property(buffer);
-        println!("{payload:?}")
+        if let Some(Node::ParagraphNode(ParagraphNode { children })) = &nodes[0].node {
+            if let Some(Node::TagNode(TagNode { content })) = &children[0].node {
+                assert_eq!("LINK", content);
+            } else {
+                panic!("node struct");
+            }
+        } else {
+            panic!("node struct");
+        }
+
+        let MemoPayload { property } = super::get_memo_property(buffer);
+        println!("{property:?}");
+        if let Some(Property { tags, .. }) = property {
+            assert_eq!("LINK", tags[0]);
+        }
     }
 }
