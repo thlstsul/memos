@@ -47,6 +47,9 @@ impl From<crate::model::gen::WorkspaceGeneralSetting> for WorkspaceGeneralSettin
             additional_script: value.additional_script,
             additional_style: value.additional_style,
             custom_profile: value.custom_profile.map(|cp| cp.into()),
+            disallow_user_registration: value.disallow_user_registration,
+            disallow_password_auth: value.disallow_password_auth,
+            week_start_day_offset: value.week_start_day_offset,
         }
     }
 }
@@ -60,6 +63,7 @@ impl From<crate::model::gen::WorkspaceMemoRelatedSetting> for WorkspaceMemoRelat
             enable_auto_compact: value.enable_auto_compact,
             enable_double_click_edit: value.enable_double_click_edit,
             enable_link_preview: value.enable_link_preview,
+            enable_comment: value.enable_comment,
         }
     }
 }

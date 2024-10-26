@@ -60,7 +60,6 @@ impl<U: UserRepository> workspace_service_server::WorkspaceService for Service<U
             owner,
             version: VERSION.to_owned(),
             mode: MODE.to_owned(),
-            password_auth: true,
             ..Default::default()
         }))
     }

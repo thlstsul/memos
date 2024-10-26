@@ -111,43 +111,43 @@ impl Parse for SearchMemosFilter {
         let mut binary = Expr::parse(input)?;
 
         let mut filter = SearchMemosFilter::default();
-        while let Expr::Binary(ref bin) = binary {
-            let mut get_value = |ident: Expr, lit: Expr| {
-                if ident == parse_quote!(creator) {
-                    filter.creator = ast::get_string(lit);
-                } else if ident == parse_quote!(row_status) {
-                    filter.row_status = ast::get_row_status(lit);
-                } else if ident == parse_quote!(visibilities) {
-                    filter.visibilities = ast::get_visibilities(lit);
-                } else if ident == parse_quote!(order_by_pinned) {
-                    filter.order_by_pinned = ast::get_bool(lit);
-                } else if ident == parse_quote!(content_search) {
-                    filter.content_search = ast::get_string_list(lit);
-                } else if ident == parse_quote!(display_time_before) {
-                    filter.display_time_before = ast::get_int(lit);
-                } else if ident == parse_quote!(display_time_after) {
-                    filter.display_time_after = ast::get_int(lit);
-                } else if ident == parse_quote!(tag_search) {
-                    filter.tag_search = ast::get_string_list(lit);
-                } else if ident == parse_quote!(uid) {
-                    filter.uid = ast::get_string(lit);
-                } else if ident == parse_quote!(random) {
-                    filter.random = ast::get_bool(lit);
-                } else if ident == parse_quote!(limit) {
-                    filter.limit = ast::get_int(lit);
-                } else if ident == parse_quote!(include_comments) {
-                    filter.include_comments = ast::get_bool(lit);
-                } else if ident == parse_quote!(has_link) {
-                    filter.has_link = ast::get_bool(lit);
-                } else if ident == parse_quote!(has_task_list) {
-                    filter.has_task_list = ast::get_bool(lit);
-                } else if ident == parse_quote!(has_code) {
-                    filter.has_code = ast::get_bool(lit);
-                } else if ident == parse_quote!(has_incomplete_tasks) {
-                    filter.has_incomplete_tasks = ast::get_bool(lit);
-                }
-            };
+        let mut get_value = |ident: Expr, lit: Expr| {
+            if ident == parse_quote!(creator) {
+                filter.creator = ast::get_string(lit);
+            } else if ident == parse_quote!(row_status) {
+                filter.row_status = ast::get_row_status(lit);
+            } else if ident == parse_quote!(visibilities) {
+                filter.visibilities = ast::get_visibilities(lit);
+            } else if ident == parse_quote!(order_by_pinned) {
+                filter.order_by_pinned = ast::get_bool(lit);
+            } else if ident == parse_quote!(content_search) {
+                filter.content_search = ast::get_string_list(lit);
+            } else if ident == parse_quote!(display_time_before) {
+                filter.display_time_before = ast::get_int(lit);
+            } else if ident == parse_quote!(display_time_after) {
+                filter.display_time_after = ast::get_int(lit);
+            } else if ident == parse_quote!(tag_search) {
+                filter.tag_search = ast::get_string_list(lit);
+            } else if ident == parse_quote!(uid) {
+                filter.uid = ast::get_string(lit);
+            } else if ident == parse_quote!(random) {
+                filter.random = ast::get_bool(lit);
+            } else if ident == parse_quote!(limit) {
+                filter.limit = ast::get_int(lit);
+            } else if ident == parse_quote!(include_comments) {
+                filter.include_comments = ast::get_bool(lit);
+            } else if ident == parse_quote!(has_link) {
+                filter.has_link = ast::get_bool(lit);
+            } else if ident == parse_quote!(has_task_list) {
+                filter.has_task_list = ast::get_bool(lit);
+            } else if ident == parse_quote!(has_code) {
+                filter.has_code = ast::get_bool(lit);
+            } else if ident == parse_quote!(has_incomplete_tasks) {
+                filter.has_incomplete_tasks = ast::get_bool(lit);
+            }
+        };
 
+        while let Expr::Binary(ref bin) = binary {
             let left = *bin.left.clone();
             let right = *bin.right.clone();
 

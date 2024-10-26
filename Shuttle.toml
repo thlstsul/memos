@@ -1,1 +1,2 @@
-assets = ["web/dist/*"]
+[deploy]
+include = ["web/dist/*"]

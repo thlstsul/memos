@@ -9,3 +9,4 @@ memos.db*
 firedbg
 .thumbnail_cache
 .resource_cache
+.shuttle*

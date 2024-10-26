@@ -10,13 +10,15 @@ fn main() {
         std::env::var("OUT_DIR").unwrap()
     );
 
-    std::env::set_var("PROTOC", protoc_bin_vendored::protoc_bin_path().unwrap());
+    unsafe {
+        std::env::set_var("PROTOC", protoc_bin_vendored::protoc_bin_path().unwrap());
+    }
 
     // Paths are specified in terms of the Protobuf type name (not the generated Rust type name).
     tonic_build::configure()
         .out_dir("src/api/v1")
         .with_serde(&["memos.api.v1.PageToken"], true, true, None)
-        .compile(
+        .compile_protos(
             &[
                 "proto/api/v1/activity_service.proto",
                 "proto/api/v1/auth_service.proto",
@@ -63,7 +65,7 @@ fn main() {
             &["memos.store.ResourcePayload.S3Object.last_presigned_time"],
             &[r#"#[serde(with = "crate::model::time_serde")]"#],
         )
-        .compile(
+        .compile_protos(
             &[
                 "proto/store/activity.proto",
                 "proto/store/idp.proto",

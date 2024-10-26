@@ -6,14 +6,13 @@ use crate::{
     api::v1::gen::{
         memo_service_server::{self, MemoServiceServer},
         CreateMemoCommentRequest, CreateMemoRequest, DeleteMemoReactionRequest, DeleteMemoRequest,
-        DeleteMemoTagRequest, ExportMemosRequest, ExportMemosResponse, GetMemoRequest,
-        ListMemoCommentsRequest, ListMemoCommentsResponse, ListMemoPropertiesRequest,
-        ListMemoPropertiesResponse, ListMemoReactionsRequest, ListMemoReactionsResponse,
-        ListMemoRelationsRequest, ListMemoRelationsResponse, ListMemoResourcesRequest,
-        ListMemoResourcesResponse, ListMemoTagsRequest, ListMemoTagsResponse, ListMemosRequest,
-        ListMemosResponse, Memo, Reaction, RebuildMemoPropertyRequest, RenameMemoTagRequest,
-        SetMemoRelationsRequest, SetMemoResourcesRequest, UpdateMemoRequest,
-        UpsertMemoReactionRequest,
+        DeleteMemoTagRequest, GetMemoRequest, ListMemoCommentsRequest, ListMemoCommentsResponse,
+        ListMemoPropertiesRequest, ListMemoPropertiesResponse, ListMemoReactionsRequest,
+        ListMemoReactionsResponse, ListMemoRelationsRequest, ListMemoRelationsResponse,
+        ListMemoResourcesRequest, ListMemoResourcesResponse, ListMemoTagsRequest,
+        ListMemoTagsResponse, ListMemosRequest, ListMemosResponse, Memo, Reaction,
+        RebuildMemoPropertyRequest, RenameMemoTagRequest, SetMemoRelationsRequest,
+        SetMemoResourcesRequest, UpdateMemoRequest, UpsertMemoReactionRequest,
     },
     dao::{memo::MemoRepository, user::UserRepository, workspace::WorkspaceRepository},
     model::{
@@ -321,13 +320,6 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
         &self,
         request: Request<ListMemoCommentsRequest>,
     ) -> Result<Response<ListMemoCommentsResponse>, Status> {
-        Err(Status::unimplemented("unimplemented"))
-    }
-    /// ExportMemos exports memos.
-    async fn export_memos(
-        &self,
-        request: Request<ExportMemosRequest>,
-    ) -> Result<Response<ExportMemosResponse>, Status> {
         Err(Status::unimplemented("unimplemented"))
     }
     /// ListMemoReactions lists reactions for a memo.
