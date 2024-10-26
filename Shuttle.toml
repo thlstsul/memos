@@ -1,2 +1,9 @@
 [deploy]
-include = ["web/dist/*"]
+include = [
+    "web/dist/*",
+]
+
+[build]
+assets = [
+    "web/dist",
+]
