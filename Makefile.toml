@@ -2,20 +2,15 @@
 
 [tasks.run]
 install_crate = "cargo-shuttle"
-command = "cargo"
-args = ["shuttle", "run"]
+command = "shuttle"
+args = ["run"]
 dependencies = ["build"]
 
 [tasks.deploy]
 install_crate = "cargo-shuttle"
-command = "cargo"
-args = ["shuttle", "deploy", "--ad"]
+command = "shuttle"
+args = ["deploy", "--ad"]
 dependencies = ["build"]
-
-[tasks.restart]
-install_crate = "cargo-shuttle"
-command = "cargo"
-args = ["shuttle", "project", "restart", "--idle-minutes", "0"]
 
 [tasks.install]
 cwd = "./web"
