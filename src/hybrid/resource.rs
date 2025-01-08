@@ -13,10 +13,10 @@ use crate::{model::resource::ResourceQry, svc::resource::ResourceService};
 use super::AppState;
 
 pub fn router<RS: ResourceService>() -> Router<AppState<RS>> {
-    Router::new().route("/file/resources/:id/:filename", get(stream_resource))
+    Router::new().route("/file/resources/{id}/{filename}", get(stream_resource))
 }
 
-/// /file/resources/:id/:filename
+/// /file/resources/{id}/{filename}
 async fn stream_resource<RS: ResourceService>(
     State(state): State<AppState<RS>>,
     Path((id, filename)): Path<(i32, String)>,

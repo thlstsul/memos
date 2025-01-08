@@ -31,7 +31,8 @@ impl Turso {
     pub async fn execute_batch(&self, sql: impl AsRef<str>) -> Result<()> {
         info!("{}", sql.as_ref());
         let conn = self.repo.connect()?;
-        Ok(conn.execute_batch(sql.as_ref()).await?)
+        let _ = conn.execute_batch(sql.as_ref()).await?;
+        Ok(())
     }
 
     pub async fn query<T: DeserializeOwned + Send, P: IntoParams + Send>(

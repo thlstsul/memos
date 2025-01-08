@@ -100,8 +100,7 @@ impl GrpcRestService {
             .route_service("/explore", index_file.clone())
             .route_service("/resources", index_file.clone())
             .route_service("/setting", index_file)
-            .nest_service(
-                "/",
+            .fallback_service(
                 ServeDir::new("web/dist")
                     .precompressed_br()
                     .append_index_html_on_directories(true),
