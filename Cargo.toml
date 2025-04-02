@@ -1,11 +1,11 @@
 [package]
 name = "memos"
-version = "0.8.1"
+version = "0.9.0"
 edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
-axum = { version = "0.8", features = ["multipart"]}
+axum = { version = "0.8", features = ["multipart"] }
 hex = "0.4.3"
 hyper = { version = "1", features = ["server", "http1"] }
 http-body-util = "0.1"
@@ -15,8 +15,8 @@ prost = "0.13"
 prost-types = "0.13"
 serde = "1"
 serde_json = "1"
-shuttle-runtime = "0.50"
-shuttle-turso = "0.50"
+shuttle-runtime = "0.53"
+shuttle-turso = "0.53"
 sm3 = "0.4.2"
 snafu = "0.8"
 tokio = "1.39"
@@ -41,6 +41,8 @@ nanoid = "0.4"
 comrak = { version = "0.26", default-features = false, features = ["syntect"] }
 futures = "0.3"
 http-body = "1"
+cel-parser = "0.8.0"
+sql_query_builder = { version = "2.4.1", features = ["sqlite"] }
 
 [build-dependencies]
 protoc-bin-vendored = "3.0.0"

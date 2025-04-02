@@ -1,6 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::api::v1::gen::{user::Role, RowStatus};
+use crate::api::v1::gen::{user::Role, State};
 
 use super::gen::UserSettingKey;
 
@@ -22,7 +22,7 @@ pub struct User {
     pub avatar_url: String,
     pub description: String,
     pub password_hash: String,
-    pub row_status: RowStatus,
+    pub state: State,
     pub created_ts: i64,
     pub updated_ts: i64,
 }

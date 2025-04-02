@@ -6,6 +6,7 @@ use crate::{
     model::{gen::UserSettingKey, user::UserSetting},
 };
 
+use super::v1::r#gen::GetUserStatsRequest;
 use super::{
     prefix::FormatName,
     v1::gen::{
@@ -14,6 +15,7 @@ use super::{
 };
 
 impl_extract_name!(GetUserRequest, prefix::USER_NAME_PREFIX);
+impl_extract_name!(GetUserStatsRequest, prefix::USER_NAME_PREFIX);
 
 impl From<Vec<UserSetting>> for UserSettingApi {
     fn from(value: Vec<UserSetting>) -> Self {
@@ -34,7 +36,6 @@ impl From<crate::model::user::User> for User {
     fn from(value: crate::model::user::User) -> Self {
         Self {
             name: value.get_name(),
-            id: value.id,
             role: value.role as i32,
             username: value.username,
             email: value.email,
@@ -42,7 +43,7 @@ impl From<crate::model::user::User> for User {
             avatar_url: value.avatar_url,
             description: value.description,
             password: value.password_hash,
-            row_status: value.row_status as i32,
+            state: value.state as i32,
             create_time: to_timestamp(value.created_ts),
             update_time: to_timestamp(value.updated_ts),
         }

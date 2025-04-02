@@ -34,7 +34,6 @@ impl From<crate::model::resource::Resource> for Resource {
     fn from(value: crate::model::resource::Resource) -> Self {
         Self {
             name: value.get_name(),
-            uid: value.uid,
             create_time: to_timestamp(value.created_ts),
             filename: value.filename,
             content: value.blob,

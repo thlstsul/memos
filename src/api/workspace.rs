@@ -50,6 +50,8 @@ impl From<crate::model::gen::WorkspaceGeneralSetting> for WorkspaceGeneralSettin
             disallow_user_registration: value.disallow_user_registration,
             disallow_password_auth: value.disallow_password_auth,
             week_start_day_offset: value.week_start_day_offset,
+            disallow_change_username: value.disallow_change_username,
+            disallow_change_nickname: value.disallow_change_nickname,
         }
     }
 }
@@ -60,10 +62,14 @@ impl From<crate::model::gen::WorkspaceMemoRelatedSetting> for WorkspaceMemoRelat
             disallow_public_visibility: value.disallow_public_visibility,
             display_with_update_time: value.display_with_update_time,
             content_length_limit: value.content_length_limit,
-            enable_auto_compact: value.enable_auto_compact,
             enable_double_click_edit: value.enable_double_click_edit,
             enable_link_preview: value.enable_link_preview,
             enable_comment: value.enable_comment,
+            enable_location: value.enable_location,
+            reactions: value.reactions,
+            disable_markdown_shortcuts: value.disable_markdown_shortcuts,
+            enable_blur_nsfw_content: value.enable_blur_nsfw_content,
+            nsfw_tags: value.nsfw_tags,
         }
     }
 }
@@ -76,6 +82,7 @@ impl From<crate::model::gen::StorageS3Config> for S3Config {
             endpoint: value.endpoint,
             region: value.region,
             bucket: value.bucket,
+            use_path_style: value.use_path_style,
         }
     }
 }

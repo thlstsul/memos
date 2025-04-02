@@ -6,17 +6,10 @@ pub struct ActivityMemoCommentPayload {
     #[prost(int32, tag = "2")]
     pub related_memo_id: i32,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ActivityVersionUpdatePayload {
-    #[prost(string, tag = "1")]
-    pub version: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ActivityPayload {
     #[prost(message, optional, tag = "1")]
     pub memo_comment: ::core::option::Option<ActivityMemoCommentPayload>,
-    #[prost(message, optional, tag = "2")]
-    pub version_update: ::core::option::Option<ActivityVersionUpdatePayload>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IdentityProvider {
@@ -140,83 +133,38 @@ pub mod inbox_message {
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct MemoPayload {
-    /// property is the memo's property.
     #[prost(message, optional, tag = "1")]
     pub property: ::core::option::Option<memo_payload::Property>,
+    #[prost(message, optional, tag = "2")]
+    pub location: ::core::option::Option<memo_payload::Location>,
+    #[prost(string, repeated, tag = "3")]
+    pub tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `MemoPayload`.
 pub mod memo_payload {
+    /// The calculated properties from the memo content.
     #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
     pub struct Property {
-        #[prost(string, repeated, tag = "1")]
-        pub tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        #[prost(bool, tag = "2")]
+        #[prost(bool, tag = "1")]
         pub has_link: bool,
-        #[prost(bool, tag = "3")]
+        #[prost(bool, tag = "2")]
         pub has_task_list: bool,
-        #[prost(bool, tag = "4")]
+        #[prost(bool, tag = "3")]
         pub has_code: bool,
-        #[prost(bool, tag = "5")]
+        #[prost(bool, tag = "4")]
         pub has_incomplete_tasks: bool,
+        /// The references of the memo. Should be a list of uuid.
+        #[prost(string, repeated, tag = "5")]
+        pub references: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum ReactionType {
-    Unspecified = 0,
-    ThumbsUp = 1,
-    ThumbsDown = 2,
-    Heart = 3,
-    Fire = 4,
-    ClappingHands = 5,
-    Laugh = 6,
-    OkHand = 7,
-    Rocket = 8,
-    Eyes = 9,
-    ThinkingFace = 10,
-    ClownFace = 11,
-    QuestionMark = 12,
-}
-impl ReactionType {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unspecified => "REACTION_TYPE_UNSPECIFIED",
-            Self::ThumbsUp => "THUMBS_UP",
-            Self::ThumbsDown => "THUMBS_DOWN",
-            Self::Heart => "HEART",
-            Self::Fire => "FIRE",
-            Self::ClappingHands => "CLAPPING_HANDS",
-            Self::Laugh => "LAUGH",
-            Self::OkHand => "OK_HAND",
-            Self::Rocket => "ROCKET",
-            Self::Eyes => "EYES",
-            Self::ThinkingFace => "THINKING_FACE",
-            Self::ClownFace => "CLOWN_FACE",
-            Self::QuestionMark => "QUESTION_MARK",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "REACTION_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-            "THUMBS_UP" => Some(Self::ThumbsUp),
-            "THUMBS_DOWN" => Some(Self::ThumbsDown),
-            "HEART" => Some(Self::Heart),
-            "FIRE" => Some(Self::Fire),
-            "CLAPPING_HANDS" => Some(Self::ClappingHands),
-            "LAUGH" => Some(Self::Laugh),
-            "OK_HAND" => Some(Self::OkHand),
-            "ROCKET" => Some(Self::Rocket),
-            "EYES" => Some(Self::Eyes),
-            "THINKING_FACE" => Some(Self::ThinkingFace),
-            "CLOWN_FACE" => Some(Self::ClownFace),
-            "QUESTION_MARK" => Some(Self::QuestionMark),
-            _ => None,
-        }
+    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
+    pub struct Location {
+        #[prost(string, tag = "1")]
+        pub placeholder: ::prost::alloc::string::String,
+        #[prost(double, tag = "2")]
+        pub latitude: f64,
+        #[prost(double, tag = "3")]
+        pub longitude: f64,
     }
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
@@ -242,8 +190,12 @@ pub mod workspace_setting {
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceBasicSetting {
+    /// The secret key for workspace. Mainly used for session management.
     #[prost(string, tag = "1")]
     pub secret_key: ::prost::alloc::string::String,
+    /// The current schema version of database.
+    #[prost(string, tag = "2")]
+    pub schema_version: ::prost::alloc::string::String,
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceGeneralSetting {
@@ -267,6 +219,12 @@ pub struct WorkspaceGeneralSetting {
     /// Default is Sunday.
     #[prost(int32, tag = "6")]
     pub week_start_day_offset: i32,
+    /// disallow_change_username disallows changing username.
+    #[prost(bool, tag = "7")]
+    pub disallow_change_username: bool,
+    /// disallow_change_nickname disallows changing nickname.
+    #[prost(bool, tag = "8")]
+    pub disallow_change_nickname: bool,
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceCustomProfile {
@@ -348,8 +306,10 @@ pub struct StorageS3Config {
     pub region: ::prost::alloc::string::String,
     #[prost(string, tag = "5")]
     pub bucket: ::prost::alloc::string::String,
+    #[prost(bool, tag = "6")]
+    pub use_path_style: bool,
 }
-#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceMemoRelatedSetting {
     /// disallow_public_visibility disallows set memo as public visibility.
     #[prost(bool, tag = "1")]
@@ -360,9 +320,6 @@ pub struct WorkspaceMemoRelatedSetting {
     /// content_length_limit is the limit of content length. Unit is byte.
     #[prost(int32, tag = "3")]
     pub content_length_limit: i32,
-    /// enable_auto_compact enables auto compact for large content.
-    #[prost(bool, tag = "4")]
-    pub enable_auto_compact: bool,
     /// enable_double_click_edit enables editing on double click.
     #[prost(bool, tag = "5")]
     pub enable_double_click_edit: bool,
@@ -372,6 +329,21 @@ pub struct WorkspaceMemoRelatedSetting {
     /// enable_comment enables comment.
     #[prost(bool, tag = "7")]
     pub enable_comment: bool,
+    /// enable_location enables setting location for memo.
+    #[prost(bool, tag = "8")]
+    pub enable_location: bool,
+    /// reactions is the list of reactions.
+    #[prost(string, repeated, tag = "10")]
+    pub reactions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// disable markdown shortcuts
+    #[prost(bool, tag = "11")]
+    pub disable_markdown_shortcuts: bool,
+    /// enable_blur_nsfw_content enables blurring of content marked as not safe for work (NSFW).
+    #[prost(bool, tag = "12")]
+    pub enable_blur_nsfw_content: bool,
+    /// nsfw_tags is the list of tags that mark content as NSFW for blurring.
+    #[prost(string, repeated, tag = "13")]
+    pub nsfw_tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -442,8 +414,11 @@ pub mod resource_payload {
 #[repr(i32)]
 pub enum ResourceStorageType {
     Unspecified = 0,
+    /// Resource is stored locally. AKA, local file system.
     Local = 1,
+    /// Resource is stored in S3.
     S3 = 2,
+    /// Resource is stored in an external storage. The reference is a URL.
     External = 3,
 }
 impl ResourceStorageType {
@@ -476,7 +451,7 @@ pub struct UserSetting {
     pub user_id: i32,
     #[prost(enumeration = "UserSettingKey", tag = "2")]
     pub key: i32,
-    #[prost(oneof = "user_setting::Value", tags = "3, 4, 5, 6")]
+    #[prost(oneof = "user_setting::Value", tags = "3, 4, 5, 6, 7")]
     pub value: ::core::option::Option<user_setting::Value>,
 }
 /// Nested message and enum types in `UserSetting`.
@@ -491,6 +466,8 @@ pub mod user_setting {
         Appearance(::prost::alloc::string::String),
         #[prost(string, tag = "6")]
         MemoVisibility(::prost::alloc::string::String),
+        #[prost(message, tag = "7")]
+        Shortcuts(super::ShortcutsUserSetting),
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -511,6 +488,23 @@ pub mod access_tokens_user_setting {
         pub description: ::prost::alloc::string::String,
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ShortcutsUserSetting {
+    #[prost(message, repeated, tag = "1")]
+    pub shortcuts: ::prost::alloc::vec::Vec<shortcuts_user_setting::Shortcut>,
+}
+/// Nested message and enum types in `ShortcutsUserSetting`.
+pub mod shortcuts_user_setting {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct Shortcut {
+        #[prost(string, tag = "1")]
+        pub id: ::prost::alloc::string::String,
+        #[prost(string, tag = "2")]
+        pub title: ::prost::alloc::string::String,
+        #[prost(string, tag = "3")]
+        pub filter: ::prost::alloc::string::String,
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum UserSettingKey {
@@ -523,6 +517,8 @@ pub enum UserSettingKey {
     Appearance = 3,
     /// The visibility of the memo.
     MemoVisibility = 4,
+    /// The shortcuts of the user.
+    Shortcuts = 5,
 }
 impl UserSettingKey {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -536,6 +532,7 @@ impl UserSettingKey {
             Self::Locale => "LOCALE",
             Self::Appearance => "APPEARANCE",
             Self::MemoVisibility => "MEMO_VISIBILITY",
+            Self::Shortcuts => "SHORTCUTS",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -546,6 +543,7 @@ impl UserSettingKey {
             "LOCALE" => Some(Self::Locale),
             "APPEARANCE" => Some(Self::Appearance),
             "MEMO_VISIBILITY" => Some(Self::MemoVisibility),
+            "SHORTCUTS" => Some(Self::Shortcuts),
             _ => None,
         }
     }

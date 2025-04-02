@@ -1,30 +1,33 @@
-use crate::api::prefix::{ExtractName, FormatName};
-use crate::api::v1::gen::{GetMemoByUidRequest, MemoPropertyEntity, RowStatus};
-use crate::dao::resource::ResourceRepository;
-use crate::util::ast;
+use crate::api::prefix::{self, ExtractName};
+use crate::api::v1::gen::UserStats;
+use crate::api::v1::r#gen::user_stats::MemoTypeStats;
+use crate::api::v1::r#gen::State;
+use crate::model::memo::CreateMemo;
+use crate::model::user::User;
 use crate::{
     api::v1::gen::{
         memo_service_server::{self, MemoServiceServer},
         CreateMemoCommentRequest, CreateMemoRequest, DeleteMemoReactionRequest, DeleteMemoRequest,
         DeleteMemoTagRequest, GetMemoRequest, ListMemoCommentsRequest, ListMemoCommentsResponse,
-        ListMemoPropertiesRequest, ListMemoPropertiesResponse, ListMemoReactionsRequest,
-        ListMemoReactionsResponse, ListMemoRelationsRequest, ListMemoRelationsResponse,
-        ListMemoResourcesRequest, ListMemoResourcesResponse, ListMemoTagsRequest,
-        ListMemoTagsResponse, ListMemosRequest, ListMemosResponse, Memo, Reaction,
-        RebuildMemoPropertyRequest, RenameMemoTagRequest, SetMemoRelationsRequest,
-        SetMemoResourcesRequest, UpdateMemoRequest, UpsertMemoReactionRequest,
+        ListMemoReactionsRequest, ListMemoReactionsResponse, ListMemoRelationsRequest,
+        ListMemoRelationsResponse, ListMemoResourcesRequest, ListMemoResourcesResponse,
+        ListMemosRequest, ListMemosResponse, Memo, Reaction, RenameMemoTagRequest,
+        SetMemoRelationsRequest, SetMemoResourcesRequest, UpdateMemoRequest,
+        UpsertMemoReactionRequest,
     },
-    dao::{memo::MemoRepository, user::UserRepository, workspace::WorkspaceRepository},
+    dao::{
+        memo::MemoRepository, resource::ResourceRepository, user::UserRepository,
+        workspace::WorkspaceRepository,
+    },
     model::{
-        memo::{CreateMemo, FindMemo, UpdateMemo},
+        memo::{FindMemo, UpdateMemo},
         pager::Paginator,
     },
-    util,
 };
 use async_trait::async_trait;
-use prost_types::Timestamp;
 use snafu::{OptionExt, ResultExt, Snafu};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
 use super::resource::ResourceService;
@@ -36,12 +39,88 @@ pub trait MemoService: memo_service_server::MemoService + Clone + Send + Sync + 
     fn memo_server(self: Arc<Self>) -> MemoServiceServer<Self> {
         MemoServiceServer::from_arc(self)
     }
+
+    async fn get_user_memo_stats(&self, user: Option<&User>) -> Result<UserStats, Error>;
 }
 
 #[async_trait]
 impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceRepository> MemoService
     for Service<T>
 {
+    async fn get_user_memo_stats(&self, user: Option<&User>) -> Result<UserStats, Error> {
+        let creator_id = user.map(|u| u.id);
+        let memos = self
+            .repo
+            .list_memos(FindMemo {
+                creator_id,
+                state: Some(State::Normal),
+                only_payload: true,
+                exclude_content: true,
+                exclude_comments: true,
+                ..Default::default()
+            })
+            .await?;
+
+        let mut tag_count = HashMap::new();
+        let mut stats = MemoTypeStats::default();
+        let mut pinned_memos = Vec::new();
+        let mut memo_display_timestamps = Vec::new();
+
+        let is_display_with_update_time = self.is_display_with_update_time().await;
+        let mut total_memo_count = 0;
+        for memo in memos {
+            let Memo {
+                name,
+                pinned,
+                tags,
+                property,
+                update_time,
+                create_time,
+                ..
+            } = memo.into();
+
+            for tag in tags {
+                let count = tag_count.remove(&tag).unwrap_or(0);
+                tag_count.insert(tag, count + 1);
+            }
+
+            if let Some(property) = property {
+                stats.code_count += property.has_code as i32;
+                stats.link_count += property.has_link as i32;
+                stats.todo_count += property.has_task_list as i32;
+                stats.undo_count += property.has_incomplete_tasks as i32;
+            }
+
+            if pinned {
+                pinned_memos.push(name);
+            }
+
+            let display_ts = if is_display_with_update_time {
+                update_time
+            } else {
+                create_time
+            };
+
+            if let Some(display_ts) = display_ts {
+                memo_display_timestamps.push(display_ts);
+            }
+
+            total_memo_count += 1;
+        }
+
+        Ok(UserStats {
+            name: format!(
+                "{}/{}",
+                prefix::USER_NAME_PREFIX,
+                creator_id.map(|i| i.to_string()).unwrap_or("-".to_string())
+            ),
+            tag_count,
+            memo_type_stats: Some(stats),
+            total_memo_count,
+            pinned_memos,
+            memo_display_timestamps,
+        })
+    }
 }
 
 #[tonic::async_trait]
@@ -54,14 +133,8 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
     ) -> Result<Response<Memo>, Status> {
         let user = request.get_current_user()?;
         let req = request.get_ref();
-        let payload = ast::get_memo_property(&req.content);
-        let create = CreateMemo {
-            creator_id: user.id,
-            uid: util::uuid(),
-            content: req.content.clone(),
-            visibility: req.visibility(),
-            payload,
-        };
+        let mut create: CreateMemo = request.get_ref().try_into().context(InvalidMemoData)?;
+        create.creator_id = user.id;
 
         let memo: Memo = self
             .repo
@@ -90,13 +163,6 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
         // TODO relate/reaction
 
         Ok(Response::new(memo))
-    }
-
-    async fn get_memo_by_uid(
-        &self,
-        request: Request<GetMemoByUidRequest>,
-    ) -> Result<Response<Memo>, Status> {
-        todo!()
     }
 
     async fn list_memos(
@@ -177,40 +243,6 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
         Ok(Response::new(()))
     }
 
-    async fn rebuild_memo_property(
-        &self,
-        request: Request<RebuildMemoPropertyRequest>,
-    ) -> Result<Response<()>, Status> {
-        todo!()
-    }
-
-    async fn list_memo_tags(
-        &self,
-        request: Request<ListMemoTagsRequest>,
-    ) -> Result<Response<ListMemoTagsResponse>, Status> {
-        let mut tag_amounts = HashMap::new();
-        let payloads = self
-            .repo
-            .list_memos(FindMemo {
-                row_status: Some(RowStatus::Active),
-                only_payload: true,
-                exclude_content: true,
-                exclude_comments: true,
-                ..Default::default()
-            })
-            .await?;
-
-        for p in payloads {
-            if let Some(property) = p.payload.property {
-                for tag in property.tags {
-                    let count = tag_amounts.remove(&tag).unwrap_or(0);
-                    tag_amounts.insert(tag, count + 1);
-                }
-            }
-        }
-        Ok(Response::new(ListMemoTagsResponse { tag_amounts }))
-    }
-
     async fn rename_memo_tag(
         &self,
         request: Request<RenameMemoTagRequest>,
@@ -223,47 +255,6 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
         request: Request<DeleteMemoTagRequest>,
     ) -> Result<Response<()>, Status> {
         todo!()
-    }
-
-    async fn list_memo_properties(
-        &self,
-        request: Request<ListMemoPropertiesRequest>,
-    ) -> Result<Response<ListMemoPropertiesResponse>, Status> {
-        let id = request.get_ref().get_id().ok();
-        let payloads = self
-            .repo
-            .list_memos(FindMemo {
-                id,
-                row_status: Some(RowStatus::Active),
-                only_payload: true,
-                exclude_content: true,
-                exclude_comments: true,
-                ..Default::default()
-            })
-            .await?;
-
-        let is_display_with_update_time = self.is_display_with_update_time().await;
-        let entities = payloads
-            .into_iter()
-            .map(|p| {
-                let name = p.get_name();
-                let property = p.payload.property.map(|p| p.into());
-                let display_time = if is_display_with_update_time {
-                    p.updated_ts
-                } else {
-                    p.created_ts
-                };
-                MemoPropertyEntity {
-                    name,
-                    property,
-                    display_time: Some(Timestamp {
-                        seconds: display_time,
-                        nanos: 0,
-                    }),
-                }
-            })
-            .collect();
-        Ok(Response::new(ListMemoPropertiesResponse { entities }))
     }
 
     /// SetMemoResources sets resources for a memo.
@@ -375,6 +366,9 @@ pub enum Error {
     ListMemo {
         source: crate::dao::memo::ListMemoError,
     },
+
+    #[snafu(display("Invalid memo data: {source}"), context(suffix(false)))]
+    InvalidMemoData { source: crate::api::memo::Error },
 
     #[snafu(display("Invalid memo filter: {source}"), context(suffix(false)))]
     InvalidMemoFilter { source: crate::api::memo::Error },

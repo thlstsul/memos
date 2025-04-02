@@ -4,15 +4,16 @@ use snafu::{ResultExt, Snafu};
 use crate::{
     api::{prefix, to_timestamp},
     impl_extract_name,
-    model::memo::{FindMemo, FindMemoPayload, SearchMemosFilter, UpdateMemo},
-    util::ast,
+    model::memo::{CreateMemo, FindMemo, FindMemoPayload, SearchMemosFilter, UpdateMemo},
+    util::{self, md},
 };
 
+use super::v1::r#gen::{memo::Property, CreateMemoRequest, State};
 use super::{
     prefix::{get_id_parent_token, ExtractName, FormatName},
     v1::gen::{
-        DeleteMemoRequest, GetMemoRequest, ListMemoPropertiesRequest, ListMemosRequest, Memo,
-        MemoProperty, PageToken, RowStatus, SetMemoResourcesRequest, UpdateMemoRequest, Visibility,
+        DeleteMemoRequest, GetMemoRequest, ListMemosRequest, Memo, PageToken,
+        SetMemoResourcesRequest, UpdateMemoRequest, Visibility,
     },
 };
 
@@ -20,14 +21,32 @@ impl_extract_name!(Memo, prefix::MEMO_NAME_PREFIX);
 impl_extract_name!(GetMemoRequest, prefix::MEMO_NAME_PREFIX);
 impl_extract_name!(DeleteMemoRequest, prefix::MEMO_NAME_PREFIX);
 impl_extract_name!(SetMemoResourcesRequest, prefix::MEMO_NAME_PREFIX);
-impl_extract_name!(ListMemoPropertiesRequest, prefix::MEMO_NAME_PREFIX);
+
+impl TryInto<CreateMemo> for &CreateMemoRequest {
+    type Error = Error;
+
+    fn try_into(self) -> Result<CreateMemo, Self::Error> {
+        let memo = self.memo.as_ref().ok_or(Error::MemoDataLoss)?;
+        let content = memo.content.clone();
+        let payload = md::get_memo_property(&content);
+
+        Ok(CreateMemo {
+            creator_id: 0,
+            visibility: memo.visibility(),
+            content,
+            payload,
+            uid: util::uuid(),
+        })
+    }
+}
 
 impl TryInto<FindMemo> for &ListMemosRequest {
     type Error = Error;
 
     fn try_into(self) -> Result<FindMemo, Self::Error> {
-        let filter = &self.filter.replace('\'', "\"");
-        let filter = syn::parse_str::<SearchMemosFilter>(filter).context(FilterDecode)?;
+        // TODO parse new filter;
+        let old_filter = &self.old_filter.replace('\'', "\"");
+        let filter = syn::parse_str::<SearchMemosFilter>(old_filter).context(FilterDecode)?;
         let creator_id = filter
             .creator
             .map(|s| get_id_parent_token(s, prefix::USER_NAME_PREFIX))
@@ -45,7 +64,7 @@ impl TryInto<FindMemo> for &ListMemosRequest {
             id: None,
             uid: None,
             creator_id,
-            row_status: filter.row_status,
+            state: State::try_from(self.state).ok().or(filter.state),
             content_search: filter.content_search.unwrap_or_default(),
             visibility_list: filter.visibilities.unwrap_or_default(),
             exclude_content: false,
@@ -95,11 +114,11 @@ impl From<&UpdateMemoRequest> for UpdateMemo {
                 match path.as_str() {
                     "content" => {
                         let content = memo.content.clone();
-                        update.payload = Some(ast::get_memo_property(&content));
+                        update.payload = Some(md::get_memo_property(&content));
                         update.content = Some(content);
                     }
                     "visibility" => update.visibility = Visibility::try_from(memo.visibility).ok(),
-                    "row_status" => update.row_status = RowStatus::try_from(memo.row_status).ok(),
+                    "state" => update.state = State::try_from(memo.state).ok(),
                     "pinned" => update.pinned = Some(memo.pinned),
                     _ => (),
                 }
@@ -114,12 +133,11 @@ impl From<crate::model::memo::Memo> for Memo {
         let name = value.get_name();
         let content = value.content;
         let snippet = format!("{}...", content.get(0..99).unwrap_or(""));
-        let nodes = ast::parse_document(&content);
+        let nodes = md::parse_document(&content);
         #[allow(deprecated)]
         Self {
             name,
-            uid: value.uid,
-            row_status: value.row_status as i32,
+            state: value.state as i32,
             creator: format!("{}/{}", prefix::USER_NAME_PREFIX, value.creator_id),
             create_time: to_timestamp(value.created_ts),
             update_time: to_timestamp(value.updated_ts),
@@ -127,15 +145,15 @@ impl From<crate::model::memo::Memo> for Memo {
             content,
             nodes,
             visibility: value.visibility as i32,
-            tags: vec![],
+            tags: value.payload.tags,
             pinned: value.pinned,
-            parent_id: None,
             resources: vec![],
             relations: vec![],
             reactions: vec![],
             property: value.payload.property.map(|p| p.into()),
             parent: None,
             snippet,
+            location: None,
         }
     }
 }
@@ -146,10 +164,9 @@ impl FormatName for crate::model::memo::Memo {
     }
 }
 
-impl From<crate::model::gen::memo_payload::Property> for MemoProperty {
+impl From<crate::model::gen::memo_payload::Property> for Property {
     fn from(value: crate::model::gen::memo_payload::Property) -> Self {
         Self {
-            tags: value.tags,
             has_link: value.has_link,
             has_task_list: value.has_task_list,
             has_code: value.has_code,
@@ -190,4 +207,6 @@ pub enum Error {
         context(suffix(false))
     )]
     PageTokenDecode { source: serde_json::Error },
+    #[snafu(display("Memo data loss"), context(suffix(false)))]
+    MemoDataLoss,
 }

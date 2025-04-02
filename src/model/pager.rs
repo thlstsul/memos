@@ -1,14 +1,19 @@
 use crate::api::v1::gen::PageToken;
 
 pub trait Paginator: Sized {
-    fn as_limit_sql(&self) -> String;
+    fn limit(&self) -> i32;
+    fn offset(&self) -> i32;
     fn next_page<T>(&self, data: &mut Vec<T>) -> Option<Self>;
 }
 
 impl Paginator for PageToken {
     /// 多取一条数据
-    fn as_limit_sql(&self) -> String {
-        format!("LIMIT {} OFFSET {}", self.limit + 1, self.offset)
+    fn limit(&self) -> i32 {
+        self.limit + 1
+    }
+
+    fn offset(&self) -> i32 {
+        self.offset
     }
 
     fn next_page<T>(&self, data: &mut Vec<T>) -> Option<Self> {

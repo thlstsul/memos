@@ -1,3 +1,14 @@
+pub mod auth;
+pub mod idp;
+pub mod inbox;
+pub mod markdown;
+pub mod memo;
+pub mod resource;
+pub mod session;
+pub mod user;
+pub mod webhook;
+pub mod workspace;
+
 use snafu::Snafu;
 use tonic::{Code, Request, Status};
 use tracing::error;
@@ -13,17 +24,6 @@ use crate::dao::user::{
 };
 use crate::dao::workspace::FindWorkspaceSettingError;
 use crate::model::user::User;
-
-pub mod auth;
-pub mod idp;
-pub mod inbox;
-pub mod markdown;
-pub mod memo;
-pub mod resource;
-pub mod session;
-pub mod user;
-pub mod webhook;
-pub mod workspace;
 
 #[derive(Debug, Clone)]
 pub struct EmptyService;

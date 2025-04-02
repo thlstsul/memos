@@ -12,7 +12,6 @@ use tokio::{
 use tokio_util::io::ReaderStream;
 use tonic::{Request, Response, Status};
 
-use crate::api::v1::gen::GetResourceByUidRequest;
 use crate::dao::resource::ResourceRepository;
 use crate::dao::workspace::WorkspaceRepository;
 use crate::google::api::HttpBody;
@@ -227,13 +226,6 @@ impl<R: ResourceRepository + WorkspaceRepository> resource_service_server::Resou
         let id = request.get_ref().get_id()?;
         let res = self.get_resource_by_id(id).await?;
         Ok(Response::new(res.into()))
-    }
-
-    async fn get_resource_by_uid(
-        &self,
-        request: Request<GetResourceByUidRequest>,
-    ) -> Result<Response<Resource>, Status> {
-        todo!()
     }
 
     async fn update_resource(

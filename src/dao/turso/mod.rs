@@ -1,3 +1,9 @@
+pub mod memo;
+pub mod resource;
+pub mod session;
+pub mod user;
+pub mod workspace;
+
 use anyhow::Result;
 use std::sync::Arc;
 use tracing::info;
@@ -5,11 +11,9 @@ use tracing::info;
 use libsql::{de, params::IntoParams, Database, Rows, Statement, Transaction, TransactionBehavior};
 use serde::de::DeserializeOwned;
 
-pub mod memo;
-pub mod resource;
-pub mod session;
-pub mod user;
-pub mod workspace;
+pub trait ToCriteria {
+    pub fn to_criteria(&self) -> (impl AsRef<str>, impl IntoParams);
+}
 
 #[derive(Debug, Clone)]
 pub struct Turso {
@@ -27,6 +31,11 @@ impl Turso {
         Ok(conn.execute(sql.as_ref(), params).await?)
     }
 
+    pub async fn execute_criteria(&self, criteria: impl ToCriteria) -> Result<u64> {
+        let (sql, params) = criteria.to_criteria();
+        self.execute(sql, params).await
+    }
+
     #[allow(dead_code)]
     pub async fn execute_batch(&self, sql: impl AsRef<str>) -> Result<()> {
         info!("{}", sql.as_ref());
@@ -35,16 +44,24 @@ impl Turso {
         Ok(())
     }
 
-    pub async fn query<T: DeserializeOwned + Send, P: IntoParams + Send>(
+    pub async fn query<T: DeserializeOwned + Send>(
         &self,
         sql: impl AsRef<str>,
-        params: P,
+        params: impl IntoParams + Send,
     ) -> Result<Vec<T>> {
         info!("{}", sql.as_ref());
         let conn = self.repo.connect()?;
         let rows = conn.query(sql.as_ref(), params).await?;
 
         de(rows).await
+    }
+
+    pub async fn query_criteria<T: DeserializeOwned + Send>(
+        &self,
+        criteria: impl ToCriteria,
+    ) -> Result<Vec<T>> {
+        let (sql, params) = criteria.to_criteria();
+        self.query(sql, params).await
     }
 
     pub async fn query_rows(&self, sql: impl AsRef<str>, params: impl IntoParams) -> Result<Rows> {

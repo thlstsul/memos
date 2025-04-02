@@ -1,3 +1,5 @@
+pub mod auth;
+
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use hyper::header;
@@ -7,8 +9,6 @@ use crate::dao::turso::Turso;
 use crate::svc::Service;
 
 use self::auth::Backend;
-
-pub mod auth;
 
 // We use a type alias for convenience.
 //

@@ -4,21 +4,24 @@
 install_crate = "cargo-shuttle"
 command = "shuttle"
 args = ["run"]
-dependencies = ["build"]
+dependencies = ["web-build"]
 
 [tasks.deploy]
 install_crate = "cargo-shuttle"
 command = "shuttle"
 args = ["deploy", "--ad"]
-dependencies = ["build"]
+dependencies = ["web-build"]
 
-[tasks.install]
+[tasks.web-install]
 cwd = "./web"
-command = "pnpm"
-args = ["install"]
+script_runner = "@shell"
+script = '''
+pnpm install
+'''
 
-[tasks.build]
+[tasks.web-build]
 cwd = "./web"
-command = "pnpm"
-args = ["build", "--mode", "release"]
-dependencies = ["install"]
+script_runner = "@shell"
+script = '''
+pnpm build --mode release
+'''

@@ -1,3 +1,5 @@
+mod resource;
+
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::Poll;
@@ -49,8 +51,6 @@ use crate::{
         workspace::{WorkspaceService, WorkspaceSettingService},
     },
 };
-
-mod resource;
 
 pub type ShuttleGrpcWeb = Result<GrpcRestService, Error>;
 type Repo = crate::dao::turso::Turso;

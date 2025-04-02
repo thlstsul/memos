@@ -5,9 +5,10 @@ pub struct Activity {
     /// Format: activities/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// The uid of the user who created the activity.
-    #[prost(int32, tag = "2")]
-    pub creator_id: i32,
+    /// The name of the creator.
+    /// Format: users/{user}
+    #[prost(string, tag = "2")]
+    pub creator: ::prost::alloc::string::String,
     /// The type of the activity.
     #[prost(string, tag = "3")]
     pub r#type: ::prost::alloc::string::String,
@@ -25,29 +26,22 @@ pub struct Activity {
 pub struct ActivityPayload {
     #[prost(message, optional, tag = "1")]
     pub memo_comment: ::core::option::Option<ActivityMemoCommentPayload>,
-    #[prost(message, optional, tag = "2")]
-    pub version_update: ::core::option::Option<ActivityVersionUpdatePayload>,
 }
 /// ActivityMemoCommentPayload represents the payload of a memo comment activity.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ActivityMemoCommentPayload {
-    /// The memo id of comment.
-    #[prost(int32, tag = "1")]
-    pub memo_id: i32,
-    /// The memo id of related memo.
-    #[prost(int32, tag = "2")]
-    pub related_memo_id: i32,
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ActivityVersionUpdatePayload {
-    /// The updated version of memos.
+pub struct ActivityMemoCommentPayload {
+    /// The memo name of comment.
+    /// Refer to `Memo.name`.
     #[prost(string, tag = "1")]
-    pub version: ::prost::alloc::string::String,
+    pub memo: ::prost::alloc::string::String,
+    /// The name of related memo.
+    #[prost(string, tag = "2")]
+    pub related_memo: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetActivityRequest {
     /// The name of the activity.
-    /// Format: activities/{id}
+    /// Format: activities/{id}, id is the system generated auto-incremented id.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -338,29 +332,58 @@ pub struct PageToken {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum RowStatus {
+pub enum State {
     Unspecified = 0,
-    Active = 1,
+    Normal = 1,
     Archived = 2,
 }
-impl RowStatus {
+impl State {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Unspecified => "ROW_STATUS_UNSPECIFIED",
-            Self::Active => "ACTIVE",
+            Self::Unspecified => "STATE_UNSPECIFIED",
+            Self::Normal => "NORMAL",
             Self::Archived => "ARCHIVED",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "ROW_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
-            "ACTIVE" => Some(Self::Active),
+            "STATE_UNSPECIFIED" => Some(Self::Unspecified),
+            "NORMAL" => Some(Self::Normal),
             "ARCHIVED" => Some(Self::Archived),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum Direction {
+    Unspecified = 0,
+    Asc = 1,
+    Desc = 2,
+}
+impl Direction {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DIRECTION_UNSPECIFIED",
+            Self::Asc => "ASC",
+            Self::Desc => "DESC",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DIRECTION_UNSPECIFIED" => Some(Self::Unspecified),
+            "ASC" => Some(Self::Asc),
+            "DESC" => Some(Self::Desc),
             _ => None,
         }
     }
@@ -368,12 +391,9 @@ impl RowStatus {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct User {
     /// The name of the user.
-    /// Format: users/{id}
+    /// Format: users/{id}, id is the system generated auto-incremented id.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// The system generated uid of the user.
-    #[prost(int32, tag = "2")]
-    pub id: i32,
     #[prost(enumeration = "user::Role", tag = "3")]
     pub role: i32,
     #[prost(string, tag = "4")]
@@ -388,8 +408,8 @@ pub struct User {
     pub description: ::prost::alloc::string::String,
     #[prost(string, tag = "9")]
     pub password: ::prost::alloc::string::String,
-    #[prost(enumeration = "RowStatus", tag = "10")]
-    pub row_status: i32,
+    #[prost(enumeration = "State", tag = "10")]
+    pub state: i32,
     #[prost(message, optional, tag = "11")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "12")]
@@ -438,28 +458,20 @@ pub struct ListUsersResponse {
     pub users: ::prost::alloc::vec::Vec<User>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SearchUsersRequest {
-    /// Filter is used to filter users returned in the list.
-    /// Format: "username == 'frank'"
-    #[prost(string, tag = "1")]
-    pub filter: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SearchUsersResponse {
-    #[prost(message, repeated, tag = "1")]
-    pub users: ::prost::alloc::vec::Vec<User>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserRequest {
     /// The name of the user.
-    /// Format: users/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetUserByUsernameRequest {
+    /// The username of the user.
+    #[prost(string, tag = "1")]
+    pub username: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserAvatarBinaryRequest {
     /// The name of the user.
-    /// Format: users/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The raw HTTP body is bound to this field.
@@ -481,14 +493,61 @@ pub struct UpdateUserRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteUserRequest {
     /// The name of the user.
-    /// Format: users/{id}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UserStats {
+    /// The name of the user.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The timestamps when the memos were displayed.
+    /// We should return raw data to the client, and let the client format the data with the user's timezone.
+    #[prost(message, repeated, tag = "2")]
+    pub memo_display_timestamps: ::prost::alloc::vec::Vec<::prost_types::Timestamp>,
+    /// The stats of memo types.
+    #[prost(message, optional, tag = "3")]
+    pub memo_type_stats: ::core::option::Option<user_stats::MemoTypeStats>,
+    /// The count of tags.
+    /// Format: "tag1": 1, "tag2": 2
+    #[prost(map = "string, int32", tag = "4")]
+    pub tag_count: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
+    /// The pinned memos of the user.
+    #[prost(string, repeated, tag = "5")]
+    pub pinned_memos: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(int32, tag = "6")]
+    pub total_memo_count: i32,
+}
+/// Nested message and enum types in `UserStats`.
+pub mod user_stats {
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct MemoTypeStats {
+        #[prost(int32, tag = "1")]
+        pub link_count: i32,
+        #[prost(int32, tag = "2")]
+        pub code_count: i32,
+        #[prost(int32, tag = "3")]
+        pub todo_count: i32,
+        #[prost(int32, tag = "4")]
+        pub undo_count: i32,
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ListAllUserStatsRequest {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListAllUserStatsResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub user_stats: ::prost::alloc::vec::Vec<UserStats>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetUserStatsRequest {
+    /// The name of the user.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UserSetting {
     /// The name of the user.
-    /// Format: users/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The preferred locale of the user.
@@ -504,7 +563,6 @@ pub struct UserSetting {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserSettingRequest {
     /// The name of the user.
-    /// Format: users/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -529,7 +587,6 @@ pub struct UserAccessToken {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListUserAccessTokensRequest {
     /// The name of the user.
-    /// Format: users/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -541,7 +598,6 @@ pub struct ListUserAccessTokensResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateUserAccessTokenRequest {
     /// The name of the user.
-    /// Format: users/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
@@ -552,12 +608,60 @@ pub struct CreateUserAccessTokenRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteUserAccessTokenRequest {
     /// The name of the user.
-    /// Format: users/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// access_token is the access token to delete.
     #[prost(string, tag = "2")]
     pub access_token: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Shortcut {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub title: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub filter: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListShortcutsRequest {
+    /// The name of the user.
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListShortcutsResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub shortcuts: ::prost::alloc::vec::Vec<Shortcut>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateShortcutRequest {
+    /// The name of the user.
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub shortcut: ::core::option::Option<Shortcut>,
+    #[prost(bool, tag = "3")]
+    pub validate_only: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateShortcutRequest {
+    /// The name of the user.
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub shortcut: ::core::option::Option<Shortcut>,
+    #[prost(message, optional, tag = "3")]
+    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteShortcutRequest {
+    /// The name of the user.
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    /// The id of the shortcut.
+    #[prost(string, tag = "2")]
+    pub id: ::prost::alloc::string::String,
 }
 /// Generated client implementations.
 pub mod user_service_client {
@@ -664,23 +768,6 @@ pub mod user_service_client {
                 .insert(GrpcMethod::new("memos.api.v1.UserService", "ListUsers"));
             self.inner.unary(req, path, codec).await
         }
-        /// SearchUsers searches users by filter.
-        pub async fn search_users(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SearchUsersRequest>,
-        ) -> std::result::Result<tonic::Response<super::SearchUsersResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/SearchUsers");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.UserService", "SearchUsers"));
-            self.inner.unary(req, path, codec).await
-        }
         /// GetUser gets a user by name.
         pub async fn get_user(
             &mut self,
@@ -694,6 +781,24 @@ pub mod user_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("memos.api.v1.UserService", "GetUser"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// GetUserByUsername gets a user by username.
+        pub async fn get_user_by_username(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetUserByUsernameRequest>,
+        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/GetUserByUsername");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "GetUserByUsername",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// GetUserAvatarBinary gets the avatar of a user.
@@ -761,6 +866,41 @@ pub mod user_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("memos.api.v1.UserService", "DeleteUser"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// ListAllUserStats returns all user stats.
+        pub async fn list_all_user_stats(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListAllUserStatsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListAllUserStatsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/ListAllUserStats");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "ListAllUserStats",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// GetUserStats returns the stats of a user.
+        pub async fn get_user_stats(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetUserStatsRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserStats>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/GetUserStats");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v1.UserService", "GetUserStats"));
             self.inner.unary(req, path, codec).await
         }
         /// GetUserSetting gets the setting of a user.
@@ -857,6 +997,77 @@ pub mod user_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// ListShortcuts returns a list of shortcuts for a user.
+        pub async fn list_shortcuts(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListShortcutsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListShortcutsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/ListShortcuts");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v1.UserService", "ListShortcuts"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// CreateShortcut creates a new shortcut for a user.
+        pub async fn create_shortcut(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/CreateShortcut");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "CreateShortcut",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// UpdateShortcut updates a shortcut for a user.
+        pub async fn update_shortcut(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/UpdateShortcut");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "UpdateShortcut",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// DeleteShortcut deletes a shortcut for a user.
+        pub async fn delete_shortcut(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/DeleteShortcut");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "DeleteShortcut",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -877,15 +1088,15 @@ pub mod user_service_server {
             &self,
             request: tonic::Request<super::ListUsersRequest>,
         ) -> std::result::Result<tonic::Response<super::ListUsersResponse>, tonic::Status>;
-        /// SearchUsers searches users by filter.
-        async fn search_users(
-            &self,
-            request: tonic::Request<super::SearchUsersRequest>,
-        ) -> std::result::Result<tonic::Response<super::SearchUsersResponse>, tonic::Status>;
         /// GetUser gets a user by name.
         async fn get_user(
             &self,
             request: tonic::Request<super::GetUserRequest>,
+        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status>;
+        /// GetUserByUsername gets a user by username.
+        async fn get_user_by_username(
+            &self,
+            request: tonic::Request<super::GetUserByUsernameRequest>,
         ) -> std::result::Result<tonic::Response<super::User>, tonic::Status>;
         /// GetUserAvatarBinary gets the avatar of a user.
         async fn get_user_avatar_binary(
@@ -910,6 +1121,16 @@ pub mod user_service_server {
             &self,
             request: tonic::Request<super::DeleteUserRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
+        /// ListAllUserStats returns all user stats.
+        async fn list_all_user_stats(
+            &self,
+            request: tonic::Request<super::ListAllUserStatsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListAllUserStatsResponse>, tonic::Status>;
+        /// GetUserStats returns the stats of a user.
+        async fn get_user_stats(
+            &self,
+            request: tonic::Request<super::GetUserStatsRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserStats>, tonic::Status>;
         /// GetUserSetting gets the setting of a user.
         async fn get_user_setting(
             &self,
@@ -934,6 +1155,26 @@ pub mod user_service_server {
         async fn delete_user_access_token(
             &self,
             request: tonic::Request<super::DeleteUserAccessTokenRequest>,
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
+        /// ListShortcuts returns a list of shortcuts for a user.
+        async fn list_shortcuts(
+            &self,
+            request: tonic::Request<super::ListShortcutsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListShortcutsResponse>, tonic::Status>;
+        /// CreateShortcut creates a new shortcut for a user.
+        async fn create_shortcut(
+            &self,
+            request: tonic::Request<super::CreateShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status>;
+        /// UpdateShortcut updates a shortcut for a user.
+        async fn update_shortcut(
+            &self,
+            request: tonic::Request<super::UpdateShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status>;
+        /// DeleteShortcut deletes a shortcut for a user.
+        async fn delete_shortcut(
+            &self,
+            request: tonic::Request<super::DeleteShortcutRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
     }
     #[derive(Debug)]
@@ -1048,45 +1289,6 @@ pub mod user_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.UserService/SearchUsers" => {
-                    #[allow(non_camel_case_types)]
-                    struct SearchUsersSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::SearchUsersRequest> for SearchUsersSvc<T> {
-                        type Response = super::SearchUsersResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SearchUsersRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as UserService>::search_users(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = SearchUsersSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/memos.api.v1.UserService/GetUser" => {
                     #[allow(non_camel_case_types)]
                     struct GetUserSvc<T: UserService>(pub Arc<T>);
@@ -1110,6 +1312,48 @@ pub mod user_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetUserSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/GetUserByUsername" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetUserByUsernameSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService>
+                        tonic::server::UnaryService<super::GetUserByUsernameRequest>
+                        for GetUserByUsernameSvc<T>
+                    {
+                        type Response = super::User;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetUserByUsernameRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::get_user_by_username(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetUserByUsernameSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1269,6 +1513,88 @@ pub mod user_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DeleteUserSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/ListAllUserStats" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListAllUserStatsSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::ListAllUserStatsRequest>
+                        for ListAllUserStatsSvc<T>
+                    {
+                        type Response = super::ListAllUserStatsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListAllUserStatsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::list_all_user_stats(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListAllUserStatsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/GetUserStats" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetUserStatsSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::GetUserStatsRequest>
+                        for GetUserStatsSvc<T>
+                    {
+                        type Response = super::UserStats;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetUserStatsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::get_user_stats(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetUserStatsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1478,6 +1804,170 @@ pub mod user_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DeleteUserAccessTokenSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/ListShortcuts" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListShortcutsSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::ListShortcutsRequest>
+                        for ListShortcutsSvc<T>
+                    {
+                        type Response = super::ListShortcutsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListShortcutsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::list_shortcuts(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListShortcutsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/CreateShortcut" => {
+                    #[allow(non_camel_case_types)]
+                    struct CreateShortcutSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::CreateShortcutRequest>
+                        for CreateShortcutSvc<T>
+                    {
+                        type Response = super::Shortcut;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CreateShortcutRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::create_shortcut(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CreateShortcutSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/UpdateShortcut" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateShortcutSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::UpdateShortcutRequest>
+                        for UpdateShortcutSvc<T>
+                    {
+                        type Response = super::Shortcut;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateShortcutRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::update_shortcut(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateShortcutSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/DeleteShortcut" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteShortcutSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::DeleteShortcutRequest>
+                        for DeleteShortcutSvc<T>
+                    {
+                        type Response = ();
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteShortcutRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::delete_shortcut(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DeleteShortcutSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2083,7 +2573,7 @@ pub mod auth_service_server {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IdentityProvider {
     /// The name of the identityProvider.
-    /// Format: identityProviders/{id}
+    /// Format: identityProviders/{id}, id is the system generated auto-incremented id.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(enumeration = "identity_provider::Type", tag = "2")]
@@ -2173,7 +2663,6 @@ pub struct ListIdentityProvidersResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetIdentityProviderRequest {
     /// The name of the identityProvider to get.
-    /// Format: identityProviders/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -2196,7 +2685,6 @@ pub struct UpdateIdentityProviderRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteIdentityProviderRequest {
     /// The name of the identityProvider to delete.
-    /// Format: identityProviders/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -2762,13 +3250,13 @@ pub mod identity_provider_service_server {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Inbox {
     /// The name of the inbox.
-    /// Format: inboxes/{id}
+    /// Format: inboxes/{id}, id is the system generated auto-incremented id.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// Format: users/{id}
+    /// Format: users/{user}
     #[prost(string, tag = "2")]
     pub sender: ::prost::alloc::string::String,
-    /// Format: users/{id}
+    /// Format: users/{user}
     #[prost(string, tag = "3")]
     pub receiver: ::prost::alloc::string::String,
     #[prost(enumeration = "inbox::Status", tag = "4")]
@@ -2843,14 +3331,24 @@ pub mod inbox {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInboxesRequest {
-    /// Format: users/{id}
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub user: ::prost::alloc::string::String,
+    /// The maximum number of inbox to return.
+    #[prost(int32, tag = "2")]
+    pub page_size: i32,
+    /// Provide this to retrieve the subsequent page.
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInboxesResponse {
     #[prost(message, repeated, tag = "1")]
     pub inboxes: ::prost::alloc::vec::Vec<Inbox>,
+    /// A token, which can be sent as `page_token` to retrieve the next page.
+    /// If this field is omitted, there are no subsequent pages.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateInboxRequest {
@@ -2862,7 +3360,6 @@ pub struct UpdateInboxRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteInboxRequest {
     /// The name of the inbox to delete.
-    /// Format: inboxes/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -3310,7 +3807,7 @@ pub struct Node {
     pub r#type: i32,
     #[prost(
         oneof = "node::Node",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31"
+        tags = "11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68"
     )]
     pub node: ::core::option::Option<node::Node>,
 }
@@ -3318,65 +3815,69 @@ pub struct Node {
 pub mod node {
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Node {
-        #[prost(message, tag = "2")]
-        LineBreakNode(super::LineBreakNode),
-        #[prost(message, tag = "3")]
-        ParagraphNode(super::ParagraphNode),
-        #[prost(message, tag = "4")]
-        CodeBlockNode(super::CodeBlockNode),
-        #[prost(message, tag = "5")]
-        HeadingNode(super::HeadingNode),
-        #[prost(message, tag = "6")]
-        HorizontalRuleNode(super::HorizontalRuleNode),
-        #[prost(message, tag = "7")]
-        BlockquoteNode(super::BlockquoteNode),
-        #[prost(message, tag = "8")]
-        OrderedListNode(super::OrderedListNode),
-        #[prost(message, tag = "9")]
-        UnorderedListNode(super::UnorderedListNode),
-        #[prost(message, tag = "10")]
-        TaskListNode(super::TaskListNode),
+        /// Block nodes.
         #[prost(message, tag = "11")]
-        MathBlockNode(super::MathBlockNode),
+        LineBreakNode(super::LineBreakNode),
         #[prost(message, tag = "12")]
-        TableNode(super::TableNode),
+        ParagraphNode(super::ParagraphNode),
         #[prost(message, tag = "13")]
-        EmbeddedContentNode(super::EmbeddedContentNode),
+        CodeBlockNode(super::CodeBlockNode),
         #[prost(message, tag = "14")]
-        TextNode(super::TextNode),
+        HeadingNode(super::HeadingNode),
         #[prost(message, tag = "15")]
-        BoldNode(super::BoldNode),
+        HorizontalRuleNode(super::HorizontalRuleNode),
         #[prost(message, tag = "16")]
-        ItalicNode(super::ItalicNode),
+        BlockquoteNode(super::BlockquoteNode),
         #[prost(message, tag = "17")]
-        BoldItalicNode(super::BoldItalicNode),
+        ListNode(super::ListNode),
         #[prost(message, tag = "18")]
-        CodeNode(super::CodeNode),
+        OrderedListItemNode(super::OrderedListItemNode),
         #[prost(message, tag = "19")]
-        ImageNode(super::ImageNode),
+        UnorderedListItemNode(super::UnorderedListItemNode),
         #[prost(message, tag = "20")]
-        LinkNode(super::LinkNode),
+        TaskListItemNode(super::TaskListItemNode),
         #[prost(message, tag = "21")]
-        AutoLinkNode(super::AutoLinkNode),
+        MathBlockNode(super::MathBlockNode),
         #[prost(message, tag = "22")]
-        TagNode(super::TagNode),
+        TableNode(super::TableNode),
         #[prost(message, tag = "23")]
+        EmbeddedContentNode(super::EmbeddedContentNode),
+        /// Inline nodes.
+        #[prost(message, tag = "51")]
+        TextNode(super::TextNode),
+        #[prost(message, tag = "52")]
+        BoldNode(super::BoldNode),
+        #[prost(message, tag = "53")]
+        ItalicNode(super::ItalicNode),
+        #[prost(message, tag = "54")]
+        BoldItalicNode(super::BoldItalicNode),
+        #[prost(message, tag = "55")]
+        CodeNode(super::CodeNode),
+        #[prost(message, tag = "56")]
+        ImageNode(super::ImageNode),
+        #[prost(message, tag = "57")]
+        LinkNode(super::LinkNode),
+        #[prost(message, tag = "58")]
+        AutoLinkNode(super::AutoLinkNode),
+        #[prost(message, tag = "59")]
+        TagNode(super::TagNode),
+        #[prost(message, tag = "60")]
         StrikethroughNode(super::StrikethroughNode),
-        #[prost(message, tag = "24")]
+        #[prost(message, tag = "61")]
         EscapingCharacterNode(super::EscapingCharacterNode),
-        #[prost(message, tag = "25")]
+        #[prost(message, tag = "62")]
         MathNode(super::MathNode),
-        #[prost(message, tag = "26")]
+        #[prost(message, tag = "63")]
         HighlightNode(super::HighlightNode),
-        #[prost(message, tag = "27")]
+        #[prost(message, tag = "64")]
         SubscriptNode(super::SubscriptNode),
-        #[prost(message, tag = "28")]
+        #[prost(message, tag = "65")]
         SuperscriptNode(super::SuperscriptNode),
-        #[prost(message, tag = "29")]
+        #[prost(message, tag = "66")]
         ReferencedContentNode(super::ReferencedContentNode),
-        #[prost(message, tag = "30")]
+        #[prost(message, tag = "67")]
         SpoilerNode(super::SpoilerNode),
-        #[prost(message, tag = "31")]
+        #[prost(message, tag = "68")]
         HtmlElementNode(super::HtmlElementNode),
     }
 }
@@ -3412,7 +3913,51 @@ pub struct BlockquoteNode {
     pub children: ::prost::alloc::vec::Vec<Node>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OrderedListNode {
+pub struct ListNode {
+    #[prost(enumeration = "list_node::Kind", tag = "1")]
+    pub kind: i32,
+    #[prost(int32, tag = "2")]
+    pub indent: i32,
+    #[prost(message, repeated, tag = "3")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
+}
+/// Nested message and enum types in `ListNode`.
+pub mod list_node {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Kind {
+        Unspecified = 0,
+        Ordered = 1,
+        Unordered = 2,
+        Description = 3,
+    }
+    impl Kind {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "KIND_UNSPECIFIED",
+                Self::Ordered => "ORDERED",
+                Self::Unordered => "UNORDERED",
+                Self::Description => "DESCRIPTION",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "KIND_UNSPECIFIED" => Some(Self::Unspecified),
+                "ORDERED" => Some(Self::Ordered),
+                "UNORDERED" => Some(Self::Unordered),
+                "DESCRIPTION" => Some(Self::Description),
+                _ => None,
+            }
+        }
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OrderedListItemNode {
     #[prost(string, tag = "1")]
     pub number: ::prost::alloc::string::String,
     #[prost(int32, tag = "2")]
@@ -3421,7 +3966,7 @@ pub struct OrderedListNode {
     pub children: ::prost::alloc::vec::Vec<Node>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UnorderedListNode {
+pub struct UnorderedListItemNode {
     #[prost(string, tag = "1")]
     pub symbol: ::prost::alloc::string::String,
     #[prost(int32, tag = "2")]
@@ -3430,7 +3975,7 @@ pub struct UnorderedListNode {
     pub children: ::prost::alloc::vec::Vec<Node>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TaskListNode {
+pub struct TaskListItemNode {
     #[prost(string, tag = "1")]
     pub symbol: ::prost::alloc::string::String,
     #[prost(int32, tag = "2")]
@@ -3509,8 +4054,8 @@ pub struct ImageNode {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LinkNode {
-    #[prost(string, tag = "1")]
-    pub text: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "1")]
+    pub content: ::prost::alloc::vec::Vec<Node>,
     #[prost(string, tag = "2")]
     pub url: ::prost::alloc::string::String,
 }
@@ -3580,36 +4125,39 @@ pub struct HtmlElementNode {
 #[repr(i32)]
 pub enum NodeType {
     NodeUnspecified = 0,
+    /// Block nodes.
     LineBreak = 1,
     Paragraph = 2,
     CodeBlock = 3,
     Heading = 4,
     HorizontalRule = 5,
     Blockquote = 6,
-    OrderedList = 7,
-    UnorderedList = 8,
-    TaskList = 9,
-    MathBlock = 10,
-    Table = 11,
-    EmbeddedContent = 12,
-    Text = 13,
-    Bold = 14,
-    Italic = 15,
-    BoldItalic = 16,
-    Code = 17,
-    Image = 18,
-    Link = 19,
-    AutoLink = 20,
-    Tag = 21,
-    Strikethrough = 22,
-    EscapingCharacter = 23,
-    Math = 24,
-    Highlight = 25,
-    Subscript = 26,
-    Superscript = 27,
-    ReferencedContent = 28,
-    Spoiler = 29,
-    HtmlElement = 30,
+    List = 7,
+    OrderedListItem = 8,
+    UnorderedListItem = 9,
+    TaskListItem = 10,
+    MathBlock = 11,
+    Table = 12,
+    EmbeddedContent = 13,
+    /// Inline nodes.
+    Text = 51,
+    Bold = 52,
+    Italic = 53,
+    BoldItalic = 54,
+    Code = 55,
+    Image = 56,
+    Link = 57,
+    AutoLink = 58,
+    Tag = 59,
+    Strikethrough = 60,
+    EscapingCharacter = 61,
+    Math = 62,
+    Highlight = 63,
+    Subscript = 64,
+    Superscript = 65,
+    ReferencedContent = 66,
+    Spoiler = 67,
+    HtmlElement = 68,
 }
 impl NodeType {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -3625,9 +4173,10 @@ impl NodeType {
             Self::Heading => "HEADING",
             Self::HorizontalRule => "HORIZONTAL_RULE",
             Self::Blockquote => "BLOCKQUOTE",
-            Self::OrderedList => "ORDERED_LIST",
-            Self::UnorderedList => "UNORDERED_LIST",
-            Self::TaskList => "TASK_LIST",
+            Self::List => "LIST",
+            Self::OrderedListItem => "ORDERED_LIST_ITEM",
+            Self::UnorderedListItem => "UNORDERED_LIST_ITEM",
+            Self::TaskListItem => "TASK_LIST_ITEM",
             Self::MathBlock => "MATH_BLOCK",
             Self::Table => "TABLE",
             Self::EmbeddedContent => "EMBEDDED_CONTENT",
@@ -3661,9 +4210,10 @@ impl NodeType {
             "HEADING" => Some(Self::Heading),
             "HORIZONTAL_RULE" => Some(Self::HorizontalRule),
             "BLOCKQUOTE" => Some(Self::Blockquote),
-            "ORDERED_LIST" => Some(Self::OrderedList),
-            "UNORDERED_LIST" => Some(Self::UnorderedList),
-            "TASK_LIST" => Some(Self::TaskList),
+            "LIST" => Some(Self::List),
+            "ORDERED_LIST_ITEM" => Some(Self::OrderedListItem),
+            "UNORDERED_LIST_ITEM" => Some(Self::UnorderedListItem),
+            "TASK_LIST_ITEM" => Some(Self::TaskListItem),
             "MATH_BLOCK" => Some(Self::MathBlock),
             "TABLE" => Some(Self::Table),
             "EMBEDDED_CONTENT" => Some(Self::EmbeddedContent),
@@ -4176,135 +4726,26 @@ pub mod markdown_service_server {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct MemoRelation {
-    /// The name of memo.
-    /// Format: "memos/{uid}"
-    #[prost(string, tag = "1")]
-    pub memo: ::prost::alloc::string::String,
-    /// The name of related memo.
-    /// Format: "memos/{uid}"
-    #[prost(string, tag = "2")]
-    pub related_memo: ::prost::alloc::string::String,
-    #[prost(enumeration = "memo_relation::Type", tag = "3")]
-    pub r#type: i32,
-}
-/// Nested message and enum types in `MemoRelation`.
-pub mod memo_relation {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Type {
-        Unspecified = 0,
-        Reference = 1,
-        Comment = 2,
-    }
-    impl Type {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "TYPE_UNSPECIFIED",
-                Self::Reference => "REFERENCE",
-                Self::Comment => "COMMENT",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-                "REFERENCE" => Some(Self::Reference),
-                "COMMENT" => Some(Self::Comment),
-                _ => None,
-            }
-        }
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Reaction {
     #[prost(int32, tag = "1")]
     pub id: i32,
     /// The name of the creator.
-    /// Format: users/{id}
+    /// Format: users/{user}
     #[prost(string, tag = "2")]
     pub creator: ::prost::alloc::string::String,
+    /// The content identifier.
+    /// For memo, it should be the `Memo.name`.
     #[prost(string, tag = "3")]
     pub content_id: ::prost::alloc::string::String,
-    #[prost(enumeration = "reaction::Type", tag = "4")]
-    pub reaction_type: i32,
-}
-/// Nested message and enum types in `Reaction`.
-pub mod reaction {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Type {
-        Unspecified = 0,
-        ThumbsUp = 1,
-        ThumbsDown = 2,
-        Heart = 3,
-        Fire = 4,
-        ClappingHands = 5,
-        Laugh = 6,
-        OkHand = 7,
-        Rocket = 8,
-        Eyes = 9,
-        ThinkingFace = 10,
-        ClownFace = 11,
-        QuestionMark = 12,
-    }
-    impl Type {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "TYPE_UNSPECIFIED",
-                Self::ThumbsUp => "THUMBS_UP",
-                Self::ThumbsDown => "THUMBS_DOWN",
-                Self::Heart => "HEART",
-                Self::Fire => "FIRE",
-                Self::ClappingHands => "CLAPPING_HANDS",
-                Self::Laugh => "LAUGH",
-                Self::OkHand => "OK_HAND",
-                Self::Rocket => "ROCKET",
-                Self::Eyes => "EYES",
-                Self::ThinkingFace => "THINKING_FACE",
-                Self::ClownFace => "CLOWN_FACE",
-                Self::QuestionMark => "QUESTION_MARK",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-                "THUMBS_UP" => Some(Self::ThumbsUp),
-                "THUMBS_DOWN" => Some(Self::ThumbsDown),
-                "HEART" => Some(Self::Heart),
-                "FIRE" => Some(Self::Fire),
-                "CLAPPING_HANDS" => Some(Self::ClappingHands),
-                "LAUGH" => Some(Self::Laugh),
-                "OK_HAND" => Some(Self::OkHand),
-                "ROCKET" => Some(Self::Rocket),
-                "EYES" => Some(Self::Eyes),
-                "THINKING_FACE" => Some(Self::ThinkingFace),
-                "CLOWN_FACE" => Some(Self::ClownFace),
-                "QUESTION_MARK" => Some(Self::QuestionMark),
-                _ => None,
-            }
-        }
-    }
+    #[prost(string, tag = "4")]
+    pub reaction_type: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Resource {
     /// The name of the resource.
-    /// Format: resources/{id}
-    /// id is the system generated unique identifier.
+    /// Format: resources/{resource}, resource is the user defined if or uuid.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// The user defined id of the resource.
-    #[prost(string, tag = "2")]
-    pub uid: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "3")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(string, tag = "4")]
@@ -4317,8 +4758,7 @@ pub struct Resource {
     pub r#type: ::prost::alloc::string::String,
     #[prost(int64, tag = "8")]
     pub size: i64,
-    /// The related memo.
-    /// Format: memos/{id}
+    /// The related memo. Refer to `Memo.name`.
     #[prost(string, optional, tag = "9")]
     pub memo: ::core::option::Option<::prost::alloc::string::String>,
 }
@@ -4337,22 +4777,12 @@ pub struct ListResourcesResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetResourceRequest {
     /// The name of the resource.
-    /// Format: resources/{id}
-    /// id is the system generated unique identifier.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetResourceByUidRequest {
-    /// The uid of the resource.
-    #[prost(string, tag = "1")]
-    pub uid: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetResourceBinaryRequest {
     /// The name of the resource.
-    /// Format: resources/{id}
-    /// id is the system generated unique identifier.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The filename of the resource. Mainly used for downloading.
@@ -4372,8 +4802,6 @@ pub struct UpdateResourceRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteResourceRequest {
     /// The name of the resource.
-    /// Format: resources/{id}
-    /// id is the system generated unique identifier.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -4523,25 +4951,6 @@ pub mod resource_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// GetResourceByUid returns a resource by uid.
-        pub async fn get_resource_by_uid(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetResourceByUidRequest>,
-        ) -> std::result::Result<tonic::Response<super::Resource>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.ResourceService/GetResourceByUid",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.ResourceService",
-                "GetResourceByUid",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
         /// GetResourceBinary returns a resource binary by name.
         pub async fn get_resource_binary(
             &mut self,
@@ -4631,11 +5040,6 @@ pub mod resource_service_server {
         async fn get_resource(
             &self,
             request: tonic::Request<super::GetResourceRequest>,
-        ) -> std::result::Result<tonic::Response<super::Resource>, tonic::Status>;
-        /// GetResourceByUid returns a resource by uid.
-        async fn get_resource_by_uid(
-            &self,
-            request: tonic::Request<super::GetResourceByUidRequest>,
         ) -> std::result::Result<tonic::Response<super::Resource>, tonic::Status>;
         /// GetResourceBinary returns a resource binary by name.
         async fn get_resource_binary(
@@ -4854,48 +5258,6 @@ pub mod resource_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.ResourceService/GetResourceByUid" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetResourceByUidSvc<T: ResourceService>(pub Arc<T>);
-                    impl<T: ResourceService>
-                        tonic::server::UnaryService<super::GetResourceByUidRequest>
-                        for GetResourceByUidSvc<T>
-                    {
-                        type Response = super::Resource;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetResourceByUidRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ResourceService>::get_resource_by_uid(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetResourceByUidSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/memos.api.v1.ResourceService/GetResourceBinary" => {
                     #[allow(non_camel_case_types)]
                     struct GetResourceBinarySvc<T: ResourceService>(pub Arc<T>);
@@ -5059,17 +5421,13 @@ pub mod resource_service_server {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Memo {
     /// The name of the memo.
-    /// Format: memos/{id}
-    /// id is the system generated id.
+    /// Format: memos/{memo}, memo is the user defined id or uuid.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// The user defined id of the memo.
-    #[prost(string, tag = "2")]
-    pub uid: ::prost::alloc::string::String,
-    #[prost(enumeration = "RowStatus", tag = "3")]
-    pub row_status: i32,
+    #[prost(enumeration = "State", tag = "3")]
+    pub state: i32,
     /// The name of the creator.
-    /// Format: users/{id}
+    /// Format: users/{user}
     #[prost(string, tag = "4")]
     pub creator: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "5")]
@@ -5088,9 +5446,6 @@ pub struct Memo {
     pub tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(bool, tag = "12")]
     pub pinned: bool,
-    #[deprecated]
-    #[prost(int32, optional, tag = "13")]
-    pub parent_id: ::core::option::Option<i32>,
     #[prost(message, repeated, tag = "14")]
     pub resources: ::prost::alloc::vec::Vec<Resource>,
     #[prost(message, repeated, tag = "15")]
@@ -5098,7 +5453,7 @@ pub struct Memo {
     #[prost(message, repeated, tag = "16")]
     pub reactions: ::prost::alloc::vec::Vec<Reaction>,
     #[prost(message, optional, tag = "17")]
-    pub property: ::core::option::Option<MemoProperty>,
+    pub property: ::core::option::Option<memo::Property>,
     /// The name of the parent memo.
     /// Format: memos/{id}
     #[prost(string, optional, tag = "18")]
@@ -5106,40 +5461,72 @@ pub struct Memo {
     /// The snippet of the memo content. Plain text only.
     #[prost(string, tag = "19")]
     pub snippet: ::prost::alloc::string::String,
+    /// The location of the memo.
+    #[prost(message, optional, tag = "20")]
+    pub location: ::core::option::Option<Location>,
+}
+/// Nested message and enum types in `Memo`.
+pub mod memo {
+    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    pub struct Property {
+        #[prost(bool, tag = "1")]
+        pub has_link: bool,
+        #[prost(bool, tag = "2")]
+        pub has_task_list: bool,
+        #[prost(bool, tag = "3")]
+        pub has_code: bool,
+        #[prost(bool, tag = "4")]
+        pub has_incomplete_tasks: bool,
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct MemoProperty {
-    #[prost(string, repeated, tag = "1")]
-    pub tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    #[prost(bool, tag = "2")]
-    pub has_link: bool,
-    #[prost(bool, tag = "3")]
-    pub has_task_list: bool,
-    #[prost(bool, tag = "4")]
-    pub has_code: bool,
-    #[prost(bool, tag = "5")]
-    pub has_incomplete_tasks: bool,
+pub struct Location {
+    #[prost(string, tag = "1")]
+    pub placeholder: ::prost::alloc::string::String,
+    #[prost(double, tag = "2")]
+    pub latitude: f64,
+    #[prost(double, tag = "3")]
+    pub longitude: f64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateMemoRequest {
-    #[prost(string, tag = "1")]
-    pub content: ::prost::alloc::string::String,
-    #[prost(enumeration = "Visibility", tag = "2")]
-    pub visibility: i32,
+    /// The memo to create.
+    #[prost(message, optional, tag = "1")]
+    pub memo: ::core::option::Option<Memo>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemosRequest {
+    /// The parent is the owner of the memos.
+    /// If not specified or `users/-`, it will list all memos.
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
     /// The maximum number of memos to return.
-    #[prost(int32, tag = "1")]
+    #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// A page token, received from a previous `ListMemos` call.
     /// Provide this to retrieve the subsequent page.
-    #[prost(string, tag = "2")]
-    pub page_token: ::prost::alloc::string::String,
-    /// Filter is used to filter memos returned in the list.
-    /// Format: "creator == 'users/{uid}' && visibilities == \['PUBLIC', 'PROTECTED'\]"
     #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
+    /// The state of the memos to list.
+    /// Default to `NORMAL`. Set to `ARCHIVED` to list archived memos.
+    #[prost(enumeration = "State", tag = "4")]
+    pub state: i32,
+    /// What field to sort the results by.
+    /// Default to display_time.
+    #[prost(string, tag = "5")]
+    pub sort: ::prost::alloc::string::String,
+    /// The direction to sort the results by.
+    /// Default to DESC.
+    #[prost(enumeration = "Direction", tag = "6")]
+    pub direction: i32,
+    /// Filter is a CEL expression to filter memos.
+    /// Refer to `Shortcut.filter`.
+    #[prost(string, tag = "7")]
     pub filter: ::prost::alloc::string::String,
+    /// \[Deprecated\] Old filter contains some specific conditions to filter memos.
+    /// Format: "creator == 'users/{user}' && visibilities == \['PUBLIC', 'PROTECTED'\]"
+    #[prost(string, tag = "8")]
+    pub old_filter: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemosResponse {
@@ -5153,18 +5540,13 @@ pub struct ListMemosResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetMemoRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetMemoByUidRequest {
-    /// The uid of the memo.
-    #[prost(string, tag = "1")]
-    pub uid: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateMemoRequest {
+    /// The memo to update.
+    /// The `name` field is required.
     #[prost(message, optional, tag = "1")]
     pub memo: ::core::option::Option<Memo>,
     #[prost(message, optional, tag = "2")]
@@ -5173,58 +5555,8 @@ pub struct UpdateMemoRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteMemoRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemoPropertiesRequest {
-    /// The name of the memo.
-    /// Format: memos/{id}. Use "memos/-" to list all properties.
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemoPropertiesResponse {
-    #[prost(message, repeated, tag = "1")]
-    pub entities: ::prost::alloc::vec::Vec<MemoPropertyEntity>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct MemoPropertyEntity {
-    /// The name of the memo property.
-    /// Format: memos/{id}/properties/{property_id}
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "2")]
-    pub property: ::core::option::Option<MemoProperty>,
-    #[prost(message, optional, tag = "3")]
-    pub display_time: ::core::option::Option<::prost_types::Timestamp>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RebuildMemoPropertyRequest {
-    /// The name of the memo.
-    /// Format: memos/{id}. Use "memos/-" to rebuild all memos.
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemoTagsRequest {
-    /// The parent, who owns the tags.
-    /// Format: memos/{id}. Use "memos/-" to list all tags.
-    #[prost(string, tag = "1")]
-    pub parent: ::prost::alloc::string::String,
-    /// Filter is used to filter memos.
-    /// Format: "creator == 'users/{uid}' && visibilities == \['PUBLIC', 'PROTECTED'\]"
-    #[prost(string, tag = "2")]
-    pub filter: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemoTagsResponse {
-    /// tag_amounts is the amount of tags.
-    /// key is the tag name. e.g. "tag1".
-    /// value is the amount of the tag.
-    #[prost(map = "string, int32", tag = "1")]
-    pub tag_amounts: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RenameMemoTagRequest {
@@ -5251,7 +5583,6 @@ pub struct DeleteMemoTagRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SetMemoResourcesRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(message, repeated, tag = "2")]
@@ -5260,7 +5591,6 @@ pub struct SetMemoResourcesRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoResourcesRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -5270,9 +5600,61 @@ pub struct ListMemoResourcesResponse {
     pub resources: ::prost::alloc::vec::Vec<Resource>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MemoRelation {
+    #[prost(message, optional, tag = "1")]
+    pub memo: ::core::option::Option<memo_relation::Memo>,
+    #[prost(message, optional, tag = "2")]
+    pub related_memo: ::core::option::Option<memo_relation::Memo>,
+    #[prost(enumeration = "memo_relation::Type", tag = "3")]
+    pub r#type: i32,
+}
+/// Nested message and enum types in `MemoRelation`.
+pub mod memo_relation {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct Memo {
+        /// The name of the memo.
+        /// Format: memos/{id}
+        #[prost(string, tag = "1")]
+        pub name: ::prost::alloc::string::String,
+        #[prost(string, tag = "2")]
+        pub uid: ::prost::alloc::string::String,
+        /// The snippet of the memo content. Plain text only.
+        #[prost(string, tag = "3")]
+        pub snippet: ::prost::alloc::string::String,
+    }
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Type {
+        Unspecified = 0,
+        Reference = 1,
+        Comment = 2,
+    }
+    impl Type {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "TYPE_UNSPECIFIED",
+                Self::Reference => "REFERENCE",
+                Self::Comment => "COMMENT",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                "REFERENCE" => Some(Self::Reference),
+                "COMMENT" => Some(Self::Comment),
+                _ => None,
+            }
+        }
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SetMemoRelationsRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(message, repeated, tag = "2")]
@@ -5281,7 +5663,6 @@ pub struct SetMemoRelationsRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoRelationsRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -5293,16 +5674,15 @@ pub struct ListMemoRelationsResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateMemoCommentRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// The comment to create.
     #[prost(message, optional, tag = "2")]
-    pub comment: ::core::option::Option<CreateMemoRequest>,
+    pub comment: ::core::option::Option<Memo>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoCommentsRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -5314,7 +5694,6 @@ pub struct ListMemoCommentsResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoReactionsRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -5326,7 +5705,6 @@ pub struct ListMemoReactionsResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpsertMemoReactionRequest {
     /// The name of the memo.
-    /// Format: memos/{id}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
@@ -5334,8 +5712,10 @@ pub struct UpsertMemoReactionRequest {
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct DeleteMemoReactionRequest {
+    /// The id of the reaction.
+    /// Refer to the `Reaction.id`.
     #[prost(int32, tag = "1")]
-    pub reaction_id: i32,
+    pub id: i32,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -5504,22 +5884,6 @@ pub mod memo_service_client {
                 .insert(GrpcMethod::new("memos.api.v1.MemoService", "GetMemo"));
             self.inner.unary(req, path, codec).await
         }
-        /// GetMemoByUid gets a memo by uid
-        pub async fn get_memo_by_uid(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetMemoByUidRequest>,
-        ) -> std::result::Result<tonic::Response<super::Memo>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.MemoService/GetMemoByUid");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.MemoService", "GetMemoByUid"));
-            self.inner.unary(req, path, codec).await
-        }
         /// UpdateMemo updates a memo.
         pub async fn update_memo(
             &mut self,
@@ -5548,62 +5912,6 @@ pub mod memo_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("memos.api.v1.MemoService", "DeleteMemo"));
-            self.inner.unary(req, path, codec).await
-        }
-        /// ListMemoProperties lists memo properties.
-        pub async fn list_memo_properties(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListMemoPropertiesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemoPropertiesResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.MemoService/ListMemoProperties",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.MemoService",
-                "ListMemoProperties",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// RebuildMemoProperty rebuilds a memo property.
-        pub async fn rebuild_memo_property(
-            &mut self,
-            request: impl tonic::IntoRequest<super::RebuildMemoPropertyRequest>,
-        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.MemoService/RebuildMemoProperty",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.MemoService",
-                "RebuildMemoProperty",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// ListMemoTags lists tags for a memo.
-        pub async fn list_memo_tags(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListMemoTagsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemoTagsResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.MemoService/ListMemoTags");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.MemoService", "ListMemoTags"));
             self.inner.unary(req, path, codec).await
         }
         /// RenameMemoTag renames a tag for a memo.
@@ -5836,11 +6144,6 @@ pub mod memo_service_server {
             &self,
             request: tonic::Request<super::GetMemoRequest>,
         ) -> std::result::Result<tonic::Response<super::Memo>, tonic::Status>;
-        /// GetMemoByUid gets a memo by uid
-        async fn get_memo_by_uid(
-            &self,
-            request: tonic::Request<super::GetMemoByUidRequest>,
-        ) -> std::result::Result<tonic::Response<super::Memo>, tonic::Status>;
         /// UpdateMemo updates a memo.
         async fn update_memo(
             &self,
@@ -5851,21 +6154,6 @@ pub mod memo_service_server {
             &self,
             request: tonic::Request<super::DeleteMemoRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
-        /// ListMemoProperties lists memo properties.
-        async fn list_memo_properties(
-            &self,
-            request: tonic::Request<super::ListMemoPropertiesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemoPropertiesResponse>, tonic::Status>;
-        /// RebuildMemoProperty rebuilds a memo property.
-        async fn rebuild_memo_property(
-            &self,
-            request: tonic::Request<super::RebuildMemoPropertyRequest>,
-        ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
-        /// ListMemoTags lists tags for a memo.
-        async fn list_memo_tags(
-            &self,
-            request: tonic::Request<super::ListMemoTagsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemoTagsResponse>, tonic::Status>;
         /// RenameMemoTag renames a tag for a memo.
         async fn rename_memo_tag(
             &self,
@@ -6111,47 +6399,6 @@ pub mod memo_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.MemoService/GetMemoByUid" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetMemoByUidSvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService> tonic::server::UnaryService<super::GetMemoByUidRequest>
-                        for GetMemoByUidSvc<T>
-                    {
-                        type Response = super::Memo;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetMemoByUidRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as MemoService>::get_memo_by_uid(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetMemoByUidSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/memos.api.v1.MemoService/UpdateMemo" => {
                     #[allow(non_camel_case_types)]
                     struct UpdateMemoSvc<T: MemoService>(pub Arc<T>);
@@ -6215,131 +6462,6 @@ pub mod memo_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DeleteMemoSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.MemoService/ListMemoProperties" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListMemoPropertiesSvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService>
-                        tonic::server::UnaryService<super::ListMemoPropertiesRequest>
-                        for ListMemoPropertiesSvc<T>
-                    {
-                        type Response = super::ListMemoPropertiesResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListMemoPropertiesRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as MemoService>::list_memo_properties(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ListMemoPropertiesSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.MemoService/RebuildMemoProperty" => {
-                    #[allow(non_camel_case_types)]
-                    struct RebuildMemoPropertySvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService>
-                        tonic::server::UnaryService<super::RebuildMemoPropertyRequest>
-                        for RebuildMemoPropertySvc<T>
-                    {
-                        type Response = ();
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::RebuildMemoPropertyRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as MemoService>::rebuild_memo_property(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = RebuildMemoPropertySvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.MemoService/ListMemoTags" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListMemoTagsSvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService> tonic::server::UnaryService<super::ListMemoTagsRequest>
-                        for ListMemoTagsSvc<T>
-                    {
-                        type Response = super::ListMemoTagsResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListMemoTagsRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as MemoService>::list_memo_tags(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ListMemoTagsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -6850,17 +6972,16 @@ pub mod memo_service_server {
 pub struct Webhook {
     #[prost(int32, tag = "1")]
     pub id: i32,
-    #[prost(int32, tag = "2")]
-    pub creator_id: i32,
+    /// The name of the creator.
+    #[prost(string, tag = "2")]
+    pub creator: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "3")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "4")]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(enumeration = "RowStatus", tag = "5")]
-    pub row_status: i32,
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "5")]
     pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "6")]
     pub url: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -6875,10 +6996,11 @@ pub struct GetWebhookRequest {
     #[prost(int32, tag = "1")]
     pub id: i32,
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListWebhooksRequest {
-    #[prost(int32, tag = "1")]
-    pub creator_id: i32,
+    /// The name of the creator.
+    #[prost(string, tag = "2")]
+    pub creator: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListWebhooksResponse {
@@ -6903,8 +7025,10 @@ pub struct WebhookRequestPayload {
     pub url: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub activity_type: ::prost::alloc::string::String,
-    #[prost(int32, tag = "3")]
-    pub creator_id: i32,
+    /// The name of the creator.
+    /// Format: users/{user}
+    #[prost(string, tag = "3")]
+    pub creator: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "4")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "5")]
@@ -7443,7 +7567,7 @@ pub mod webhook_service_server {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceProfile {
     /// The name of instance owner.
-    /// Format: "users/{id}"
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub owner: ::prost::alloc::string::String,
     /// version is the current version of instance
@@ -7781,6 +7905,12 @@ pub struct WorkspaceGeneralSetting {
     /// Default is Sunday.
     #[prost(int32, tag = "6")]
     pub week_start_day_offset: i32,
+    /// disallow_change_username disallows changing username.
+    #[prost(bool, tag = "7")]
+    pub disallow_change_username: bool,
+    /// disallow_change_nickname disallows changing nickname.
+    #[prost(bool, tag = "8")]
+    pub disallow_change_nickname: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceCustomProfile {
@@ -7826,6 +7956,8 @@ pub mod workspace_storage_setting {
         pub region: ::prost::alloc::string::String,
         #[prost(string, tag = "5")]
         pub bucket: ::prost::alloc::string::String,
+        #[prost(bool, tag = "6")]
+        pub use_path_style: bool,
     }
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
@@ -7863,7 +7995,7 @@ pub mod workspace_storage_setting {
         }
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceMemoRelatedSetting {
     /// disallow_public_visibility disallows set memo as public visibility.
     #[prost(bool, tag = "1")]
@@ -7874,9 +8006,6 @@ pub struct WorkspaceMemoRelatedSetting {
     /// content_length_limit is the limit of content length. Unit is byte.
     #[prost(int32, tag = "3")]
     pub content_length_limit: i32,
-    /// enable_auto_compact enables auto compact for large content.
-    #[prost(bool, tag = "4")]
-    pub enable_auto_compact: bool,
     /// enable_double_click_edit enables editing on double click.
     #[prost(bool, tag = "5")]
     pub enable_double_click_edit: bool,
@@ -7886,6 +8015,21 @@ pub struct WorkspaceMemoRelatedSetting {
     /// enable_comment enables comment.
     #[prost(bool, tag = "7")]
     pub enable_comment: bool,
+    /// enable_location enables setting location for memo.
+    #[prost(bool, tag = "8")]
+    pub enable_location: bool,
+    /// reactions is the list of reactions.
+    #[prost(string, repeated, tag = "10")]
+    pub reactions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// disable_markdown_shortcuts disallow the registration of markdown shortcuts.
+    #[prost(bool, tag = "11")]
+    pub disable_markdown_shortcuts: bool,
+    /// enable_blur_nsfw_content enables blurring of content marked as not safe for work (NSFW).
+    #[prost(bool, tag = "12")]
+    pub enable_blur_nsfw_content: bool,
+    /// nsfw_tags is the list of tags that mark content as NSFW for blurring.
+    #[prost(string, repeated, tag = "13")]
+    pub nsfw_tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetWorkspaceSettingRequest {

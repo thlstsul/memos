@@ -27,7 +27,7 @@ impl inbox_service_server::InboxService for EmptyService {
         request: Request<ListInboxesRequest>,
     ) -> Result<Response<ListInboxesResponse>, Status> {
         // TODO
-        Ok(Response::new(ListInboxesResponse { inboxes: vec![] }))
+        Ok(Response::new(ListInboxesResponse::default()))
     }
     async fn update_inbox(
         &self,

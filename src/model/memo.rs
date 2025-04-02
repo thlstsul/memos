@@ -1,6 +1,6 @@
 use crate::util::ast;
 
-use crate::api::v1::gen::{PageToken, RowStatus, Visibility};
+use crate::api::v1::gen::{PageToken, State, Visibility};
 
 use syn::{
     parse::{Parse, ParseStream},
@@ -15,7 +15,7 @@ use super::gen::MemoPayload;
 pub struct Memo {
     pub id: i32,
     pub uid: String,
-    pub row_status: RowStatus,
+    pub state: State,
     pub creator_id: i32,
     pub created_ts: i64,
     pub updated_ts: i64,
@@ -33,7 +33,7 @@ pub struct FindMemo {
     pub uid: Option<String>,
 
     // Standard fields
-    pub row_status: Option<RowStatus>,
+    pub state: Option<State>,
     pub creator_id: Option<i32>,
     pub created_ts_after: Option<i64>,
     pub created_ts_before: Option<i64>,
@@ -81,7 +81,7 @@ pub struct UpdateMemo {
     pub creator_id: i32,
     pub content: Option<String>,
     pub visibility: Option<Visibility>,
-    pub row_status: Option<RowStatus>,
+    pub state: Option<State>,
     pub pinned: Option<bool>,
     pub payload: Option<MemoPayload>,
 }
@@ -96,7 +96,7 @@ pub struct SearchMemosFilter {
     pub display_time_after: Option<i64>,
     pub creator: Option<String>,
     pub uid: Option<String>,
-    pub row_status: Option<RowStatus>,
+    pub state: Option<State>,
     pub random: Option<bool>,
     pub limit: Option<i32>,
     pub include_comments: Option<bool>,
@@ -114,8 +114,8 @@ impl Parse for SearchMemosFilter {
         let mut get_value = |ident: Expr, lit: Expr| {
             if ident == parse_quote!(creator) {
                 filter.creator = ast::get_string(lit);
-            } else if ident == parse_quote!(row_status) {
-                filter.row_status = ast::get_row_status(lit);
+            } else if ident == parse_quote!(state) {
+                filter.state = ast::get_state(lit);
             } else if ident == parse_quote!(visibilities) {
                 filter.visibilities = ast::get_visibilities(lit);
             } else if ident == parse_quote!(order_by_pinned) {
@@ -199,46 +199,46 @@ impl FindMemo {
 }
 
 impl MemoPayload {
-    pub fn merge(&mut self, mut payload: MemoPayload) {
-        if self.property.is_none() && payload.property.is_some() {
-            self.property = payload.property;
-        } else if let MemoPayload {
-            property: Some(ref mut property2),
-        } = payload
-        {
-            if let MemoPayload {
-                property: Some(ref mut property1),
-            } = self
-            {
-                property1.tags.append(&mut property2.tags);
-                property1.has_code = property1.has_code || property2.has_code;
-                property1.has_link = property1.has_link || property2.has_link;
-                property1.has_task_list = property1.has_task_list || property2.has_task_list;
-                property1.has_incomplete_tasks =
-                    property1.has_incomplete_tasks || property2.has_incomplete_tasks;
-            }
+    pub fn merge(&mut self, payload: MemoPayload) {
+        let MemoPayload {
+            tags: ref mut tags1,
+            property: ref mut property1,
+            ..
+        } = self;
+        let MemoPayload {
+            tags: tags2,
+            property: property2,
+            ..
+        } = payload;
+
+        tags1.extend(tags2);
+
+        if property1.is_none() && property2.is_some() {
+            *property1 = property2;
+        } else if let (Some(ref mut property1), Some(property2)) = (property1, property2) {
+            property1.has_code = property1.has_code || property2.has_code;
+            property1.has_link = property1.has_link || property2.has_link;
+            property1.has_task_list = property1.has_task_list || property2.has_task_list;
+            property1.has_incomplete_tasks =
+                property1.has_incomplete_tasks || property2.has_incomplete_tasks;
         }
     }
 
     #[allow(dead_code)]
     pub fn tag(tag: String) -> Self {
         Self {
-            property: Some(Property {
-                tags: vec![tag],
-                ..Default::default()
-            }),
+            tags: vec![tag],
+            ..Default::default()
         }
     }
 
     pub fn tags(tags: Vec<String>) -> Self {
         if tags.is_empty() {
-            Self { property: None }
+            Default::default()
         } else {
             Self {
-                property: Some(Property {
-                    tags,
-                    ..Default::default()
-                }),
+                tags,
+                ..Default::default()
             }
         }
     }
@@ -249,6 +249,7 @@ impl MemoPayload {
                 has_link: true,
                 ..Default::default()
             }),
+            ..Default::default()
         }
     }
 
@@ -258,6 +259,7 @@ impl MemoPayload {
                 has_code: true,
                 ..Default::default()
             }),
+            ..Default::default()
         }
     }
 
@@ -267,6 +269,7 @@ impl MemoPayload {
                 has_task_list: true,
                 ..Default::default()
             }),
+            ..Default::default()
         }
     }
 
@@ -277,6 +280,7 @@ impl MemoPayload {
                 has_incomplete_tasks: true,
                 ..Default::default()
             }),
+            ..Default::default()
         }
     }
 }
@@ -312,14 +316,14 @@ pub mod payload_serde {
 mod test {
     #[test]
     fn parse_filter() {
-        use crate::api::v1::gen::{RowStatus, Visibility};
+        use crate::api::v1::gen::{State, Visibility};
         use crate::model::memo::SearchMemosFilter;
 
         let filter =
-        r#"visibilities == ['PUBLIC'] && row_status == "NORMAL" && creator == "users/THELOSTSOUL" && order_by_pinned == true && display_time_before == 123 && tag_search == ["TODO"]"#
+        r#"visibilities == ['PUBLIC'] && state == "NORMAL" && creator == "users/THELOSTSOUL" && order_by_pinned == true && display_time_before == 123 && tag_search == ["TODO"]"#
             .replace('\'', "\"");
         let filter = syn::parse_str::<SearchMemosFilter>(&filter).unwrap();
-        assert_eq!(filter.row_status, Some(RowStatus::Active));
+        assert_eq!(filter.state, Some(State::Normal));
         assert_eq!(filter.visibilities, Some(vec![Visibility::Public]));
         assert_eq!(filter.creator, Some("users/THELOSTSOUL".to_string()));
         assert_eq!(filter.order_by_pinned, Some(true));
