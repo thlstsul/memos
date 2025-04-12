@@ -3,17 +3,11 @@ mod find;
 mod update;
 
 use async_trait::async_trait;
-use libsql::{params, Value};
-use sql_query_builder::Delete;
 
 use crate::dao::memo::{
     CreateMemoError, DeleteMemoError, ListMemoError, MemoRepository, UpdateMemoError,
 };
-use crate::model::memo::FindMemoPayload;
-use crate::model::{
-    memo::{CreateMemo, FindMemo, Memo, UpdateMemo},
-    pager::Paginator,
-};
+use crate::model::memo::{CreateMemo, FindMemo, Memo, UpdateMemo};
 
 use super::Turso;
 
@@ -29,8 +23,8 @@ impl MemoRepository for Turso {
     }
 
     async fn delete_memo(&self, memo_id: i32) -> Result<(), DeleteMemoError> {
-        let sql = Delete::new().delete_from("memo").where_clause("id = ?");
-        self.execute(sql, [memo_id]).await?;
+        self.execute("delete from memo where id = ?", [memo_id])
+            .await?;
         Ok(())
     }
 

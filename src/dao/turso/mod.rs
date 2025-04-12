@@ -12,7 +12,7 @@ use libsql::{de, params::IntoParams, Database, Rows, Statement, Transaction, Tra
 use serde::de::DeserializeOwned;
 
 pub trait ToCriteria {
-    pub fn to_criteria(&self) -> (impl AsRef<str>, impl IntoParams);
+    fn to_criteria(self) -> (impl AsRef<str>, impl IntoParams + Send);
 }
 
 #[derive(Debug, Clone)]

@@ -1,10 +1,11 @@
 # cargo-make
-
-[tasks.run]
+[tasks.dev]
 install_crate = "cargo-shuttle"
 command = "shuttle"
 args = ["run"]
-dependencies = ["web-build"]
+
+[tasks.run]
+dependencies = ["web-build", "dev"]
 
 [tasks.deploy]
 install_crate = "cargo-shuttle"
@@ -25,3 +26,4 @@ script_runner = "@shell"
 script = '''
 pnpm build --mode release
 '''
+dependencies = ["web-install"]

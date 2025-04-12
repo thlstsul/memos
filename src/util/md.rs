@@ -36,7 +36,10 @@ pub fn get_memo_property(content: impl AsRef<str>) -> MemoPayload {
     options.extension.strikethrough = true;
     options.render.unsafe_ = true;
     let root = comrak::parse_document(&arena, content, &options);
-    parse_property(root)
+    let mut payload = parse_property(root);
+    payload.tags.sort();
+    payload.tags.dedup();
+    payload
 }
 
 fn parse_property<'a>(node: &'a AstNode<'a>) -> MemoPayload {

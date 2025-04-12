@@ -68,6 +68,7 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
 
         let is_display_with_update_time = self.is_display_with_update_time().await;
         let mut total_memo_count = 0;
+
         for memo in memos {
             let Memo {
                 name,
@@ -198,7 +199,6 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
             memo_list.push(memo);
         }
         // TODO relate/reaction
-
         Ok(Response::new(ListMemosResponse {
             memos: memo_list,
             next_page_token,

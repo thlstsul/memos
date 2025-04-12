@@ -27,12 +27,7 @@ pub fn to_timestamp(value: i64) -> Option<Timestamp> {
 
 impl Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let row_status = if self == &State::Unspecified {
-            "NORMAL"
-        } else {
-            self.as_str_name()
-        };
-        write!(f, "{row_status}")
+        write!(f, "{}", self.as_str_name())
     }
 }
 
@@ -40,11 +35,7 @@ impl FromStr for State {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "NORMAL" {
-            Ok(State::Normal)
-        } else {
-            State::from_str_name(s).ok_or(())
-        }
+        State::from_str_name(s).ok_or(())
     }
 }
 

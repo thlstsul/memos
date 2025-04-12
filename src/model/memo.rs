@@ -1,6 +1,6 @@
 use crate::util::ast;
 
-use crate::api::v1::gen::{PageToken, State, Visibility};
+use crate::api::v1::gen::{Direction, PageToken, State, Visibility};
 
 use syn::{
     parse::{Parse, ParseStream},
@@ -55,8 +55,13 @@ pub struct FindMemo {
 
     // Custom
     pub only_payload: bool,
+
+    pub sort: String,
+    pub direction: Direction,
+    pub filter: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct FindMemoPayload {
     pub raw: Option<String>,
@@ -175,25 +180,12 @@ impl FindMemo {
                 if Some(user_id) != self.creator_id {
                     self.visibility_list = vec![Visibility::Public, Visibility::Protected];
                 }
+                self.order_by_pinned = true;
             } else {
                 self.creator_id = Some(user_id);
             }
         } else {
             self.visibility_list = vec![Visibility::Public];
-        }
-        if self.id.is_none() {
-            self.order_by_updated_ts = is_display_with_update_time;
-            if self.order_by_updated_ts {
-                self.updated_ts_after = self.updated_ts_after.or(self.created_ts_after);
-                self.updated_ts_before = self.updated_ts_before.or(self.created_ts_before);
-                self.created_ts_after = None;
-                self.created_ts_before = None;
-            } else {
-                self.created_ts_after = self.created_ts_after.or(self.updated_ts_after);
-                self.created_ts_before = self.created_ts_before.or(self.updated_ts_before);
-                self.updated_ts_after = None;
-                self.updated_ts_before = None;
-            }
         }
     }
 }

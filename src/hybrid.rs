@@ -115,6 +115,7 @@ impl GrpcRestService {
             "/memos.api.v1.MemoService/ListMemoResources".to_string(),
             "/memos.api.v1.WorkspaceSettingService/GetWorkspaceSetting".to_string(),
             "/memos.api.v1.WorkspaceService/GetWorkspaceProfile".to_string(),
+            "/memos.api.v1.UserService/ListAllUserStats".to_string(),
         ];
 
         let user = svc.clone().user_server();

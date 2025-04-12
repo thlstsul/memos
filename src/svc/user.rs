@@ -119,7 +119,11 @@ impl<R: UserRepository + MemoRepository + ResourceRepository + WorkspaceReposito
         &self,
         request: Request<ListAllUserStatsRequest>,
     ) -> Result<Response<ListAllUserStatsResponse>, Status> {
-        todo!()
+        // TODO
+        let result = self.get_user_memo_stats(None).await?;
+        Ok(Response::new(ListAllUserStatsResponse {
+            user_stats: vec![result],
+        }))
     }
 
     async fn list_users(
