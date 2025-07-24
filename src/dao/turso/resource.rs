@@ -9,7 +9,7 @@ use crate::{
         RelateResourceError, ResourceRepository, SetResourceError,
     },
     model::{
-        gen::ResourceStorageType,
+        gen::AttachmentStorageType,
         resource::{FindResource, Resource},
     },
 };
@@ -46,7 +46,7 @@ impl ResourceRepository for Turso {
         ];
         let mut placeholder = vec!["?", "?", "?", "?", "?", "?"];
         let mut storage_type_str = "";
-        if storage_type != ResourceStorageType::Unspecified {
+        if storage_type != AttachmentStorageType::Unspecified {
             storage_type_str = storage_type.as_str_name();
         }
         let mut args = vec![

@@ -10,14 +10,14 @@ use crate::{
 
 use super::{
     prefix::FormatName,
-    v1::gen::{DeleteResourceRequest, GetResourceRequest, Resource},
+    v1::gen::{Attachment, DeleteAttachmentRequest, GetAttachmentRequest},
 };
 
-impl_extract_name!(GetResourceRequest, prefix::RESOURCE_NAME_PREFIX);
-impl_extract_name!(DeleteResourceRequest, prefix::RESOURCE_NAME_PREFIX);
-impl_extract_name!(Resource, prefix::RESOURCE_NAME_PREFIX);
+impl_extract_name!(GetAttachmentRequest, prefix::ATTACHMENT_NAME_PREFIX);
+impl_extract_name!(DeleteAttachmentRequest, prefix::ATTACHMENT_NAME_PREFIX);
+impl_extract_name!(Attachment, prefix::ATTACHMENT_NAME_PREFIX);
 
-impl Resource {
+impl Attachment {
     pub fn get_memo(&self) -> Option<i32> {
         self.memo
             .as_ref()
@@ -30,7 +30,7 @@ impl Resource {
     }
 }
 
-impl From<crate::model::resource::Resource> for Resource {
+impl From<crate::model::resource::Resource> for Attachment {
     fn from(value: crate::model::resource::Resource) -> Self {
         Self {
             name: value.get_name(),
@@ -49,6 +49,6 @@ impl From<crate::model::resource::Resource> for Resource {
 
 impl FormatName for crate::model::resource::Resource {
     fn get_name(&self) -> String {
-        format!("{}/{}", prefix::RESOURCE_NAME_PREFIX, self.id)
+        format!("{}/{}", prefix::ATTACHMENT_NAME_PREFIX, self.id)
     }
 }

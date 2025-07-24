@@ -10,11 +10,11 @@ pub struct Activity {
     #[prost(string, tag = "2")]
     pub creator: ::prost::alloc::string::String,
     /// The type of the activity.
-    #[prost(string, tag = "3")]
-    pub r#type: ::prost::alloc::string::String,
+    #[prost(enumeration = "activity::Type", tag = "3")]
+    pub r#type: i32,
     /// The level of the activity.
-    #[prost(string, tag = "4")]
-    pub level: ::prost::alloc::string::String,
+    #[prost(enumeration = "activity::Level", tag = "4")]
+    pub level: i32,
     /// The create time of the activity.
     #[prost(message, optional, tag = "5")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
@@ -22,21 +22,128 @@ pub struct Activity {
     #[prost(message, optional, tag = "6")]
     pub payload: ::core::option::Option<ActivityPayload>,
 }
+/// Nested message and enum types in `Activity`.
+pub mod activity {
+    /// Activity types.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Type {
+        /// Unspecified type.
+        Unspecified = 0,
+        /// Memo comment activity.
+        MemoComment = 1,
+        /// Version update activity.
+        VersionUpdate = 2,
+    }
+    impl Type {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "TYPE_UNSPECIFIED",
+                Self::MemoComment => "MEMO_COMMENT",
+                Self::VersionUpdate => "VERSION_UPDATE",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                "MEMO_COMMENT" => Some(Self::MemoComment),
+                "VERSION_UPDATE" => Some(Self::VersionUpdate),
+                _ => None,
+            }
+        }
+    }
+    /// Activity levels.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Level {
+        /// Unspecified level.
+        Unspecified = 0,
+        /// Info level.
+        Info = 1,
+        /// Warn level.
+        Warn = 2,
+        /// Error level.
+        Error = 3,
+    }
+    impl Level {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "LEVEL_UNSPECIFIED",
+                Self::Info => "INFO",
+                Self::Warn => "WARN",
+                Self::Error => "ERROR",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "LEVEL_UNSPECIFIED" => Some(Self::Unspecified),
+                "INFO" => Some(Self::Info),
+                "WARN" => Some(Self::Warn),
+                "ERROR" => Some(Self::Error),
+                _ => None,
+            }
+        }
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActivityPayload {
-    #[prost(message, optional, tag = "1")]
-    pub memo_comment: ::core::option::Option<ActivityMemoCommentPayload>,
+    #[prost(oneof = "activity_payload::Payload", tags = "1")]
+    pub payload: ::core::option::Option<activity_payload::Payload>,
+}
+/// Nested message and enum types in `ActivityPayload`.
+pub mod activity_payload {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Payload {
+        /// Memo comment activity payload.
+        #[prost(message, tag = "1")]
+        MemoComment(super::ActivityMemoCommentPayload),
+    }
 }
 /// ActivityMemoCommentPayload represents the payload of a memo comment activity.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActivityMemoCommentPayload {
     /// The memo name of comment.
-    /// Refer to `Memo.name`.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub memo: ::prost::alloc::string::String,
     /// The name of related memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "2")]
     pub related_memo: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListActivitiesRequest {
+    /// The maximum number of activities to return.
+    /// The service may return fewer than this value.
+    /// If unspecified, at most 100 activities will be returned.
+    /// The maximum value is 1000; values above 1000 will be coerced to 1000.
+    #[prost(int32, tag = "1")]
+    pub page_size: i32,
+    /// A page token, received from a previous `ListActivities` call.
+    /// Provide this to retrieve the subsequent page.
+    #[prost(string, tag = "2")]
+    pub page_token: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListActivitiesResponse {
+    /// The activities.
+    #[prost(message, repeated, tag = "1")]
+    pub activities: ::prost::alloc::vec::Vec<Activity>,
+    /// A token to retrieve the next page of results.
+    /// Pass this value in the page_token field in the subsequent call to `ListActivities`
+    /// method to retrieve the next page of results.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetActivityRequest {
@@ -135,6 +242,26 @@ pub mod activity_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        /// ListActivities returns a list of activities.
+        pub async fn list_activities(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListActivitiesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListActivitiesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.ActivityService/ListActivities",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.ActivityService",
+                "ListActivities",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// GetActivity returns the activity with the given id.
         pub async fn get_activity(
             &mut self,
@@ -168,6 +295,11 @@ pub mod activity_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with ActivityServiceServer.
     #[async_trait]
     pub trait ActivityService: std::marker::Send + std::marker::Sync + 'static {
+        /// ListActivities returns a list of activities.
+        async fn list_activities(
+            &self,
+            request: tonic::Request<super::ListActivitiesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListActivitiesResponse>, tonic::Status>;
         /// GetActivity returns the activity with the given id.
         async fn get_activity(
             &self,
@@ -247,6 +379,48 @@ pub mod activity_service_server {
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             match req.uri().path() {
+                "/memos.api.v1.ActivityService/ListActivities" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListActivitiesSvc<T: ActivityService>(pub Arc<T>);
+                    impl<T: ActivityService>
+                        tonic::server::UnaryService<super::ListActivitiesRequest>
+                        for ListActivitiesSvc<T>
+                    {
+                        type Response = super::ListActivitiesResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListActivitiesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ActivityService>::list_activities(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListActivitiesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/memos.api.v1.ActivityService/GetActivity" => {
                     #[allow(non_camel_case_types)]
                     struct GetActivitySvc<T: ActivityService>(pub Arc<T>);
@@ -322,6 +496,734 @@ pub mod activity_service_server {
         const NAME: &'static str = SERVICE_NAME;
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Attachment {
+    /// The name of the attachment.
+    /// Format: attachments/{attachment}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// Output only. The creation timestamp.
+    #[prost(message, optional, tag = "2")]
+    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// The filename of the attachment.
+    #[prost(string, tag = "3")]
+    pub filename: ::prost::alloc::string::String,
+    /// Input only. The content of the attachment.
+    #[prost(bytes = "vec", tag = "4")]
+    pub content: ::prost::alloc::vec::Vec<u8>,
+    /// Optional. The external link of the attachment.
+    #[prost(string, tag = "5")]
+    pub external_link: ::prost::alloc::string::String,
+    /// The MIME type of the attachment.
+    #[prost(string, tag = "6")]
+    pub r#type: ::prost::alloc::string::String,
+    /// Output only. The size of the attachment in bytes.
+    #[prost(int64, tag = "7")]
+    pub size: i64,
+    /// Optional. The related memo. Refer to `Memo.name`.
+    /// Format: memos/{memo}
+    #[prost(string, optional, tag = "8")]
+    pub memo: ::core::option::Option<::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateAttachmentRequest {
+    /// Required. The attachment to create.
+    #[prost(message, optional, tag = "1")]
+    pub attachment: ::core::option::Option<Attachment>,
+    /// Optional. The attachment ID to use for this attachment.
+    /// If empty, a unique ID will be generated.
+    #[prost(string, tag = "2")]
+    pub attachment_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListAttachmentsRequest {
+    /// Optional. The maximum number of attachments to return.
+    /// The service may return fewer than this value.
+    /// If unspecified, at most 50 attachments will be returned.
+    /// The maximum value is 1000; values above 1000 will be coerced to 1000.
+    #[prost(int32, tag = "1")]
+    pub page_size: i32,
+    /// Optional. A page token, received from a previous `ListAttachments` call.
+    /// Provide this to retrieve the subsequent page.
+    #[prost(string, tag = "2")]
+    pub page_token: ::prost::alloc::string::String,
+    /// Optional. Filter to apply to the list results.
+    /// Example: "type=image/png" or "filename:*.jpg"
+    /// Supported operators: =, !=, <, <=, >, >=, :
+    /// Supported fields: filename, type, size, create_time, memo
+    #[prost(string, tag = "3")]
+    pub filter: ::prost::alloc::string::String,
+    /// Optional. The order to sort results by.
+    /// Example: "create_time desc" or "filename asc"
+    #[prost(string, tag = "4")]
+    pub order_by: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListAttachmentsResponse {
+    /// The list of attachments.
+    #[prost(message, repeated, tag = "1")]
+    pub attachments: ::prost::alloc::vec::Vec<Attachment>,
+    /// A token that can be sent as `page_token` to retrieve the next page.
+    /// If this field is omitted, there are no subsequent pages.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of attachments (may be approximate).
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetAttachmentRequest {
+    /// Required. The attachment name of the attachment to retrieve.
+    /// Format: attachments/{attachment}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetAttachmentBinaryRequest {
+    /// Required. The attachment name of the attachment.
+    /// Format: attachments/{attachment}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The filename of the attachment. Mainly used for downloading.
+    #[prost(string, tag = "2")]
+    pub filename: ::prost::alloc::string::String,
+    /// Optional. A flag indicating if the thumbnail version of the attachment should be returned.
+    #[prost(bool, tag = "3")]
+    pub thumbnail: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateAttachmentRequest {
+    /// Required. The attachment which replaces the attachment on the server.
+    #[prost(message, optional, tag = "1")]
+    pub attachment: ::core::option::Option<Attachment>,
+    /// Required. The list of fields to update.
+    #[prost(message, optional, tag = "2")]
+    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteAttachmentRequest {
+    /// Required. The attachment name of the attachment to delete.
+    /// Format: attachments/{attachment}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// Generated client implementations.
+pub mod attachment_service_client {
+    #![allow(
+        unused_variables,
+        dead_code,
+        missing_docs,
+        clippy::wildcard_imports,
+        clippy::let_unit_value
+    )]
+    use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
+    #[derive(Debug, Clone)]
+    pub struct AttachmentServiceClient<T> {
+        inner: tonic::client::Grpc<T>,
+    }
+    impl AttachmentServiceClient<tonic::transport::Channel> {
+        /// Attempt to create a new client by connecting to a given endpoint.
+        pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
+        where
+            D: TryInto<tonic::transport::Endpoint>,
+            D::Error: Into<StdError>,
+        {
+            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
+            Ok(Self::new(conn))
+        }
+    }
+    impl<T> AttachmentServiceClient<T>
+    where
+        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
+        <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
+    {
+        pub fn new(inner: T) -> Self {
+            let inner = tonic::client::Grpc::new(inner);
+            Self { inner }
+        }
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> AttachmentServiceClient<InterceptedService<T, F>>
+        where
+            F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
+            T: tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
+            >,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
+        {
+            AttachmentServiceClient::new(InterceptedService::new(inner, interceptor))
+        }
+        /// Compress requests with the given encoding.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
+            self
+        }
+        /// Enable decompressing responses.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
+        /// CreateAttachment creates a new attachment.
+        pub async fn create_attachment(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateAttachmentRequest>,
+        ) -> std::result::Result<tonic::Response<super::Attachment>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.AttachmentService/CreateAttachment",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.AttachmentService",
+                "CreateAttachment",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// ListAttachments lists all attachments.
+        pub async fn list_attachments(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListAttachmentsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListAttachmentsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.AttachmentService/ListAttachments",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.AttachmentService",
+                "ListAttachments",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// GetAttachment returns a attachment by name.
+        pub async fn get_attachment(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetAttachmentRequest>,
+        ) -> std::result::Result<tonic::Response<super::Attachment>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.AttachmentService/GetAttachment",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.AttachmentService",
+                "GetAttachment",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// GetAttachmentBinary returns a attachment binary by name.
+        pub async fn get_attachment_binary(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetAttachmentBinaryRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::super::google::api::HttpBody>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.AttachmentService/GetAttachmentBinary",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.AttachmentService",
+                "GetAttachmentBinary",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// UpdateAttachment updates a attachment.
+        pub async fn update_attachment(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateAttachmentRequest>,
+        ) -> std::result::Result<tonic::Response<super::Attachment>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.AttachmentService/UpdateAttachment",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.AttachmentService",
+                "UpdateAttachment",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// DeleteAttachment deletes a attachment by name.
+        pub async fn delete_attachment(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteAttachmentRequest>,
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.AttachmentService/DeleteAttachment",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.AttachmentService",
+                "DeleteAttachment",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+    }
+}
+/// Generated server implementations.
+pub mod attachment_service_server {
+    #![allow(
+        unused_variables,
+        dead_code,
+        missing_docs,
+        clippy::wildcard_imports,
+        clippy::let_unit_value
+    )]
+    use tonic::codegen::*;
+    /// Generated trait containing gRPC methods that should be implemented for use with AttachmentServiceServer.
+    #[async_trait]
+    pub trait AttachmentService: std::marker::Send + std::marker::Sync + 'static {
+        /// CreateAttachment creates a new attachment.
+        async fn create_attachment(
+            &self,
+            request: tonic::Request<super::CreateAttachmentRequest>,
+        ) -> std::result::Result<tonic::Response<super::Attachment>, tonic::Status>;
+        /// ListAttachments lists all attachments.
+        async fn list_attachments(
+            &self,
+            request: tonic::Request<super::ListAttachmentsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListAttachmentsResponse>, tonic::Status>;
+        /// GetAttachment returns a attachment by name.
+        async fn get_attachment(
+            &self,
+            request: tonic::Request<super::GetAttachmentRequest>,
+        ) -> std::result::Result<tonic::Response<super::Attachment>, tonic::Status>;
+        /// GetAttachmentBinary returns a attachment binary by name.
+        async fn get_attachment_binary(
+            &self,
+            request: tonic::Request<super::GetAttachmentBinaryRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::super::google::api::HttpBody>,
+            tonic::Status,
+        >;
+        /// UpdateAttachment updates a attachment.
+        async fn update_attachment(
+            &self,
+            request: tonic::Request<super::UpdateAttachmentRequest>,
+        ) -> std::result::Result<tonic::Response<super::Attachment>, tonic::Status>;
+        /// DeleteAttachment deletes a attachment by name.
+        async fn delete_attachment(
+            &self,
+            request: tonic::Request<super::DeleteAttachmentRequest>,
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
+    }
+    #[derive(Debug)]
+    pub struct AttachmentServiceServer<T> {
+        inner: Arc<T>,
+        accept_compression_encodings: EnabledCompressionEncodings,
+        send_compression_encodings: EnabledCompressionEncodings,
+        max_decoding_message_size: Option<usize>,
+        max_encoding_message_size: Option<usize>,
+    }
+    impl<T> AttachmentServiceServer<T> {
+        pub fn new(inner: T) -> Self {
+            Self::from_arc(Arc::new(inner))
+        }
+        pub fn from_arc(inner: Arc<T>) -> Self {
+            Self {
+                inner,
+                accept_compression_encodings: Default::default(),
+                send_compression_encodings: Default::default(),
+                max_decoding_message_size: None,
+                max_encoding_message_size: None,
+            }
+        }
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
+        where
+            F: tonic::service::Interceptor,
+        {
+            InterceptedService::new(Self::new(inner), interceptor)
+        }
+        /// Enable decompressing requests with the given encoding.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.accept_compression_encodings.enable(encoding);
+            self
+        }
+        /// Compress responses with the given encoding, if the client supports it.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.send_compression_encodings.enable(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.max_decoding_message_size = Some(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.max_encoding_message_size = Some(limit);
+            self
+        }
+    }
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for AttachmentServiceServer<T>
+    where
+        T: AttachmentService,
+        B: Body + std::marker::Send + 'static,
+        B::Error: Into<StdError> + std::marker::Send + 'static,
+    {
+        type Response = http::Response<tonic::body::BoxBody>;
+        type Error = std::convert::Infallible;
+        type Future = BoxFuture<Self::Response, Self::Error>;
+        fn poll_ready(
+            &mut self,
+            _cx: &mut Context<'_>,
+        ) -> Poll<std::result::Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+        fn call(&mut self, req: http::Request<B>) -> Self::Future {
+            match req.uri().path() {
+                "/memos.api.v1.AttachmentService/CreateAttachment" => {
+                    #[allow(non_camel_case_types)]
+                    struct CreateAttachmentSvc<T: AttachmentService>(pub Arc<T>);
+                    impl<T: AttachmentService>
+                        tonic::server::UnaryService<super::CreateAttachmentRequest>
+                        for CreateAttachmentSvc<T>
+                    {
+                        type Response = super::Attachment;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CreateAttachmentRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AttachmentService>::create_attachment(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CreateAttachmentSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.AttachmentService/ListAttachments" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListAttachmentsSvc<T: AttachmentService>(pub Arc<T>);
+                    impl<T: AttachmentService>
+                        tonic::server::UnaryService<super::ListAttachmentsRequest>
+                        for ListAttachmentsSvc<T>
+                    {
+                        type Response = super::ListAttachmentsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListAttachmentsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AttachmentService>::list_attachments(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListAttachmentsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.AttachmentService/GetAttachment" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetAttachmentSvc<T: AttachmentService>(pub Arc<T>);
+                    impl<T: AttachmentService>
+                        tonic::server::UnaryService<super::GetAttachmentRequest>
+                        for GetAttachmentSvc<T>
+                    {
+                        type Response = super::Attachment;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetAttachmentRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AttachmentService>::get_attachment(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetAttachmentSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.AttachmentService/GetAttachmentBinary" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetAttachmentBinarySvc<T: AttachmentService>(pub Arc<T>);
+                    impl<T: AttachmentService>
+                        tonic::server::UnaryService<super::GetAttachmentBinaryRequest>
+                        for GetAttachmentBinarySvc<T>
+                    {
+                        type Response = super::super::super::super::google::api::HttpBody;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetAttachmentBinaryRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AttachmentService>::get_attachment_binary(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetAttachmentBinarySvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.AttachmentService/UpdateAttachment" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateAttachmentSvc<T: AttachmentService>(pub Arc<T>);
+                    impl<T: AttachmentService>
+                        tonic::server::UnaryService<super::UpdateAttachmentRequest>
+                        for UpdateAttachmentSvc<T>
+                    {
+                        type Response = super::Attachment;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateAttachmentRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AttachmentService>::update_attachment(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateAttachmentSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.AttachmentService/DeleteAttachment" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteAttachmentSvc<T: AttachmentService>(pub Arc<T>);
+                    impl<T: AttachmentService>
+                        tonic::server::UnaryService<super::DeleteAttachmentRequest>
+                        for DeleteAttachmentSvc<T>
+                    {
+                        type Response = ();
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteAttachmentRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AttachmentService>::delete_attachment(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DeleteAttachmentSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(empty_body());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
+            }
+        }
+    }
+    impl<T> Clone for AttachmentServiceServer<T> {
+        fn clone(&self) -> Self {
+            let inner = self.inner.clone();
+            Self {
+                inner,
+                accept_compression_encodings: self.accept_compression_encodings,
+                send_compression_encodings: self.send_compression_encodings,
+                max_decoding_message_size: self.max_decoding_message_size,
+                max_encoding_message_size: self.max_encoding_message_size,
+            }
+        }
+    }
+    /// Generated gRPC service name
+    pub const SERVICE_NAME: &str = "memos.api.v1.AttachmentService";
+    impl<T> tonic::server::NamedService for AttachmentServiceServer<T> {
+        const NAME: &'static str = SERVICE_NAME;
+    }
+}
 /// Used internally for obfuscating the page token.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, ::prost::Message)]
 pub struct PageToken {
@@ -390,39 +1292,54 @@ impl Direction {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct User {
-    /// The name of the user.
-    /// Format: users/{id}, id is the system generated auto-incremented id.
+    /// The resource name of the user.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    #[prost(enumeration = "user::Role", tag = "3")]
+    /// The role of the user.
+    #[prost(enumeration = "user::Role", tag = "2")]
     pub role: i32,
-    #[prost(string, tag = "4")]
+    /// Required. The unique username for login.
+    #[prost(string, tag = "3")]
     pub username: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
+    /// Optional. The email address of the user.
+    #[prost(string, tag = "4")]
     pub email: ::prost::alloc::string::String,
+    /// Optional. The display name of the user.
+    #[prost(string, tag = "5")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Optional. The avatar URL of the user.
     #[prost(string, tag = "6")]
-    pub nickname: ::prost::alloc::string::String,
-    #[prost(string, tag = "7")]
     pub avatar_url: ::prost::alloc::string::String,
-    #[prost(string, tag = "8")]
+    /// Optional. The description of the user.
+    #[prost(string, tag = "7")]
     pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "9")]
+    /// Input only. The password for the user.
+    #[prost(string, tag = "8")]
     pub password: ::prost::alloc::string::String,
-    #[prost(enumeration = "State", tag = "10")]
+    /// The state of the user.
+    #[prost(enumeration = "State", tag = "9")]
     pub state: i32,
-    #[prost(message, optional, tag = "11")]
+    /// Output only. The creation timestamp.
+    #[prost(message, optional, tag = "10")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(message, optional, tag = "12")]
+    /// Output only. The last update timestamp.
+    #[prost(message, optional, tag = "11")]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// Nested message and enum types in `User`.
 pub mod user {
+    /// User role enumeration.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Role {
+        /// Unspecified role.
         Unspecified = 0,
+        /// Host role with full system access.
         Host = 1,
+        /// Admin role with administrative privileges.
         Admin = 2,
+        /// Regular user role.
         User = 3,
     }
     impl Role {
@@ -450,76 +1367,153 @@ pub mod user {
         }
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ListUsersRequest {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListUsersRequest {
+    /// Optional. The maximum number of users to return.
+    /// The service may return fewer than this value.
+    /// If unspecified, at most 50 users will be returned.
+    /// The maximum value is 1000; values above 1000 will be coerced to 1000.
+    #[prost(int32, tag = "1")]
+    pub page_size: i32,
+    /// Optional. A page token, received from a previous `ListUsers` call.
+    /// Provide this to retrieve the subsequent page.
+    #[prost(string, tag = "2")]
+    pub page_token: ::prost::alloc::string::String,
+    /// Optional. Filter to apply to the list results.
+    /// Example: "state=ACTIVE" or "role=USER" or "email:@example.com"
+    /// Supported operators: =, !=, <, <=, >, >=, :
+    /// Supported fields: username, email, role, state, create_time, update_time
+    #[prost(string, tag = "3")]
+    pub filter: ::prost::alloc::string::String,
+    /// Optional. The order to sort results by.
+    /// Example: "create_time desc" or "username asc"
+    #[prost(string, tag = "4")]
+    pub order_by: ::prost::alloc::string::String,
+    /// Optional. If true, show deleted users in the response.
+    #[prost(bool, tag = "5")]
+    pub show_deleted: bool,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListUsersResponse {
+    /// The list of users.
     #[prost(message, repeated, tag = "1")]
     pub users: ::prost::alloc::vec::Vec<User>,
+    /// A token that can be sent as `page_token` to retrieve the next page.
+    /// If this field is omitted, there are no subsequent pages.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of users (may be approximate).
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserRequest {
-    /// The name of the user.
+    /// Required. The resource name of the user.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetUserByUsernameRequest {
-    /// The username of the user.
-    #[prost(string, tag = "1")]
-    pub username: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetUserAvatarBinaryRequest {
-    /// The name of the user.
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    /// The raw HTTP body is bound to this field.
+    /// Optional. The fields to return in the response.
+    /// If not specified, all fields are returned.
     #[prost(message, optional, tag = "2")]
-    pub http_body: ::core::option::Option<super::super::super::google::api::HttpBody>,
+    pub read_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateUserRequest {
+    /// Required. The user to create.
     #[prost(message, optional, tag = "1")]
     pub user: ::core::option::Option<User>,
+    /// Optional. The user ID to use for this user.
+    /// If empty, a unique ID will be generated.
+    /// Must match the pattern \[a-z0-9-\]+
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+    /// Optional. If set, validate the request but don't actually create the user.
+    #[prost(bool, tag = "3")]
+    pub validate_only: bool,
+    /// Optional. An idempotency token that can be used to ensure that multiple
+    /// requests to create a user have the same result.
+    #[prost(string, tag = "4")]
+    pub request_id: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateUserRequest {
+    /// Required. The user to update.
     #[prost(message, optional, tag = "1")]
     pub user: ::core::option::Option<User>,
+    /// Required. The list of fields to update.
     #[prost(message, optional, tag = "2")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+    /// Optional. If set to true, allows updating sensitive fields.
+    #[prost(bool, tag = "3")]
+    pub allow_missing: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteUserRequest {
-    /// The name of the user.
+    /// Required. The resource name of the user to delete.
+    /// Format: users/{user}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// Optional. If set to true, the user will be deleted even if they have associated data.
+    #[prost(bool, tag = "2")]
+    pub force: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SearchUsersRequest {
+    /// Required. The search query.
+    #[prost(string, tag = "1")]
+    pub query: ::prost::alloc::string::String,
+    /// Optional. The maximum number of users to return.
+    #[prost(int32, tag = "2")]
+    pub page_size: i32,
+    /// Optional. A page token for pagination.
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SearchUsersResponse {
+    /// The list of users matching the search query.
+    #[prost(message, repeated, tag = "1")]
+    pub users: ::prost::alloc::vec::Vec<User>,
+    /// A token for the next page of results.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of matching users.
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetUserAvatarRequest {
+    /// Required. The resource name of the user.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
+/// User statistics messages
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UserStats {
-    /// The name of the user.
+    /// The resource name of the user whose stats these are.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The timestamps when the memos were displayed.
-    /// We should return raw data to the client, and let the client format the data with the user's timezone.
     #[prost(message, repeated, tag = "2")]
     pub memo_display_timestamps: ::prost::alloc::vec::Vec<::prost_types::Timestamp>,
     /// The stats of memo types.
     #[prost(message, optional, tag = "3")]
     pub memo_type_stats: ::core::option::Option<user_stats::MemoTypeStats>,
     /// The count of tags.
-    /// Format: "tag1": 1, "tag2": 2
     #[prost(map = "string, int32", tag = "4")]
     pub tag_count: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     /// The pinned memos of the user.
     #[prost(string, repeated, tag = "5")]
     pub pinned_memos: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Total memo count.
     #[prost(int32, tag = "6")]
     pub total_memo_count: i32,
 }
 /// Nested message and enum types in `UserStats`.
 pub mod user_stats {
+    /// Memo type statistics.
     #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct MemoTypeStats {
         #[prost(int32, tag = "1")]
@@ -532,22 +1526,18 @@ pub mod user_stats {
         pub undo_count: i32,
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ListAllUserStatsRequest {}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListAllUserStatsResponse {
-    #[prost(message, repeated, tag = "1")]
-    pub user_stats: ::prost::alloc::vec::Vec<UserStats>,
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserStatsRequest {
-    /// The name of the user.
+    /// Required. The resource name of the user.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
+/// User settings message
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UserSetting {
-    /// The name of the user.
+    /// The resource name of the user whose setting this is.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// The preferred locale of the user.
@@ -559,109 +1549,174 @@ pub struct UserSetting {
     /// The default visibility of the memo.
     #[prost(string, tag = "4")]
     pub memo_visibility: ::prost::alloc::string::String,
+    /// The preferred theme of the user.
+    /// This references a CSS file in the web/public/themes/ directory.
+    /// If not set, the default theme will be used.
+    #[prost(string, tag = "5")]
+    pub theme: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserSettingRequest {
-    /// The name of the user.
+    /// Required. The resource name of the user.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateUserSettingRequest {
+    /// Required. The user setting to update.
     #[prost(message, optional, tag = "1")]
     pub setting: ::core::option::Option<UserSetting>,
+    /// Required. The list of fields to update.
     #[prost(message, optional, tag = "2")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
+/// User access token message
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UserAccessToken {
+    /// The resource name of the access token.
+    /// Format: users/{user}/accessTokens/{access_token}
     #[prost(string, tag = "1")]
-    pub access_token: ::prost::alloc::string::String,
+    pub name: ::prost::alloc::string::String,
+    /// Output only. The access token value.
     #[prost(string, tag = "2")]
+    pub access_token: ::prost::alloc::string::String,
+    /// The description of the access token.
+    #[prost(string, tag = "3")]
     pub description: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "3")]
-    pub issued_at: ::core::option::Option<::prost_types::Timestamp>,
+    /// Output only. The issued timestamp.
     #[prost(message, optional, tag = "4")]
+    pub issued_at: ::core::option::Option<::prost_types::Timestamp>,
+    /// Optional. The expiration timestamp.
+    #[prost(message, optional, tag = "5")]
     pub expires_at: ::core::option::Option<::prost_types::Timestamp>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListUserAccessTokensRequest {
-    /// The name of the user.
+    /// Required. The parent resource whose access tokens will be listed.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
+    pub parent: ::prost::alloc::string::String,
+    /// Optional. The maximum number of access tokens to return.
+    #[prost(int32, tag = "2")]
+    pub page_size: i32,
+    /// Optional. A page token for pagination.
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListUserAccessTokensResponse {
+    /// The list of access tokens.
     #[prost(message, repeated, tag = "1")]
     pub access_tokens: ::prost::alloc::vec::Vec<UserAccessToken>,
+    /// A token for the next page of results.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of access tokens.
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateUserAccessTokenRequest {
-    /// The name of the user.
+    /// Required. The parent resource where this access token will be created.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "3")]
-    pub expires_at: ::core::option::Option<::prost_types::Timestamp>,
+    pub parent: ::prost::alloc::string::String,
+    /// Required. The access token to create.
+    #[prost(message, optional, tag = "2")]
+    pub access_token: ::core::option::Option<UserAccessToken>,
+    /// Optional. The access token ID to use.
+    #[prost(string, tag = "3")]
+    pub access_token_id: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteUserAccessTokenRequest {
-    /// The name of the user.
+    /// Required. The resource name of the access token to delete.
+    /// Format: users/{user}/accessTokens/{access_token}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// access_token is the access token to delete.
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UserSession {
+    /// The resource name of the session.
+    /// Format: users/{user}/sessions/{session}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The session ID.
     #[prost(string, tag = "2")]
-    pub access_token: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Shortcut {
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub title: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub filter: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListShortcutsRequest {
-    /// The name of the user.
-    #[prost(string, tag = "1")]
-    pub parent: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListShortcutsResponse {
-    #[prost(message, repeated, tag = "1")]
-    pub shortcuts: ::prost::alloc::vec::Vec<Shortcut>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateShortcutRequest {
-    /// The name of the user.
-    #[prost(string, tag = "1")]
-    pub parent: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "2")]
-    pub shortcut: ::core::option::Option<Shortcut>,
-    #[prost(bool, tag = "3")]
-    pub validate_only: bool,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UpdateShortcutRequest {
-    /// The name of the user.
-    #[prost(string, tag = "1")]
-    pub parent: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "2")]
-    pub shortcut: ::core::option::Option<Shortcut>,
+    pub session_id: ::prost::alloc::string::String,
+    /// The timestamp when the session was created.
     #[prost(message, optional, tag = "3")]
-    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// The timestamp when the session was last accessed.
+    /// Used for sliding expiration calculation (last_accessed_time + 2 weeks).
+    #[prost(message, optional, tag = "4")]
+    pub last_accessed_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// Client information associated with this session.
+    #[prost(message, optional, tag = "5")]
+    pub client_info: ::core::option::Option<user_session::ClientInfo>,
+}
+/// Nested message and enum types in `UserSession`.
+pub mod user_session {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ClientInfo {
+        /// User agent string of the client.
+        #[prost(string, tag = "1")]
+        pub user_agent: ::prost::alloc::string::String,
+        /// IP address of the client.
+        #[prost(string, tag = "2")]
+        pub ip_address: ::prost::alloc::string::String,
+        /// Optional. Device type (e.g., "mobile", "desktop", "tablet").
+        #[prost(string, tag = "3")]
+        pub device_type: ::prost::alloc::string::String,
+        /// Optional. Operating system (e.g., "iOS 17.0", "Windows 11").
+        #[prost(string, tag = "4")]
+        pub os: ::prost::alloc::string::String,
+        /// Optional. Browser name and version (e.g., "Chrome 119.0").
+        #[prost(string, tag = "5")]
+        pub browser: ::prost::alloc::string::String,
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DeleteShortcutRequest {
-    /// The name of the user.
+pub struct ListUserSessionsRequest {
+    /// Required. The resource name of the parent.
+    /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
-    /// The id of the shortcut.
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListUserSessionsResponse {
+    /// The list of user sessions.
+    #[prost(message, repeated, tag = "1")]
+    pub sessions: ::prost::alloc::vec::Vec<UserSession>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RevokeUserSessionRequest {
+    /// Required. The resource name of the session to revoke.
+    /// Format: users/{user}/sessions/{session}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListAllUserStatsRequest {
+    /// Optional. The maximum number of user stats to return.
+    #[prost(int32, tag = "1")]
+    pub page_size: i32,
+    /// Optional. A page token for pagination.
     #[prost(string, tag = "2")]
-    pub id: ::prost::alloc::string::String,
+    pub page_token: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListAllUserStatsResponse {
+    /// The list of user statistics.
+    #[prost(message, repeated, tag = "1")]
+    pub user_stats: ::prost::alloc::vec::Vec<UserStats>,
+    /// A token for the next page of results.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of user statistics.
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 /// Generated client implementations.
 pub mod user_service_client {
@@ -783,46 +1838,6 @@ pub mod user_service_client {
                 .insert(GrpcMethod::new("memos.api.v1.UserService", "GetUser"));
             self.inner.unary(req, path, codec).await
         }
-        /// GetUserByUsername gets a user by username.
-        pub async fn get_user_by_username(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetUserByUsernameRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/GetUserByUsername");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.UserService",
-                "GetUserByUsername",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// GetUserAvatarBinary gets the avatar of a user.
-        pub async fn get_user_avatar_binary(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetUserAvatarBinaryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::super::google::api::HttpBody>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.UserService/GetUserAvatarBinary",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.UserService",
-                "GetUserAvatarBinary",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
         /// CreateUser creates a new user.
         pub async fn create_user(
             &mut self,
@@ -868,7 +1883,43 @@ pub mod user_service_client {
                 .insert(GrpcMethod::new("memos.api.v1.UserService", "DeleteUser"));
             self.inner.unary(req, path, codec).await
         }
-        /// ListAllUserStats returns all user stats.
+        /// SearchUsers searches for users based on query.
+        pub async fn search_users(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SearchUsersRequest>,
+        ) -> std::result::Result<tonic::Response<super::SearchUsersResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/SearchUsers");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v1.UserService", "SearchUsers"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// GetUserAvatar gets the avatar of a user.
+        pub async fn get_user_avatar(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetUserAvatarRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::super::google::api::HttpBody>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/GetUserAvatar");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v1.UserService", "GetUserAvatar"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// ListAllUserStats returns statistics for all users.
         pub async fn list_all_user_stats(
             &mut self,
             request: impl tonic::IntoRequest<super::ListAllUserStatsRequest>,
@@ -887,7 +1938,7 @@ pub mod user_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// GetUserStats returns the stats of a user.
+        /// GetUserStats returns statistics for a specific user.
         pub async fn get_user_stats(
             &mut self,
             request: impl tonic::IntoRequest<super::GetUserStatsRequest>,
@@ -903,7 +1954,7 @@ pub mod user_service_client {
                 .insert(GrpcMethod::new("memos.api.v1.UserService", "GetUserStats"));
             self.inner.unary(req, path, codec).await
         }
-        /// GetUserSetting gets the setting of a user.
+        /// GetUserSetting returns the user setting.
         pub async fn get_user_setting(
             &mut self,
             request: impl tonic::IntoRequest<super::GetUserSettingRequest>,
@@ -921,7 +1972,7 @@ pub mod user_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// UpdateUserSetting updates the setting of a user.
+        /// UpdateUserSetting updates the user setting.
         pub async fn update_user_setting(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateUserSettingRequest>,
@@ -978,7 +2029,7 @@ pub mod user_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// DeleteUserAccessToken deletes an access token for a user.
+        /// DeleteUserAccessToken deletes an access token.
         pub async fn delete_user_access_token(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteUserAccessTokenRequest>,
@@ -997,74 +2048,40 @@ pub mod user_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// ListShortcuts returns a list of shortcuts for a user.
-        pub async fn list_shortcuts(
+        /// ListUserSessions returns a list of active sessions for a user.
+        pub async fn list_user_sessions(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListShortcutsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListShortcutsResponse>, tonic::Status>
+            request: impl tonic::IntoRequest<super::ListUserSessionsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListUserSessionsResponse>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/ListShortcuts");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.UserService", "ListShortcuts"));
-            self.inner.unary(req, path, codec).await
-        }
-        /// CreateShortcut creates a new shortcut for a user.
-        pub async fn create_shortcut(
-            &mut self,
-            request: impl tonic::IntoRequest<super::CreateShortcutRequest>,
-        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/CreateShortcut");
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/ListUserSessions");
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "memos.api.v1.UserService",
-                "CreateShortcut",
+                "ListUserSessions",
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// UpdateShortcut updates a shortcut for a user.
-        pub async fn update_shortcut(
+        /// RevokeUserSession revokes a specific session for a user.
+        pub async fn revoke_user_session(
             &mut self,
-            request: impl tonic::IntoRequest<super::UpdateShortcutRequest>,
-        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/UpdateShortcut");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.UserService",
-                "UpdateShortcut",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// DeleteShortcut deletes a shortcut for a user.
-        pub async fn delete_shortcut(
-            &mut self,
-            request: impl tonic::IntoRequest<super::DeleteShortcutRequest>,
+            request: impl tonic::IntoRequest<super::RevokeUserSessionRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/DeleteShortcut");
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/RevokeUserSession");
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "memos.api.v1.UserService",
-                "DeleteShortcut",
+                "RevokeUserSession",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -1093,19 +2110,6 @@ pub mod user_service_server {
             &self,
             request: tonic::Request<super::GetUserRequest>,
         ) -> std::result::Result<tonic::Response<super::User>, tonic::Status>;
-        /// GetUserByUsername gets a user by username.
-        async fn get_user_by_username(
-            &self,
-            request: tonic::Request<super::GetUserByUsernameRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status>;
-        /// GetUserAvatarBinary gets the avatar of a user.
-        async fn get_user_avatar_binary(
-            &self,
-            request: tonic::Request<super::GetUserAvatarBinaryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::super::google::api::HttpBody>,
-            tonic::Status,
-        >;
         /// CreateUser creates a new user.
         async fn create_user(
             &self,
@@ -1121,22 +2125,35 @@ pub mod user_service_server {
             &self,
             request: tonic::Request<super::DeleteUserRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
-        /// ListAllUserStats returns all user stats.
+        /// SearchUsers searches for users based on query.
+        async fn search_users(
+            &self,
+            request: tonic::Request<super::SearchUsersRequest>,
+        ) -> std::result::Result<tonic::Response<super::SearchUsersResponse>, tonic::Status>;
+        /// GetUserAvatar gets the avatar of a user.
+        async fn get_user_avatar(
+            &self,
+            request: tonic::Request<super::GetUserAvatarRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::super::google::api::HttpBody>,
+            tonic::Status,
+        >;
+        /// ListAllUserStats returns statistics for all users.
         async fn list_all_user_stats(
             &self,
             request: tonic::Request<super::ListAllUserStatsRequest>,
         ) -> std::result::Result<tonic::Response<super::ListAllUserStatsResponse>, tonic::Status>;
-        /// GetUserStats returns the stats of a user.
+        /// GetUserStats returns statistics for a specific user.
         async fn get_user_stats(
             &self,
             request: tonic::Request<super::GetUserStatsRequest>,
         ) -> std::result::Result<tonic::Response<super::UserStats>, tonic::Status>;
-        /// GetUserSetting gets the setting of a user.
+        /// GetUserSetting returns the user setting.
         async fn get_user_setting(
             &self,
             request: tonic::Request<super::GetUserSettingRequest>,
         ) -> std::result::Result<tonic::Response<super::UserSetting>, tonic::Status>;
-        /// UpdateUserSetting updates the setting of a user.
+        /// UpdateUserSetting updates the user setting.
         async fn update_user_setting(
             &self,
             request: tonic::Request<super::UpdateUserSettingRequest>,
@@ -1151,30 +2168,20 @@ pub mod user_service_server {
             &self,
             request: tonic::Request<super::CreateUserAccessTokenRequest>,
         ) -> std::result::Result<tonic::Response<super::UserAccessToken>, tonic::Status>;
-        /// DeleteUserAccessToken deletes an access token for a user.
+        /// DeleteUserAccessToken deletes an access token.
         async fn delete_user_access_token(
             &self,
             request: tonic::Request<super::DeleteUserAccessTokenRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
-        /// ListShortcuts returns a list of shortcuts for a user.
-        async fn list_shortcuts(
+        /// ListUserSessions returns a list of active sessions for a user.
+        async fn list_user_sessions(
             &self,
-            request: tonic::Request<super::ListShortcutsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListShortcutsResponse>, tonic::Status>;
-        /// CreateShortcut creates a new shortcut for a user.
-        async fn create_shortcut(
+            request: tonic::Request<super::ListUserSessionsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListUserSessionsResponse>, tonic::Status>;
+        /// RevokeUserSession revokes a specific session for a user.
+        async fn revoke_user_session(
             &self,
-            request: tonic::Request<super::CreateShortcutRequest>,
-        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status>;
-        /// UpdateShortcut updates a shortcut for a user.
-        async fn update_shortcut(
-            &self,
-            request: tonic::Request<super::UpdateShortcutRequest>,
-        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status>;
-        /// DeleteShortcut deletes a shortcut for a user.
-        async fn delete_shortcut(
-            &self,
-            request: tonic::Request<super::DeleteShortcutRequest>,
+            request: tonic::Request<super::RevokeUserSessionRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
     }
     #[derive(Debug)]
@@ -1327,90 +2334,6 @@ pub mod user_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.UserService/GetUserByUsername" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetUserByUsernameSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService>
-                        tonic::server::UnaryService<super::GetUserByUsernameRequest>
-                        for GetUserByUsernameSvc<T>
-                    {
-                        type Response = super::User;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetUserByUsernameRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as UserService>::get_user_by_username(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetUserByUsernameSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.UserService/GetUserAvatarBinary" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetUserAvatarBinarySvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService>
-                        tonic::server::UnaryService<super::GetUserAvatarBinaryRequest>
-                        for GetUserAvatarBinarySvc<T>
-                    {
-                        type Response = super::super::super::super::google::api::HttpBody;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetUserAvatarBinaryRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as UserService>::get_user_avatar_binary(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetUserAvatarBinarySvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/memos.api.v1.UserService/CreateUser" => {
                     #[allow(non_camel_case_types)]
                     struct CreateUserSvc<T: UserService>(pub Arc<T>);
@@ -1513,6 +2436,86 @@ pub mod user_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DeleteUserSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/SearchUsers" => {
+                    #[allow(non_camel_case_types)]
+                    struct SearchUsersSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::SearchUsersRequest> for SearchUsersSvc<T> {
+                        type Response = super::SearchUsersResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SearchUsersRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::search_users(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = SearchUsersSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/GetUserAvatar" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetUserAvatarSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::GetUserAvatarRequest>
+                        for GetUserAvatarSvc<T>
+                    {
+                        type Response = super::super::super::super::google::api::HttpBody;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetUserAvatarRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::get_user_avatar(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetUserAvatarSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1819,21 +2822,21 @@ pub mod user_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.UserService/ListShortcuts" => {
+                "/memos.api.v1.UserService/ListUserSessions" => {
                     #[allow(non_camel_case_types)]
-                    struct ListShortcutsSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::ListShortcutsRequest>
-                        for ListShortcutsSvc<T>
+                    struct ListUserSessionsSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::ListUserSessionsRequest>
+                        for ListUserSessionsSvc<T>
                     {
-                        type Response = super::ListShortcutsResponse;
+                        type Response = super::ListUserSessionsResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListShortcutsRequest>,
+                            request: tonic::Request<super::ListUserSessionsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as UserService>::list_shortcuts(&inner, request).await
+                                <T as UserService>::list_user_sessions(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1844,7 +2847,7 @@ pub mod user_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = ListShortcutsSvc(inner);
+                        let method = ListUserSessionsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -1860,103 +2863,22 @@ pub mod user_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.UserService/CreateShortcut" => {
+                "/memos.api.v1.UserService/RevokeUserSession" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateShortcutSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::CreateShortcutRequest>
-                        for CreateShortcutSvc<T>
-                    {
-                        type Response = super::Shortcut;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::CreateShortcutRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as UserService>::create_shortcut(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = CreateShortcutSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.UserService/UpdateShortcut" => {
-                    #[allow(non_camel_case_types)]
-                    struct UpdateShortcutSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::UpdateShortcutRequest>
-                        for UpdateShortcutSvc<T>
-                    {
-                        type Response = super::Shortcut;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::UpdateShortcutRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as UserService>::update_shortcut(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = UpdateShortcutSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.UserService/DeleteShortcut" => {
-                    #[allow(non_camel_case_types)]
-                    struct DeleteShortcutSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::DeleteShortcutRequest>
-                        for DeleteShortcutSvc<T>
+                    struct RevokeUserSessionSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService>
+                        tonic::server::UnaryService<super::RevokeUserSessionRequest>
+                        for RevokeUserSessionSvc<T>
                     {
                         type Response = ();
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::DeleteShortcutRequest>,
+                            request: tonic::Request<super::RevokeUserSessionRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as UserService>::delete_shortcut(&inner, request).await
+                                <T as UserService>::revoke_user_session(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1967,7 +2889,7 @@ pub mod user_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = DeleteShortcutSvc(inner);
+                        let method = RevokeUserSessionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2018,47 +2940,77 @@ pub mod user_service_server {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct GetAuthStatusRequest {}
+pub struct GetCurrentSessionRequest {}
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetAuthStatusResponse {
+pub struct GetCurrentSessionResponse {
     #[prost(message, optional, tag = "1")]
     pub user: ::core::option::Option<User>,
+    /// Last time the session was accessed.
+    /// Used for sliding expiration calculation (last_accessed_time + 2 weeks).
+    #[prost(message, optional, tag = "2")]
+    pub last_accessed_at: ::core::option::Option<::prost_types::Timestamp>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SignInRequest {
-    /// The username to sign in with.
-    #[prost(string, tag = "1")]
-    pub username: ::prost::alloc::string::String,
-    /// The password to sign in with.
-    #[prost(string, tag = "2")]
-    pub password: ::prost::alloc::string::String,
-    /// Whether the session should never expire.
-    #[prost(bool, tag = "3")]
-    pub never_expire: bool,
+pub struct CreateSessionRequest {
+    /// Provide one authentication method (username/password or SSO).
+    /// Required field to specify the authentication method.
+    #[prost(oneof = "create_session_request::Credentials", tags = "1, 2")]
+    pub credentials: ::core::option::Option<create_session_request::Credentials>,
+}
+/// Nested message and enum types in `CreateSessionRequest`.
+pub mod create_session_request {
+    /// Nested message for password-based authentication credentials.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct PasswordCredentials {
+        /// The username to sign in with.
+        /// Required field for password-based authentication.
+        #[prost(string, tag = "1")]
+        pub username: ::prost::alloc::string::String,
+        /// The password to sign in with.
+        /// Required field for password-based authentication.
+        #[prost(string, tag = "2")]
+        pub password: ::prost::alloc::string::String,
+    }
+    /// Nested message for SSO authentication credentials.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct SsoCredentials {
+        /// The ID of the SSO provider.
+        /// Required field to identify the SSO provider.
+        #[prost(int32, tag = "1")]
+        pub idp_id: i32,
+        /// The authorization code from the SSO provider.
+        /// Required field for completing the SSO flow.
+        #[prost(string, tag = "2")]
+        pub code: ::prost::alloc::string::String,
+        /// The redirect URI used in the SSO flow.
+        /// Required field for security validation.
+        #[prost(string, tag = "3")]
+        pub redirect_uri: ::prost::alloc::string::String,
+    }
+    /// Provide one authentication method (username/password or SSO).
+    /// Required field to specify the authentication method.
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Credentials {
+        /// Username and password authentication method.
+        #[prost(message, tag = "1")]
+        PasswordCredentials(PasswordCredentials),
+        /// SSO provider authentication method.
+        #[prost(message, tag = "2")]
+        SsoCredentials(SsoCredentials),
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SignInWithSsoRequest {
-    /// The ID of the SSO provider.
-    #[prost(int32, tag = "1")]
-    pub idp_id: i32,
-    /// The code to sign in with.
-    #[prost(string, tag = "2")]
-    pub code: ::prost::alloc::string::String,
-    /// The redirect URI.
-    #[prost(string, tag = "3")]
-    pub redirect_uri: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SignUpRequest {
-    /// The username to sign up with.
-    #[prost(string, tag = "1")]
-    pub username: ::prost::alloc::string::String,
-    /// The password to sign up with.
-    #[prost(string, tag = "2")]
-    pub password: ::prost::alloc::string::String,
+pub struct CreateSessionResponse {
+    /// The authenticated user information.
+    #[prost(message, optional, tag = "1")]
+    pub user: ::core::option::Option<User>,
+    /// Last time the session was accessed.
+    /// Used for sliding expiration calculation (last_accessed_time + 2 weeks).
+    #[prost(message, optional, tag = "2")]
+    pub last_accessed_at: ::core::option::Option<::prost_types::Timestamp>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct SignOutRequest {}
+pub struct DeleteSessionRequest {}
 /// Generated client implementations.
 pub mod auth_service_client {
     #![allow(
@@ -2149,81 +3101,59 @@ pub mod auth_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// GetAuthStatus returns the current auth status of the user.
-        pub async fn get_auth_status(
+        /// GetCurrentSession returns the current active session information.
+        /// This method is idempotent and safe, suitable for checking current session state.
+        pub async fn get_current_session(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetAuthStatusRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::GetCurrentSessionRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetCurrentSessionResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.AuthService/GetAuthStatus");
+                http::uri::PathAndQuery::from_static("/memos.api.v1.AuthService/GetCurrentSession");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.AuthService", "GetAuthStatus"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.AuthService",
+                "GetCurrentSession",
+            ));
             self.inner.unary(req, path, codec).await
         }
-        /// SignIn signs in the user with the given username and password.
-        pub async fn sign_in(
+        /// CreateSession authenticates a user and creates a new session.
+        /// Returns the authenticated user information upon successful authentication.
+        pub async fn create_session(
             &mut self,
-            request: impl tonic::IntoRequest<super::SignInRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/memos.api.v1.AuthService/SignIn");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.AuthService", "SignIn"));
-            self.inner.unary(req, path, codec).await
-        }
-        /// SignInWithSSO signs in the user with the given SSO code.
-        pub async fn sign_in_with_sso(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SignInWithSsoRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::CreateSessionRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateSessionResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.AuthService/SignInWithSSO");
+                http::uri::PathAndQuery::from_static("/memos.api.v1.AuthService/CreateSession");
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.AuthService", "SignInWithSSO"));
+                .insert(GrpcMethod::new("memos.api.v1.AuthService", "CreateSession"));
             self.inner.unary(req, path, codec).await
         }
-        /// SignUp signs up the user with the given username and password.
-        pub async fn sign_up(
+        /// DeleteSession terminates the current user session.
+        /// This is an idempotent operation that invalidates the user's authentication.
+        pub async fn delete_session(
             &mut self,
-            request: impl tonic::IntoRequest<super::SignUpRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/memos.api.v1.AuthService/SignUp");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.AuthService", "SignUp"));
-            self.inner.unary(req, path, codec).await
-        }
-        /// SignOut signs out the user.
-        pub async fn sign_out(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SignOutRequest>,
+            request: impl tonic::IntoRequest<super::DeleteSessionRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/memos.api.v1.AuthService/SignOut");
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.AuthService/DeleteSession");
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.AuthService", "SignOut"));
+                .insert(GrpcMethod::new("memos.api.v1.AuthService", "DeleteSession"));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -2241,30 +3171,23 @@ pub mod auth_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with AuthServiceServer.
     #[async_trait]
     pub trait AuthService: std::marker::Send + std::marker::Sync + 'static {
-        /// GetAuthStatus returns the current auth status of the user.
-        async fn get_auth_status(
+        /// GetCurrentSession returns the current active session information.
+        /// This method is idempotent and safe, suitable for checking current session state.
+        async fn get_current_session(
             &self,
-            request: tonic::Request<super::GetAuthStatusRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status>;
-        /// SignIn signs in the user with the given username and password.
-        async fn sign_in(
+            request: tonic::Request<super::GetCurrentSessionRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetCurrentSessionResponse>, tonic::Status>;
+        /// CreateSession authenticates a user and creates a new session.
+        /// Returns the authenticated user information upon successful authentication.
+        async fn create_session(
             &self,
-            request: tonic::Request<super::SignInRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status>;
-        /// SignInWithSSO signs in the user with the given SSO code.
-        async fn sign_in_with_sso(
+            request: tonic::Request<super::CreateSessionRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateSessionResponse>, tonic::Status>;
+        /// DeleteSession terminates the current user session.
+        /// This is an idempotent operation that invalidates the user's authentication.
+        async fn delete_session(
             &self,
-            request: tonic::Request<super::SignInWithSsoRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status>;
-        /// SignUp signs up the user with the given username and password.
-        async fn sign_up(
-            &self,
-            request: tonic::Request<super::SignUpRequest>,
-        ) -> std::result::Result<tonic::Response<super::User>, tonic::Status>;
-        /// SignOut signs out the user.
-        async fn sign_out(
-            &self,
-            request: tonic::Request<super::SignOutRequest>,
+            request: tonic::Request<super::DeleteSessionRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
     }
     #[derive(Debug)]
@@ -2340,21 +3263,22 @@ pub mod auth_service_server {
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             match req.uri().path() {
-                "/memos.api.v1.AuthService/GetAuthStatus" => {
+                "/memos.api.v1.AuthService/GetCurrentSession" => {
                     #[allow(non_camel_case_types)]
-                    struct GetAuthStatusSvc<T: AuthService>(pub Arc<T>);
-                    impl<T: AuthService> tonic::server::UnaryService<super::GetAuthStatusRequest>
-                        for GetAuthStatusSvc<T>
+                    struct GetCurrentSessionSvc<T: AuthService>(pub Arc<T>);
+                    impl<T: AuthService>
+                        tonic::server::UnaryService<super::GetCurrentSessionRequest>
+                        for GetCurrentSessionSvc<T>
                     {
-                        type Response = super::User;
+                        type Response = super::GetCurrentSessionResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetAuthStatusRequest>,
+                            request: tonic::Request<super::GetCurrentSessionRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as AuthService>::get_auth_status(&inner, request).await
+                                <T as AuthService>::get_current_session(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2365,7 +3289,7 @@ pub mod auth_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = GetAuthStatusSvc(inner);
+                        let method = GetCurrentSessionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2381,59 +3305,21 @@ pub mod auth_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.AuthService/SignIn" => {
+                "/memos.api.v1.AuthService/CreateSession" => {
                     #[allow(non_camel_case_types)]
-                    struct SignInSvc<T: AuthService>(pub Arc<T>);
-                    impl<T: AuthService> tonic::server::UnaryService<super::SignInRequest> for SignInSvc<T> {
-                        type Response = super::User;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SignInRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut =
-                                async move { <T as AuthService>::sign_in(&inner, request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = SignInSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.AuthService/SignInWithSSO" => {
-                    #[allow(non_camel_case_types)]
-                    struct SignInWithSSOSvc<T: AuthService>(pub Arc<T>);
-                    impl<T: AuthService> tonic::server::UnaryService<super::SignInWithSsoRequest>
-                        for SignInWithSSOSvc<T>
+                    struct CreateSessionSvc<T: AuthService>(pub Arc<T>);
+                    impl<T: AuthService> tonic::server::UnaryService<super::CreateSessionRequest>
+                        for CreateSessionSvc<T>
                     {
-                        type Response = super::User;
+                        type Response = super::CreateSessionResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::SignInWithSsoRequest>,
+                            request: tonic::Request<super::CreateSessionRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as AuthService>::sign_in_with_sso(&inner, request).await
+                                <T as AuthService>::create_session(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2444,7 +3330,7 @@ pub mod auth_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = SignInWithSSOSvc(inner);
+                        let method = CreateSessionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2460,57 +3346,22 @@ pub mod auth_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.AuthService/SignUp" => {
+                "/memos.api.v1.AuthService/DeleteSession" => {
                     #[allow(non_camel_case_types)]
-                    struct SignUpSvc<T: AuthService>(pub Arc<T>);
-                    impl<T: AuthService> tonic::server::UnaryService<super::SignUpRequest> for SignUpSvc<T> {
-                        type Response = super::User;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SignUpRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut =
-                                async move { <T as AuthService>::sign_up(&inner, request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = SignUpSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.AuthService/SignOut" => {
-                    #[allow(non_camel_case_types)]
-                    struct SignOutSvc<T: AuthService>(pub Arc<T>);
-                    impl<T: AuthService> tonic::server::UnaryService<super::SignOutRequest> for SignOutSvc<T> {
+                    struct DeleteSessionSvc<T: AuthService>(pub Arc<T>);
+                    impl<T: AuthService> tonic::server::UnaryService<super::DeleteSessionRequest>
+                        for DeleteSessionSvc<T>
+                    {
                         type Response = ();
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::SignOutRequest>,
+                            request: tonic::Request<super::DeleteSessionRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut =
-                                async move { <T as AuthService>::sign_out(&inner, request).await };
+                            let fut = async move {
+                                <T as AuthService>::delete_session(&inner, request).await
+                            };
                             Box::pin(fut)
                         }
                     }
@@ -2520,7 +3371,7 @@ pub mod auth_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = SignOutSvc(inner);
+                        let method = DeleteSessionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2572,16 +3423,20 @@ pub mod auth_service_server {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IdentityProvider {
-    /// The name of the identityProvider.
-    /// Format: identityProviders/{id}, id is the system generated auto-incremented id.
+    /// The resource name of the identity provider.
+    /// Format: identityProviders/{idp}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Required. The type of the identity provider.
     #[prost(enumeration = "identity_provider::Type", tag = "2")]
     pub r#type: i32,
+    /// Required. The display title of the identity provider.
     #[prost(string, tag = "3")]
     pub title: ::prost::alloc::string::String,
+    /// Optional. Filter applied to user identifiers.
     #[prost(string, tag = "4")]
     pub identifier_filter: ::prost::alloc::string::String,
+    /// Required. Configuration for the identity provider.
     #[prost(message, optional, tag = "5")]
     pub config: ::core::option::Option<IdentityProviderConfig>,
 }
@@ -2591,6 +3446,7 @@ pub mod identity_provider {
     #[repr(i32)]
     pub enum Type {
         Unspecified = 0,
+        /// OAuth2 identity provider.
         Oauth2 = 1,
     }
     impl Type {
@@ -2635,6 +3491,8 @@ pub struct FieldMapping {
     pub display_name: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]
     pub email: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub avatar_url: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OAuth2Config {
@@ -2657,34 +3515,41 @@ pub struct OAuth2Config {
 pub struct ListIdentityProvidersRequest {}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListIdentityProvidersResponse {
+    /// The list of identity providers.
     #[prost(message, repeated, tag = "1")]
     pub identity_providers: ::prost::alloc::vec::Vec<IdentityProvider>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetIdentityProviderRequest {
-    /// The name of the identityProvider to get.
+    /// Required. The resource name of the identity provider to get.
+    /// Format: identityProviders/{idp}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateIdentityProviderRequest {
-    /// The identityProvider to create.
+    /// Required. The identity provider to create.
     #[prost(message, optional, tag = "1")]
     pub identity_provider: ::core::option::Option<IdentityProvider>,
+    /// Optional. The ID to use for the identity provider, which will become the final component of the resource name.
+    /// If not provided, the system will generate one.
+    #[prost(string, tag = "2")]
+    pub identity_provider_id: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateIdentityProviderRequest {
-    /// The identityProvider to update.
+    /// Required. The identity provider to update.
     #[prost(message, optional, tag = "1")]
     pub identity_provider: ::core::option::Option<IdentityProvider>,
-    /// The update mask applies to the resource. Only the top level fields of
+    /// Required. The update mask applies to the resource. Only the top level fields of
     /// IdentityProvider are supported.
     #[prost(message, optional, tag = "2")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteIdentityProviderRequest {
-    /// The name of the identityProvider to delete.
+    /// Required. The resource name of the identity provider to delete.
+    /// Format: identityProviders/{idp}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -3249,32 +4114,42 @@ pub mod identity_provider_service_server {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Inbox {
-    /// The name of the inbox.
-    /// Format: inboxes/{id}, id is the system generated auto-incremented id.
+    /// The resource name of the inbox.
+    /// Format: inboxes/{inbox}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// The sender of the inbox notification.
     /// Format: users/{user}
     #[prost(string, tag = "2")]
     pub sender: ::prost::alloc::string::String,
+    /// The receiver of the inbox notification.
     /// Format: users/{user}
     #[prost(string, tag = "3")]
     pub receiver: ::prost::alloc::string::String,
+    /// The status of the inbox notification.
     #[prost(enumeration = "inbox::Status", tag = "4")]
     pub status: i32,
+    /// Output only. The creation timestamp.
     #[prost(message, optional, tag = "5")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// The type of the inbox notification.
     #[prost(enumeration = "inbox::Type", tag = "6")]
     pub r#type: i32,
+    /// Optional. The activity ID associated with this inbox notification.
     #[prost(int32, optional, tag = "7")]
     pub activity_id: ::core::option::Option<i32>,
 }
 /// Nested message and enum types in `Inbox`.
 pub mod inbox {
+    /// Status enumeration for inbox notifications.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Status {
+        /// Unspecified status.
         Unspecified = 0,
+        /// The notification is unread.
         Unread = 1,
+        /// The notification is archived.
         Archived = 2,
     }
     impl Status {
@@ -3299,11 +4174,15 @@ pub mod inbox {
             }
         }
     }
+    /// Type enumeration for inbox notifications.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Type {
+        /// Unspecified type.
         Unspecified = 0,
+        /// Memo comment notification.
         MemoComment = 1,
+        /// Version update notification.
         VersionUpdate = 2,
     }
     impl Type {
@@ -3331,35 +4210,60 @@ pub mod inbox {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInboxesRequest {
+    /// Required. The parent resource whose inboxes will be listed.
     /// Format: users/{user}
     #[prost(string, tag = "1")]
-    pub user: ::prost::alloc::string::String,
-    /// The maximum number of inbox to return.
+    pub parent: ::prost::alloc::string::String,
+    /// Optional. The maximum number of inboxes to return.
+    /// The service may return fewer than this value.
+    /// If unspecified, at most 50 inboxes will be returned.
+    /// The maximum value is 1000; values above 1000 will be coerced to 1000.
     #[prost(int32, tag = "2")]
     pub page_size: i32,
+    /// Optional. A page token, received from a previous `ListInboxes` call.
     /// Provide this to retrieve the subsequent page.
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
+    /// Optional. Filter to apply to the list results.
+    /// Example: "status=UNREAD" or "type=MEMO_COMMENT"
+    /// Supported operators: =, !=
+    /// Supported fields: status, type, sender, create_time
+    #[prost(string, tag = "4")]
+    pub filter: ::prost::alloc::string::String,
+    /// Optional. The order to sort results by.
+    /// Example: "create_time desc" or "status asc"
+    #[prost(string, tag = "5")]
+    pub order_by: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListInboxesResponse {
+    /// The list of inboxes.
     #[prost(message, repeated, tag = "1")]
     pub inboxes: ::prost::alloc::vec::Vec<Inbox>,
-    /// A token, which can be sent as `page_token` to retrieve the next page.
+    /// A token that can be sent as `page_token` to retrieve the next page.
     /// If this field is omitted, there are no subsequent pages.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of inboxes (may be approximate).
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateInboxRequest {
+    /// Required. The inbox to update.
     #[prost(message, optional, tag = "1")]
     pub inbox: ::core::option::Option<Inbox>,
+    /// Required. The list of fields to update.
     #[prost(message, optional, tag = "2")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+    /// Optional. If set to true, allows updating missing fields.
+    #[prost(bool, tag = "3")]
+    pub allow_missing: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteInboxRequest {
-    /// The name of the inbox to delete.
+    /// Required. The resource name of the inbox to delete.
+    /// Format: inboxes/{inbox}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -3759,45 +4663,55 @@ pub mod inbox_service_server {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ParseMarkdownRequest {
+    /// The markdown content to parse.
     #[prost(string, tag = "1")]
     pub markdown: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ParseMarkdownResponse {
+    /// The parsed markdown nodes.
     #[prost(message, repeated, tag = "1")]
     pub nodes: ::prost::alloc::vec::Vec<Node>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RestoreMarkdownNodesRequest {
+    /// The nodes to restore to markdown content.
     #[prost(message, repeated, tag = "1")]
     pub nodes: ::prost::alloc::vec::Vec<Node>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RestoreMarkdownNodesResponse {
+    /// The restored markdown content.
     #[prost(string, tag = "1")]
     pub markdown: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StringifyMarkdownNodesRequest {
+    /// The nodes to stringify to plain text.
     #[prost(message, repeated, tag = "1")]
     pub nodes: ::prost::alloc::vec::Vec<Node>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StringifyMarkdownNodesResponse {
+    /// The plain text content.
     #[prost(string, tag = "1")]
     pub plain_text: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetLinkMetadataRequest {
+    /// The link URL to get metadata for.
     #[prost(string, tag = "1")]
     pub link: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LinkMetadata {
+    /// The title of the linked page.
     #[prost(string, tag = "1")]
     pub title: ::prost::alloc::string::String,
+    /// The description of the linked page.
     #[prost(string, tag = "2")]
     pub description: ::prost::alloc::string::String,
+    /// The URL of the preview image for the linked page.
     #[prost(string, tag = "3")]
     pub image: ::prost::alloc::string::String,
 }
@@ -4009,8 +4923,10 @@ pub mod table_node {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EmbeddedContentNode {
+    /// The resource name of the embedded content.
     #[prost(string, tag = "1")]
     pub resource_name: ::prost::alloc::string::String,
+    /// Additional parameters for the embedded content.
     #[prost(string, tag = "2")]
     pub params: ::prost::alloc::string::String,
 }
@@ -4030,8 +4946,8 @@ pub struct BoldNode {
 pub struct ItalicNode {
     #[prost(string, tag = "1")]
     pub symbol: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub content: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "2")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BoldItalicNode {
@@ -4103,8 +5019,10 @@ pub struct SuperscriptNode {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReferencedContentNode {
+    /// The resource name of the referenced content.
     #[prost(string, tag = "1")]
     pub resource_name: ::prost::alloc::string::String,
+    /// Additional parameters for the referenced content.
     #[prost(string, tag = "2")]
     pub params: ::prost::alloc::string::String,
 }
@@ -4330,6 +5248,7 @@ pub mod markdown_service_client {
             self
         }
         /// ParseMarkdown parses the given markdown content and returns a list of nodes.
+        /// This is a utility method that transforms markdown text into structured nodes.
         pub async fn parse_markdown(
             &mut self,
             request: impl tonic::IntoRequest<super::ParseMarkdownRequest>,
@@ -4349,6 +5268,7 @@ pub mod markdown_service_client {
             self.inner.unary(req, path, codec).await
         }
         /// RestoreMarkdownNodes restores the given nodes to markdown content.
+        /// This is the inverse operation of ParseMarkdown.
         pub async fn restore_markdown_nodes(
             &mut self,
             request: impl tonic::IntoRequest<super::RestoreMarkdownNodesRequest>,
@@ -4369,6 +5289,7 @@ pub mod markdown_service_client {
             self.inner.unary(req, path, codec).await
         }
         /// StringifyMarkdownNodes stringify the given nodes to plain text content.
+        /// This removes all markdown formatting and returns plain text.
         pub async fn stringify_markdown_nodes(
             &mut self,
             request: impl tonic::IntoRequest<super::StringifyMarkdownNodesRequest>,
@@ -4391,6 +5312,7 @@ pub mod markdown_service_client {
             self.inner.unary(req, path, codec).await
         }
         /// GetLinkMetadata returns metadata for a given link.
+        /// This is useful for generating link previews.
         pub async fn get_link_metadata(
             &mut self,
             request: impl tonic::IntoRequest<super::GetLinkMetadataRequest>,
@@ -4425,16 +5347,19 @@ pub mod markdown_service_server {
     #[async_trait]
     pub trait MarkdownService: std::marker::Send + std::marker::Sync + 'static {
         /// ParseMarkdown parses the given markdown content and returns a list of nodes.
+        /// This is a utility method that transforms markdown text into structured nodes.
         async fn parse_markdown(
             &self,
             request: tonic::Request<super::ParseMarkdownRequest>,
         ) -> std::result::Result<tonic::Response<super::ParseMarkdownResponse>, tonic::Status>;
         /// RestoreMarkdownNodes restores the given nodes to markdown content.
+        /// This is the inverse operation of ParseMarkdown.
         async fn restore_markdown_nodes(
             &self,
             request: tonic::Request<super::RestoreMarkdownNodesRequest>,
         ) -> std::result::Result<tonic::Response<super::RestoreMarkdownNodesResponse>, tonic::Status>;
         /// StringifyMarkdownNodes stringify the given nodes to plain text content.
+        /// This removes all markdown formatting and returns plain text.
         async fn stringify_markdown_nodes(
             &self,
             request: tonic::Request<super::StringifyMarkdownNodesRequest>,
@@ -4443,6 +5368,7 @@ pub mod markdown_service_server {
             tonic::Status,
         >;
         /// GetLinkMetadata returns metadata for a given link.
+        /// This is useful for generating link previews.
         async fn get_link_metadata(
             &self,
             request: tonic::Request<super::GetLinkMetadataRequest>,
@@ -4727,746 +5653,89 @@ pub mod markdown_service_server {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Reaction {
-    #[prost(int32, tag = "1")]
-    pub id: i32,
-    /// The name of the creator.
+    /// The resource name of the reaction.
+    /// Format: reactions/{reaction}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The resource name of the creator.
     /// Format: users/{user}
     #[prost(string, tag = "2")]
     pub creator: ::prost::alloc::string::String,
-    /// The content identifier.
-    /// For memo, it should be the `Memo.name`.
+    /// The resource name of the content.
+    /// For memo reactions, this should be the memo's resource name.
+    /// Format: memos/{memo}
     #[prost(string, tag = "3")]
     pub content_id: ::prost::alloc::string::String,
+    /// Required. The type of reaction (e.g., "👍", "❤️", "😄").
     #[prost(string, tag = "4")]
     pub reaction_type: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Resource {
-    /// The name of the resource.
-    /// Format: resources/{resource}, resource is the user defined if or uuid.
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "3")]
+    /// Output only. The creation timestamp.
+    #[prost(message, optional, tag = "5")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(string, tag = "4")]
-    pub filename: ::prost::alloc::string::String,
-    #[prost(bytes = "vec", tag = "5")]
-    pub content: ::prost::alloc::vec::Vec<u8>,
-    #[prost(string, tag = "6")]
-    pub external_link: ::prost::alloc::string::String,
-    #[prost(string, tag = "7")]
-    pub r#type: ::prost::alloc::string::String,
-    #[prost(int64, tag = "8")]
-    pub size: i64,
-    /// The related memo. Refer to `Memo.name`.
-    #[prost(string, optional, tag = "9")]
-    pub memo: ::core::option::Option<::prost::alloc::string::String>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateResourceRequest {
-    #[prost(message, optional, tag = "1")]
-    pub resource: ::core::option::Option<Resource>,
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ListResourcesRequest {}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListResourcesResponse {
-    #[prost(message, repeated, tag = "1")]
-    pub resources: ::prost::alloc::vec::Vec<Resource>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetResourceRequest {
-    /// The name of the resource.
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetResourceBinaryRequest {
-    /// The name of the resource.
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    /// The filename of the resource. Mainly used for downloading.
-    #[prost(string, tag = "2")]
-    pub filename: ::prost::alloc::string::String,
-    /// A flag indicating if the thumbnail version of the resource should be returned
-    #[prost(bool, tag = "3")]
-    pub thumbnail: bool,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UpdateResourceRequest {
-    #[prost(message, optional, tag = "1")]
-    pub resource: ::core::option::Option<Resource>,
-    #[prost(message, optional, tag = "2")]
-    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DeleteResourceRequest {
-    /// The name of the resource.
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-/// Generated client implementations.
-pub mod resource_service_client {
-    #![allow(
-        unused_variables,
-        dead_code,
-        missing_docs,
-        clippy::wildcard_imports,
-        clippy::let_unit_value
-    )]
-    use tonic::codegen::http::Uri;
-    use tonic::codegen::*;
-    #[derive(Debug, Clone)]
-    pub struct ResourceServiceClient<T> {
-        inner: tonic::client::Grpc<T>,
-    }
-    impl ResourceServiceClient<tonic::transport::Channel> {
-        /// Attempt to create a new client by connecting to a given endpoint.
-        pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
-        where
-            D: TryInto<tonic::transport::Endpoint>,
-            D::Error: Into<StdError>,
-        {
-            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
-            Ok(Self::new(conn))
-        }
-    }
-    impl<T> ResourceServiceClient<T>
-    where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
-        T::Error: Into<StdError>,
-        T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
-        <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
-    {
-        pub fn new(inner: T) -> Self {
-            let inner = tonic::client::Grpc::new(inner);
-            Self { inner }
-        }
-        pub fn with_origin(inner: T, origin: Uri) -> Self {
-            let inner = tonic::client::Grpc::with_origin(inner, origin);
-            Self { inner }
-        }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> ResourceServiceClient<InterceptedService<T, F>>
-        where
-            F: tonic::service::Interceptor,
-            T::ResponseBody: Default,
-            T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
-                >,
-            >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + std::marker::Send + std::marker::Sync,
-        {
-            ResourceServiceClient::new(InterceptedService::new(inner, interceptor))
-        }
-        /// Compress requests with the given encoding.
-        ///
-        /// This requires the server to support it otherwise it might respond with an
-        /// error.
-        #[must_use]
-        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.inner = self.inner.send_compressed(encoding);
-            self
-        }
-        /// Enable decompressing responses.
-        #[must_use]
-        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.inner = self.inner.accept_compressed(encoding);
-            self
-        }
-        /// Limits the maximum size of a decoded message.
-        ///
-        /// Default: `4MB`
-        #[must_use]
-        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
-            self.inner = self.inner.max_decoding_message_size(limit);
-            self
-        }
-        /// Limits the maximum size of an encoded message.
-        ///
-        /// Default: `usize::MAX`
-        #[must_use]
-        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
-            self.inner = self.inner.max_encoding_message_size(limit);
-            self
-        }
-        /// CreateResource creates a new resource.
-        pub async fn create_resource(
-            &mut self,
-            request: impl tonic::IntoRequest<super::CreateResourceRequest>,
-        ) -> std::result::Result<tonic::Response<super::Resource>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.ResourceService/CreateResource",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.ResourceService",
-                "CreateResource",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// ListResources lists all resources.
-        pub async fn list_resources(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListResourcesResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.ResourceService/ListResources");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.ResourceService",
-                "ListResources",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// GetResource returns a resource by name.
-        pub async fn get_resource(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetResourceRequest>,
-        ) -> std::result::Result<tonic::Response<super::Resource>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.ResourceService/GetResource");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.ResourceService",
-                "GetResource",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// GetResourceBinary returns a resource binary by name.
-        pub async fn get_resource_binary(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetResourceBinaryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::super::google::api::HttpBody>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.ResourceService/GetResourceBinary",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.ResourceService",
-                "GetResourceBinary",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// UpdateResource updates a resource.
-        pub async fn update_resource(
-            &mut self,
-            request: impl tonic::IntoRequest<super::UpdateResourceRequest>,
-        ) -> std::result::Result<tonic::Response<super::Resource>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.ResourceService/UpdateResource",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.ResourceService",
-                "UpdateResource",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// DeleteResource deletes a resource by name.
-        pub async fn delete_resource(
-            &mut self,
-            request: impl tonic::IntoRequest<super::DeleteResourceRequest>,
-        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.ResourceService/DeleteResource",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.ResourceService",
-                "DeleteResource",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-    }
-}
-/// Generated server implementations.
-pub mod resource_service_server {
-    #![allow(
-        unused_variables,
-        dead_code,
-        missing_docs,
-        clippy::wildcard_imports,
-        clippy::let_unit_value
-    )]
-    use tonic::codegen::*;
-    /// Generated trait containing gRPC methods that should be implemented for use with ResourceServiceServer.
-    #[async_trait]
-    pub trait ResourceService: std::marker::Send + std::marker::Sync + 'static {
-        /// CreateResource creates a new resource.
-        async fn create_resource(
-            &self,
-            request: tonic::Request<super::CreateResourceRequest>,
-        ) -> std::result::Result<tonic::Response<super::Resource>, tonic::Status>;
-        /// ListResources lists all resources.
-        async fn list_resources(
-            &self,
-            request: tonic::Request<super::ListResourcesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListResourcesResponse>, tonic::Status>;
-        /// GetResource returns a resource by name.
-        async fn get_resource(
-            &self,
-            request: tonic::Request<super::GetResourceRequest>,
-        ) -> std::result::Result<tonic::Response<super::Resource>, tonic::Status>;
-        /// GetResourceBinary returns a resource binary by name.
-        async fn get_resource_binary(
-            &self,
-            request: tonic::Request<super::GetResourceBinaryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::super::google::api::HttpBody>,
-            tonic::Status,
-        >;
-        /// UpdateResource updates a resource.
-        async fn update_resource(
-            &self,
-            request: tonic::Request<super::UpdateResourceRequest>,
-        ) -> std::result::Result<tonic::Response<super::Resource>, tonic::Status>;
-        /// DeleteResource deletes a resource by name.
-        async fn delete_resource(
-            &self,
-            request: tonic::Request<super::DeleteResourceRequest>,
-        ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
-    }
-    #[derive(Debug)]
-    pub struct ResourceServiceServer<T> {
-        inner: Arc<T>,
-        accept_compression_encodings: EnabledCompressionEncodings,
-        send_compression_encodings: EnabledCompressionEncodings,
-        max_decoding_message_size: Option<usize>,
-        max_encoding_message_size: Option<usize>,
-    }
-    impl<T> ResourceServiceServer<T> {
-        pub fn new(inner: T) -> Self {
-            Self::from_arc(Arc::new(inner))
-        }
-        pub fn from_arc(inner: Arc<T>) -> Self {
-            Self {
-                inner,
-                accept_compression_encodings: Default::default(),
-                send_compression_encodings: Default::default(),
-                max_decoding_message_size: None,
-                max_encoding_message_size: None,
-            }
-        }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
-        where
-            F: tonic::service::Interceptor,
-        {
-            InterceptedService::new(Self::new(inner), interceptor)
-        }
-        /// Enable decompressing requests with the given encoding.
-        #[must_use]
-        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.accept_compression_encodings.enable(encoding);
-            self
-        }
-        /// Compress responses with the given encoding, if the client supports it.
-        #[must_use]
-        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.send_compression_encodings.enable(encoding);
-            self
-        }
-        /// Limits the maximum size of a decoded message.
-        ///
-        /// Default: `4MB`
-        #[must_use]
-        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
-            self.max_decoding_message_size = Some(limit);
-            self
-        }
-        /// Limits the maximum size of an encoded message.
-        ///
-        /// Default: `usize::MAX`
-        #[must_use]
-        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
-            self.max_encoding_message_size = Some(limit);
-            self
-        }
-    }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for ResourceServiceServer<T>
-    where
-        T: ResourceService,
-        B: Body + std::marker::Send + 'static,
-        B::Error: Into<StdError> + std::marker::Send + 'static,
-    {
-        type Response = http::Response<tonic::body::BoxBody>;
-        type Error = std::convert::Infallible;
-        type Future = BoxFuture<Self::Response, Self::Error>;
-        fn poll_ready(
-            &mut self,
-            _cx: &mut Context<'_>,
-        ) -> Poll<std::result::Result<(), Self::Error>> {
-            Poll::Ready(Ok(()))
-        }
-        fn call(&mut self, req: http::Request<B>) -> Self::Future {
-            match req.uri().path() {
-                "/memos.api.v1.ResourceService/CreateResource" => {
-                    #[allow(non_camel_case_types)]
-                    struct CreateResourceSvc<T: ResourceService>(pub Arc<T>);
-                    impl<T: ResourceService>
-                        tonic::server::UnaryService<super::CreateResourceRequest>
-                        for CreateResourceSvc<T>
-                    {
-                        type Response = super::Resource;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::CreateResourceRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ResourceService>::create_resource(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = CreateResourceSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.ResourceService/ListResources" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListResourcesSvc<T: ResourceService>(pub Arc<T>);
-                    impl<T: ResourceService>
-                        tonic::server::UnaryService<super::ListResourcesRequest>
-                        for ListResourcesSvc<T>
-                    {
-                        type Response = super::ListResourcesResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListResourcesRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ResourceService>::list_resources(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ListResourcesSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.ResourceService/GetResource" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetResourceSvc<T: ResourceService>(pub Arc<T>);
-                    impl<T: ResourceService> tonic::server::UnaryService<super::GetResourceRequest>
-                        for GetResourceSvc<T>
-                    {
-                        type Response = super::Resource;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetResourceRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ResourceService>::get_resource(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetResourceSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.ResourceService/GetResourceBinary" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetResourceBinarySvc<T: ResourceService>(pub Arc<T>);
-                    impl<T: ResourceService>
-                        tonic::server::UnaryService<super::GetResourceBinaryRequest>
-                        for GetResourceBinarySvc<T>
-                    {
-                        type Response = super::super::super::super::google::api::HttpBody;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetResourceBinaryRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ResourceService>::get_resource_binary(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetResourceBinarySvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.ResourceService/UpdateResource" => {
-                    #[allow(non_camel_case_types)]
-                    struct UpdateResourceSvc<T: ResourceService>(pub Arc<T>);
-                    impl<T: ResourceService>
-                        tonic::server::UnaryService<super::UpdateResourceRequest>
-                        for UpdateResourceSvc<T>
-                    {
-                        type Response = super::Resource;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::UpdateResourceRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ResourceService>::update_resource(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = UpdateResourceSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.ResourceService/DeleteResource" => {
-                    #[allow(non_camel_case_types)]
-                    struct DeleteResourceSvc<T: ResourceService>(pub Arc<T>);
-                    impl<T: ResourceService>
-                        tonic::server::UnaryService<super::DeleteResourceRequest>
-                        for DeleteResourceSvc<T>
-                    {
-                        type Response = ();
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::DeleteResourceRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ResourceService>::delete_resource(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = DeleteResourceSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                _ => Box::pin(async move {
-                    let mut response = http::Response::new(empty_body());
-                    let headers = response.headers_mut();
-                    headers.insert(
-                        tonic::Status::GRPC_STATUS,
-                        (tonic::Code::Unimplemented as i32).into(),
-                    );
-                    headers.insert(
-                        http::header::CONTENT_TYPE,
-                        tonic::metadata::GRPC_CONTENT_TYPE,
-                    );
-                    Ok(response)
-                }),
-            }
-        }
-    }
-    impl<T> Clone for ResourceServiceServer<T> {
-        fn clone(&self) -> Self {
-            let inner = self.inner.clone();
-            Self {
-                inner,
-                accept_compression_encodings: self.accept_compression_encodings,
-                send_compression_encodings: self.send_compression_encodings,
-                max_decoding_message_size: self.max_decoding_message_size,
-                max_encoding_message_size: self.max_encoding_message_size,
-            }
-        }
-    }
-    /// Generated gRPC service name
-    pub const SERVICE_NAME: &str = "memos.api.v1.ResourceService";
-    impl<T> tonic::server::NamedService for ResourceServiceServer<T> {
-        const NAME: &'static str = SERVICE_NAME;
-    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Memo {
-    /// The name of the memo.
+    /// The resource name of the memo.
     /// Format: memos/{memo}, memo is the user defined id or uuid.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    #[prost(enumeration = "State", tag = "3")]
+    /// The state of the memo.
+    #[prost(enumeration = "State", tag = "2")]
     pub state: i32,
     /// The name of the creator.
     /// Format: users/{user}
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub creator: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "5")]
+    /// Output only. The creation timestamp.
+    #[prost(message, optional, tag = "4")]
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(message, optional, tag = "6")]
+    /// Output only. The last update timestamp.
+    #[prost(message, optional, tag = "5")]
     pub update_time: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(message, optional, tag = "7")]
+    /// The display timestamp of the memo.
+    #[prost(message, optional, tag = "6")]
     pub display_time: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(string, tag = "8")]
+    /// Required. The content of the memo in Markdown format.
+    #[prost(string, tag = "7")]
     pub content: ::prost::alloc::string::String,
-    #[prost(message, repeated, tag = "9")]
+    /// Output only. The parsed nodes from the content.
+    #[prost(message, repeated, tag = "8")]
     pub nodes: ::prost::alloc::vec::Vec<Node>,
-    #[prost(enumeration = "Visibility", tag = "10")]
+    /// The visibility of the memo.
+    #[prost(enumeration = "Visibility", tag = "9")]
     pub visibility: i32,
-    #[prost(string, repeated, tag = "11")]
+    /// Output only. The tags extracted from the content.
+    #[prost(string, repeated, tag = "10")]
     pub tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    #[prost(bool, tag = "12")]
+    /// Whether the memo is pinned.
+    #[prost(bool, tag = "11")]
     pub pinned: bool,
-    #[prost(message, repeated, tag = "14")]
-    pub resources: ::prost::alloc::vec::Vec<Resource>,
-    #[prost(message, repeated, tag = "15")]
+    /// Optional. The attachments of the memo.
+    #[prost(message, repeated, tag = "12")]
+    pub attachments: ::prost::alloc::vec::Vec<Attachment>,
+    /// Optional. The relations of the memo.
+    #[prost(message, repeated, tag = "13")]
     pub relations: ::prost::alloc::vec::Vec<MemoRelation>,
-    #[prost(message, repeated, tag = "16")]
+    /// Output only. The reactions to the memo.
+    #[prost(message, repeated, tag = "14")]
     pub reactions: ::prost::alloc::vec::Vec<Reaction>,
-    #[prost(message, optional, tag = "17")]
+    /// Output only. The computed properties of the memo.
+    #[prost(message, optional, tag = "15")]
     pub property: ::core::option::Option<memo::Property>,
-    /// The name of the parent memo.
-    /// Format: memos/{id}
-    #[prost(string, optional, tag = "18")]
+    /// Output only. The name of the parent memo.
+    /// Format: memos/{memo}
+    #[prost(string, optional, tag = "16")]
     pub parent: ::core::option::Option<::prost::alloc::string::String>,
-    /// The snippet of the memo content. Plain text only.
-    #[prost(string, tag = "19")]
+    /// Output only. The snippet of the memo content. Plain text only.
+    #[prost(string, tag = "17")]
     pub snippet: ::prost::alloc::string::String,
-    /// The location of the memo.
-    #[prost(message, optional, tag = "20")]
+    /// Optional. The location of the memo.
+    #[prost(message, optional, tag = "18")]
     pub location: ::core::option::Option<Location>,
 }
 /// Nested message and enum types in `Memo`.
 pub mod memo {
+    /// Computed properties of a memo.
     #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct Property {
         #[prost(bool, tag = "1")]
@@ -5481,128 +5750,176 @@ pub mod memo {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Location {
+    /// A placeholder text for the location.
     #[prost(string, tag = "1")]
     pub placeholder: ::prost::alloc::string::String,
+    /// The latitude of the location.
     #[prost(double, tag = "2")]
     pub latitude: f64,
+    /// The longitude of the location.
     #[prost(double, tag = "3")]
     pub longitude: f64,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateMemoRequest {
-    /// The memo to create.
+    /// Required. The memo to create.
     #[prost(message, optional, tag = "1")]
     pub memo: ::core::option::Option<Memo>,
+    /// Optional. The memo ID to use for this memo.
+    /// If empty, a unique ID will be generated.
+    #[prost(string, tag = "2")]
+    pub memo_id: ::prost::alloc::string::String,
+    /// Optional. If set, validate the request but don't actually create the memo.
+    #[prost(bool, tag = "3")]
+    pub validate_only: bool,
+    /// Optional. An idempotency token.
+    #[prost(string, tag = "4")]
+    pub request_id: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemosRequest {
-    /// The parent is the owner of the memos.
-    /// If not specified or `users/-`, it will list all memos.
-    #[prost(string, tag = "1")]
-    pub parent: ::prost::alloc::string::String,
-    /// The maximum number of memos to return.
-    #[prost(int32, tag = "2")]
+    /// Optional. The maximum number of memos to return.
+    /// The service may return fewer than this value.
+    /// If unspecified, at most 50 memos will be returned.
+    /// The maximum value is 1000; values above 1000 will be coerced to 1000.
+    #[prost(int32, tag = "1")]
     pub page_size: i32,
-    /// A page token, received from a previous `ListMemos` call.
+    /// Optional. A page token, received from a previous `ListMemos` call.
     /// Provide this to retrieve the subsequent page.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub page_token: ::prost::alloc::string::String,
-    /// The state of the memos to list.
+    /// Optional. The state of the memos to list.
     /// Default to `NORMAL`. Set to `ARCHIVED` to list archived memos.
-    #[prost(enumeration = "State", tag = "4")]
+    #[prost(enumeration = "State", tag = "3")]
     pub state: i32,
-    /// What field to sort the results by.
-    /// Default to display_time.
-    #[prost(string, tag = "5")]
-    pub sort: ::prost::alloc::string::String,
-    /// The direction to sort the results by.
-    /// Default to DESC.
-    #[prost(enumeration = "Direction", tag = "6")]
-    pub direction: i32,
+    /// Optional. The order to sort results by.
+    /// Default to "display_time desc".
+    /// Example: "display_time desc" or "create_time asc"
+    #[prost(string, tag = "4")]
+    pub order_by: ::prost::alloc::string::String,
+    /// Optional. Filter to apply to the list results.
     /// Filter is a CEL expression to filter memos.
     /// Refer to `Shortcut.filter`.
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "5")]
     pub filter: ::prost::alloc::string::String,
-    /// \[Deprecated\] Old filter contains some specific conditions to filter memos.
-    /// Format: "creator == 'users/{user}' && visibilities == \['PUBLIC', 'PROTECTED'\]"
-    #[prost(string, tag = "8")]
-    pub old_filter: ::prost::alloc::string::String,
+    /// Optional. If true, show deleted memos in the response.
+    #[prost(bool, tag = "6")]
+    pub show_deleted: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemosResponse {
+    /// The list of memos.
     #[prost(message, repeated, tag = "1")]
     pub memos: ::prost::alloc::vec::Vec<Memo>,
-    /// A token, which can be sent as `page_token` to retrieve the next page.
+    /// A token that can be sent as `page_token` to retrieve the next page.
     /// If this field is omitted, there are no subsequent pages.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of memos (may be approximate).
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetMemoRequest {
-    /// The name of the memo.
+    /// Required. The resource name of the memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Optional. The fields to return in the response.
+    /// If not specified, all fields are returned.
+    #[prost(message, optional, tag = "2")]
+    pub read_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateMemoRequest {
-    /// The memo to update.
+    /// Required. The memo to update.
     /// The `name` field is required.
     #[prost(message, optional, tag = "1")]
     pub memo: ::core::option::Option<Memo>,
+    /// Required. The list of fields to update.
     #[prost(message, optional, tag = "2")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+    /// Optional. If set to true, allows updating sensitive fields.
+    #[prost(bool, tag = "3")]
+    pub allow_missing: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteMemoRequest {
-    /// The name of the memo.
+    /// Required. The resource name of the memo to delete.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Optional. If set to true, the memo will be deleted even if it has associated data.
+    #[prost(bool, tag = "2")]
+    pub force: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RenameMemoTagRequest {
-    /// The parent, who owns the tags.
-    /// Format: memos/{id}. Use "memos/-" to rename all tags.
+    /// Required. The parent, who owns the tags.
+    /// Format: memos/{memo}. Use "memos/-" to rename all tags.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
+    /// Required. The old tag name to rename.
     #[prost(string, tag = "2")]
     pub old_tag: ::prost::alloc::string::String,
+    /// Required. The new tag name.
     #[prost(string, tag = "3")]
     pub new_tag: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteMemoTagRequest {
-    /// The parent, who owns the tags.
-    /// Format: memos/{id}. Use "memos/-" to delete all tags.
+    /// Required. The parent, who owns the tags.
+    /// Format: memos/{memo}. Use "memos/-" to delete all tags.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
+    /// Required. The tag name to delete.
     #[prost(string, tag = "2")]
     pub tag: ::prost::alloc::string::String,
+    /// Optional. Whether to delete related memos.
     #[prost(bool, tag = "3")]
     pub delete_related_memos: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SetMemoResourcesRequest {
-    /// The name of the memo.
+pub struct SetMemoAttachmentsRequest {
+    /// Required. The resource name of the memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Required. The attachments to set for the memo.
     #[prost(message, repeated, tag = "2")]
-    pub resources: ::prost::alloc::vec::Vec<Resource>,
+    pub attachments: ::prost::alloc::vec::Vec<Attachment>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemoResourcesRequest {
-    /// The name of the memo.
+pub struct ListMemoAttachmentsRequest {
+    /// Required. The resource name of the memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Optional. The maximum number of attachments to return.
+    #[prost(int32, tag = "2")]
+    pub page_size: i32,
+    /// Optional. A page token for pagination.
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListMemoResourcesResponse {
+pub struct ListMemoAttachmentsResponse {
+    /// The list of attachments.
     #[prost(message, repeated, tag = "1")]
-    pub resources: ::prost::alloc::vec::Vec<Resource>,
+    pub attachments: ::prost::alloc::vec::Vec<Attachment>,
+    /// A token for the next page of results.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of attachments.
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MemoRelation {
+    /// The memo in the relation.
     #[prost(message, optional, tag = "1")]
     pub memo: ::core::option::Option<memo_relation::Memo>,
+    /// The related memo.
     #[prost(message, optional, tag = "2")]
     pub related_memo: ::core::option::Option<memo_relation::Memo>,
     #[prost(enumeration = "memo_relation::Type", tag = "3")]
@@ -5610,18 +5927,18 @@ pub struct MemoRelation {
 }
 /// Nested message and enum types in `MemoRelation`.
 pub mod memo_relation {
+    /// Memo reference in relations.
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Memo {
-        /// The name of the memo.
-        /// Format: memos/{id}
+        /// The resource name of the memo.
+        /// Format: memos/{memo}
         #[prost(string, tag = "1")]
         pub name: ::prost::alloc::string::String,
+        /// Output only. The snippet of the memo content. Plain text only.
         #[prost(string, tag = "2")]
-        pub uid: ::prost::alloc::string::String,
-        /// The snippet of the memo content. Plain text only.
-        #[prost(string, tag = "3")]
         pub snippet: ::prost::alloc::string::String,
     }
+    /// The type of the relation.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Type {
@@ -5654,68 +5971,121 @@ pub mod memo_relation {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SetMemoRelationsRequest {
-    /// The name of the memo.
+    /// Required. The resource name of the memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Required. The relations to set for the memo.
     #[prost(message, repeated, tag = "2")]
     pub relations: ::prost::alloc::vec::Vec<MemoRelation>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoRelationsRequest {
-    /// The name of the memo.
+    /// Required. The resource name of the memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Optional. The maximum number of relations to return.
+    #[prost(int32, tag = "2")]
+    pub page_size: i32,
+    /// Optional. A page token for pagination.
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoRelationsResponse {
+    /// The list of relations.
     #[prost(message, repeated, tag = "1")]
     pub relations: ::prost::alloc::vec::Vec<MemoRelation>,
+    /// A token for the next page of results.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of relations.
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateMemoCommentRequest {
-    /// The name of the memo.
+    /// Required. The resource name of the memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// The comment to create.
+    /// Required. The comment to create.
     #[prost(message, optional, tag = "2")]
     pub comment: ::core::option::Option<Memo>,
+    /// Optional. The comment ID to use.
+    #[prost(string, tag = "3")]
+    pub comment_id: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoCommentsRequest {
-    /// The name of the memo.
+    /// Required. The resource name of the memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Optional. The maximum number of comments to return.
+    #[prost(int32, tag = "2")]
+    pub page_size: i32,
+    /// Optional. A page token for pagination.
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
+    /// Optional. The order to sort results by.
+    #[prost(string, tag = "4")]
+    pub order_by: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoCommentsResponse {
+    /// The list of comment memos.
     #[prost(message, repeated, tag = "1")]
     pub memos: ::prost::alloc::vec::Vec<Memo>,
+    /// A token for the next page of results.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of comments.
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoReactionsRequest {
-    /// The name of the memo.
+    /// Required. The resource name of the memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Optional. The maximum number of reactions to return.
+    #[prost(int32, tag = "2")]
+    pub page_size: i32,
+    /// Optional. A page token for pagination.
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListMemoReactionsResponse {
+    /// The list of reactions.
     #[prost(message, repeated, tag = "1")]
     pub reactions: ::prost::alloc::vec::Vec<Reaction>,
+    /// A token for the next page of results.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of reactions.
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpsertMemoReactionRequest {
-    /// The name of the memo.
+    /// Required. The resource name of the memo.
+    /// Format: memos/{memo}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// Required. The reaction to upsert.
     #[prost(message, optional, tag = "2")]
     pub reaction: ::core::option::Option<Reaction>,
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteMemoReactionRequest {
-    /// The id of the reaction.
-    /// Refer to the `Reaction.id`.
-    #[prost(int32, tag = "1")]
-    pub id: i32,
+    /// Required. The resource name of the reaction to delete.
+    /// Format: reactions/{reaction}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -5946,40 +6316,42 @@ pub mod memo_service_client {
                 .insert(GrpcMethod::new("memos.api.v1.MemoService", "DeleteMemoTag"));
             self.inner.unary(req, path, codec).await
         }
-        /// SetMemoResources sets resources for a memo.
-        pub async fn set_memo_resources(
+        /// SetMemoAttachments sets attachments for a memo.
+        pub async fn set_memo_attachments(
             &mut self,
-            request: impl tonic::IntoRequest<super::SetMemoResourcesRequest>,
+            request: impl tonic::IntoRequest<super::SetMemoAttachmentsRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.MemoService/SetMemoResources");
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.MemoService/SetMemoAttachments",
+            );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "memos.api.v1.MemoService",
-                "SetMemoResources",
+                "SetMemoAttachments",
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// ListMemoResources lists resources for a memo.
-        pub async fn list_memo_resources(
+        /// ListMemoAttachments lists attachments for a memo.
+        pub async fn list_memo_attachments(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListMemoResourcesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemoResourcesResponse>, tonic::Status>
+            request: impl tonic::IntoRequest<super::ListMemoAttachmentsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemoAttachmentsResponse>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.MemoService/ListMemoResources");
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.MemoService/ListMemoAttachments",
+            );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "memos.api.v1.MemoService",
-                "ListMemoResources",
+                "ListMemoAttachments",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -6164,16 +6536,16 @@ pub mod memo_service_server {
             &self,
             request: tonic::Request<super::DeleteMemoTagRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
-        /// SetMemoResources sets resources for a memo.
-        async fn set_memo_resources(
+        /// SetMemoAttachments sets attachments for a memo.
+        async fn set_memo_attachments(
             &self,
-            request: tonic::Request<super::SetMemoResourcesRequest>,
+            request: tonic::Request<super::SetMemoAttachmentsRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
-        /// ListMemoResources lists resources for a memo.
-        async fn list_memo_resources(
+        /// ListMemoAttachments lists attachments for a memo.
+        async fn list_memo_attachments(
             &self,
-            request: tonic::Request<super::ListMemoResourcesRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListMemoResourcesResponse>, tonic::Status>;
+            request: tonic::Request<super::ListMemoAttachmentsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListMemoAttachmentsResponse>, tonic::Status>;
         /// SetMemoRelations sets relations for a memo.
         async fn set_memo_relations(
             &self,
@@ -6559,21 +6931,22 @@ pub mod memo_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.MemoService/SetMemoResources" => {
+                "/memos.api.v1.MemoService/SetMemoAttachments" => {
                     #[allow(non_camel_case_types)]
-                    struct SetMemoResourcesSvc<T: MemoService>(pub Arc<T>);
-                    impl<T: MemoService> tonic::server::UnaryService<super::SetMemoResourcesRequest>
-                        for SetMemoResourcesSvc<T>
+                    struct SetMemoAttachmentsSvc<T: MemoService>(pub Arc<T>);
+                    impl<T: MemoService>
+                        tonic::server::UnaryService<super::SetMemoAttachmentsRequest>
+                        for SetMemoAttachmentsSvc<T>
                     {
                         type Response = ();
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::SetMemoResourcesRequest>,
+                            request: tonic::Request<super::SetMemoAttachmentsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as MemoService>::set_memo_resources(&inner, request).await
+                                <T as MemoService>::set_memo_attachments(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -6584,7 +6957,7 @@ pub mod memo_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = SetMemoResourcesSvc(inner);
+                        let method = SetMemoAttachmentsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -6600,22 +6973,22 @@ pub mod memo_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.MemoService/ListMemoResources" => {
+                "/memos.api.v1.MemoService/ListMemoAttachments" => {
                     #[allow(non_camel_case_types)]
-                    struct ListMemoResourcesSvc<T: MemoService>(pub Arc<T>);
+                    struct ListMemoAttachmentsSvc<T: MemoService>(pub Arc<T>);
                     impl<T: MemoService>
-                        tonic::server::UnaryService<super::ListMemoResourcesRequest>
-                        for ListMemoResourcesSvc<T>
+                        tonic::server::UnaryService<super::ListMemoAttachmentsRequest>
+                        for ListMemoAttachmentsSvc<T>
                     {
-                        type Response = super::ListMemoResourcesResponse;
+                        type Response = super::ListMemoAttachmentsResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListMemoResourcesRequest>,
+                            request: tonic::Request<super::ListMemoAttachmentsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as MemoService>::list_memo_resources(&inner, request).await
+                                <T as MemoService>::list_memo_attachments(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -6626,7 +6999,7 @@ pub mod memo_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = ListMemoResourcesSvc(inner);
+                        let method = ListMemoAttachmentsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -6969,70 +7342,669 @@ pub mod memo_service_server {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Webhook {
-    #[prost(int32, tag = "1")]
-    pub id: i32,
-    /// The name of the creator.
-    #[prost(string, tag = "2")]
-    pub creator: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "3")]
-    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(message, optional, tag = "4")]
-    pub update_time: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(string, tag = "5")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(string, tag = "6")]
-    pub url: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateWebhookRequest {
+pub struct Shortcut {
+    /// The resource name of the shortcut.
+    /// Format: users/{user}/shortcuts/{shortcut}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    /// The title of the shortcut.
     #[prost(string, tag = "2")]
-    pub url: ::prost::alloc::string::String,
+    pub title: ::prost::alloc::string::String,
+    /// The filter expression for the shortcut.
+    #[prost(string, tag = "3")]
+    pub filter: ::prost::alloc::string::String,
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct GetWebhookRequest {
-    #[prost(int32, tag = "1")]
-    pub id: i32,
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListShortcutsRequest {
+    /// Required. The parent resource where shortcuts are listed.
+    /// Format: users/{user}
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListShortcutsResponse {
+    /// The list of shortcuts.
+    #[prost(message, repeated, tag = "1")]
+    pub shortcuts: ::prost::alloc::vec::Vec<Shortcut>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetShortcutRequest {
+    /// Required. The resource name of the shortcut to retrieve.
+    /// Format: users/{user}/shortcuts/{shortcut}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateShortcutRequest {
+    /// Required. The parent resource where this shortcut will be created.
+    /// Format: users/{user}
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    /// Required. The shortcut to create.
+    #[prost(message, optional, tag = "2")]
+    pub shortcut: ::core::option::Option<Shortcut>,
+    /// Optional. If set, validate the request, but do not actually create the shortcut.
+    #[prost(bool, tag = "3")]
+    pub validate_only: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateShortcutRequest {
+    /// Required. The shortcut resource which replaces the resource on the server.
+    #[prost(message, optional, tag = "1")]
+    pub shortcut: ::core::option::Option<Shortcut>,
+    /// Optional. The list of fields to update.
+    #[prost(message, optional, tag = "2")]
+    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteShortcutRequest {
+    /// Required. The resource name of the shortcut to delete.
+    /// Format: users/{user}/shortcuts/{shortcut}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// Generated client implementations.
+pub mod shortcut_service_client {
+    #![allow(
+        unused_variables,
+        dead_code,
+        missing_docs,
+        clippy::wildcard_imports,
+        clippy::let_unit_value
+    )]
+    use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
+    #[derive(Debug, Clone)]
+    pub struct ShortcutServiceClient<T> {
+        inner: tonic::client::Grpc<T>,
+    }
+    impl ShortcutServiceClient<tonic::transport::Channel> {
+        /// Attempt to create a new client by connecting to a given endpoint.
+        pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
+        where
+            D: TryInto<tonic::transport::Endpoint>,
+            D::Error: Into<StdError>,
+        {
+            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
+            Ok(Self::new(conn))
+        }
+    }
+    impl<T> ShortcutServiceClient<T>
+    where
+        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
+        <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
+    {
+        pub fn new(inner: T) -> Self {
+            let inner = tonic::client::Grpc::new(inner);
+            Self { inner }
+        }
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> ShortcutServiceClient<InterceptedService<T, F>>
+        where
+            F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
+            T: tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
+            >,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
+        {
+            ShortcutServiceClient::new(InterceptedService::new(inner, interceptor))
+        }
+        /// Compress requests with the given encoding.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
+            self
+        }
+        /// Enable decompressing responses.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
+        /// ListShortcuts returns a list of shortcuts for a user.
+        pub async fn list_shortcuts(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListShortcutsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListShortcutsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.ShortcutService/ListShortcuts");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.ShortcutService",
+                "ListShortcuts",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// GetShortcut gets a shortcut by name.
+        pub async fn get_shortcut(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.ShortcutService/GetShortcut");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.ShortcutService",
+                "GetShortcut",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// CreateShortcut creates a new shortcut for a user.
+        pub async fn create_shortcut(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.ShortcutService/CreateShortcut",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.ShortcutService",
+                "CreateShortcut",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// UpdateShortcut updates a shortcut for a user.
+        pub async fn update_shortcut(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.ShortcutService/UpdateShortcut",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.ShortcutService",
+                "UpdateShortcut",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// DeleteShortcut deletes a shortcut for a user.
+        pub async fn delete_shortcut(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.ShortcutService/DeleteShortcut",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.ShortcutService",
+                "DeleteShortcut",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+    }
+}
+/// Generated server implementations.
+pub mod shortcut_service_server {
+    #![allow(
+        unused_variables,
+        dead_code,
+        missing_docs,
+        clippy::wildcard_imports,
+        clippy::let_unit_value
+    )]
+    use tonic::codegen::*;
+    /// Generated trait containing gRPC methods that should be implemented for use with ShortcutServiceServer.
+    #[async_trait]
+    pub trait ShortcutService: std::marker::Send + std::marker::Sync + 'static {
+        /// ListShortcuts returns a list of shortcuts for a user.
+        async fn list_shortcuts(
+            &self,
+            request: tonic::Request<super::ListShortcutsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListShortcutsResponse>, tonic::Status>;
+        /// GetShortcut gets a shortcut by name.
+        async fn get_shortcut(
+            &self,
+            request: tonic::Request<super::GetShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status>;
+        /// CreateShortcut creates a new shortcut for a user.
+        async fn create_shortcut(
+            &self,
+            request: tonic::Request<super::CreateShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status>;
+        /// UpdateShortcut updates a shortcut for a user.
+        async fn update_shortcut(
+            &self,
+            request: tonic::Request<super::UpdateShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<super::Shortcut>, tonic::Status>;
+        /// DeleteShortcut deletes a shortcut for a user.
+        async fn delete_shortcut(
+            &self,
+            request: tonic::Request<super::DeleteShortcutRequest>,
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
+    }
+    #[derive(Debug)]
+    pub struct ShortcutServiceServer<T> {
+        inner: Arc<T>,
+        accept_compression_encodings: EnabledCompressionEncodings,
+        send_compression_encodings: EnabledCompressionEncodings,
+        max_decoding_message_size: Option<usize>,
+        max_encoding_message_size: Option<usize>,
+    }
+    impl<T> ShortcutServiceServer<T> {
+        pub fn new(inner: T) -> Self {
+            Self::from_arc(Arc::new(inner))
+        }
+        pub fn from_arc(inner: Arc<T>) -> Self {
+            Self {
+                inner,
+                accept_compression_encodings: Default::default(),
+                send_compression_encodings: Default::default(),
+                max_decoding_message_size: None,
+                max_encoding_message_size: None,
+            }
+        }
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
+        where
+            F: tonic::service::Interceptor,
+        {
+            InterceptedService::new(Self::new(inner), interceptor)
+        }
+        /// Enable decompressing requests with the given encoding.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.accept_compression_encodings.enable(encoding);
+            self
+        }
+        /// Compress responses with the given encoding, if the client supports it.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.send_compression_encodings.enable(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.max_decoding_message_size = Some(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.max_encoding_message_size = Some(limit);
+            self
+        }
+    }
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for ShortcutServiceServer<T>
+    where
+        T: ShortcutService,
+        B: Body + std::marker::Send + 'static,
+        B::Error: Into<StdError> + std::marker::Send + 'static,
+    {
+        type Response = http::Response<tonic::body::BoxBody>;
+        type Error = std::convert::Infallible;
+        type Future = BoxFuture<Self::Response, Self::Error>;
+        fn poll_ready(
+            &mut self,
+            _cx: &mut Context<'_>,
+        ) -> Poll<std::result::Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+        fn call(&mut self, req: http::Request<B>) -> Self::Future {
+            match req.uri().path() {
+                "/memos.api.v1.ShortcutService/ListShortcuts" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListShortcutsSvc<T: ShortcutService>(pub Arc<T>);
+                    impl<T: ShortcutService>
+                        tonic::server::UnaryService<super::ListShortcutsRequest>
+                        for ListShortcutsSvc<T>
+                    {
+                        type Response = super::ListShortcutsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListShortcutsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ShortcutService>::list_shortcuts(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListShortcutsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.ShortcutService/GetShortcut" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetShortcutSvc<T: ShortcutService>(pub Arc<T>);
+                    impl<T: ShortcutService> tonic::server::UnaryService<super::GetShortcutRequest>
+                        for GetShortcutSvc<T>
+                    {
+                        type Response = super::Shortcut;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetShortcutRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ShortcutService>::get_shortcut(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetShortcutSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.ShortcutService/CreateShortcut" => {
+                    #[allow(non_camel_case_types)]
+                    struct CreateShortcutSvc<T: ShortcutService>(pub Arc<T>);
+                    impl<T: ShortcutService>
+                        tonic::server::UnaryService<super::CreateShortcutRequest>
+                        for CreateShortcutSvc<T>
+                    {
+                        type Response = super::Shortcut;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CreateShortcutRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ShortcutService>::create_shortcut(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CreateShortcutSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.ShortcutService/UpdateShortcut" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateShortcutSvc<T: ShortcutService>(pub Arc<T>);
+                    impl<T: ShortcutService>
+                        tonic::server::UnaryService<super::UpdateShortcutRequest>
+                        for UpdateShortcutSvc<T>
+                    {
+                        type Response = super::Shortcut;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateShortcutRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ShortcutService>::update_shortcut(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateShortcutSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.ShortcutService/DeleteShortcut" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteShortcutSvc<T: ShortcutService>(pub Arc<T>);
+                    impl<T: ShortcutService>
+                        tonic::server::UnaryService<super::DeleteShortcutRequest>
+                        for DeleteShortcutSvc<T>
+                    {
+                        type Response = ();
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteShortcutRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ShortcutService>::delete_shortcut(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DeleteShortcutSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(empty_body());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
+            }
+        }
+    }
+    impl<T> Clone for ShortcutServiceServer<T> {
+        fn clone(&self) -> Self {
+            let inner = self.inner.clone();
+            Self {
+                inner,
+                accept_compression_encodings: self.accept_compression_encodings,
+                send_compression_encodings: self.send_compression_encodings,
+                max_decoding_message_size: self.max_decoding_message_size,
+                max_encoding_message_size: self.max_encoding_message_size,
+            }
+        }
+    }
+    /// Generated gRPC service name
+    pub const SERVICE_NAME: &str = "memos.api.v1.ShortcutService";
+    impl<T> tonic::server::NamedService for ShortcutServiceServer<T> {
+        const NAME: &'static str = SERVICE_NAME;
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Webhook {
+    /// The resource name of the webhook.
+    /// Format: users/{user}/webhooks/{webhook}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The display name of the webhook.
+    #[prost(string, tag = "2")]
+    pub display_name: ::prost::alloc::string::String,
+    /// The target URL for the webhook.
+    #[prost(string, tag = "3")]
+    pub url: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListWebhooksRequest {
-    /// The name of the creator.
-    #[prost(string, tag = "2")]
-    pub creator: ::prost::alloc::string::String,
+    /// Required. The parent resource where webhooks are listed.
+    /// Format: users/{user}
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListWebhooksResponse {
+    /// The list of webhooks.
     #[prost(message, repeated, tag = "1")]
     pub webhooks: ::prost::alloc::vec::Vec<Webhook>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetWebhookRequest {
+    /// Required. The resource name of the webhook to retrieve.
+    /// Format: users/{user}/webhooks/{webhook}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateWebhookRequest {
+    /// Required. The parent resource where this webhook will be created.
+    /// Format: users/{user}
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    /// Required. The webhook to create.
+    #[prost(message, optional, tag = "2")]
+    pub webhook: ::core::option::Option<Webhook>,
+    /// Optional. If set, validate the request, but do not actually create the webhook.
+    #[prost(bool, tag = "3")]
+    pub validate_only: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateWebhookRequest {
+    /// Required. The webhook resource which replaces the resource on the server.
     #[prost(message, optional, tag = "1")]
     pub webhook: ::core::option::Option<Webhook>,
+    /// Optional. The list of fields to update.
     #[prost(message, optional, tag = "2")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct DeleteWebhookRequest {
-    #[prost(int32, tag = "1")]
-    pub id: i32,
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WebhookRequestPayload {
+pub struct DeleteWebhookRequest {
+    /// Required. The resource name of the webhook to delete.
+    /// Format: users/{user}/webhooks/{webhook}
     #[prost(string, tag = "1")]
-    pub url: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub activity_type: ::prost::alloc::string::String,
-    /// The name of the creator.
-    /// Format: users/{user}
-    #[prost(string, tag = "3")]
-    pub creator: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "4")]
-    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(message, optional, tag = "5")]
-    pub memo: ::core::option::Option<Memo>,
+    pub name: ::prost::alloc::string::String,
 }
 /// Generated client implementations.
 pub mod webhook_service_client {
@@ -7124,41 +8096,7 @@ pub mod webhook_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// CreateWebhook creates a new webhook.
-        pub async fn create_webhook(
-            &mut self,
-            request: impl tonic::IntoRequest<super::CreateWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.WebhookService/CreateWebhook");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.WebhookService",
-                "CreateWebhook",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// GetWebhook returns a webhook by id.
-        pub async fn get_webhook(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.WebhookService/GetWebhook");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.WebhookService", "GetWebhook"));
-            self.inner.unary(req, path, codec).await
-        }
-        /// ListWebhooks returns a list of webhooks.
+        /// ListWebhooks returns a list of webhooks for a user.
         pub async fn list_webhooks(
             &mut self,
             request: impl tonic::IntoRequest<super::ListWebhooksRequest>,
@@ -7177,7 +8115,41 @@ pub mod webhook_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// UpdateWebhook updates a webhook.
+        /// GetWebhook gets a webhook by name.
+        pub async fn get_webhook(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetWebhookRequest>,
+        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.WebhookService/GetWebhook");
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("memos.api.v1.WebhookService", "GetWebhook"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// CreateWebhook creates a new webhook for a user.
+        pub async fn create_webhook(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateWebhookRequest>,
+        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.WebhookService/CreateWebhook");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.WebhookService",
+                "CreateWebhook",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// UpdateWebhook updates a webhook for a user.
         pub async fn update_webhook(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateWebhookRequest>,
@@ -7195,7 +8167,7 @@ pub mod webhook_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// DeleteWebhook deletes a webhook by id.
+        /// DeleteWebhook deletes a webhook for a user.
         pub async fn delete_webhook(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteWebhookRequest>,
@@ -7228,27 +8200,27 @@ pub mod webhook_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with WebhookServiceServer.
     #[async_trait]
     pub trait WebhookService: std::marker::Send + std::marker::Sync + 'static {
-        /// CreateWebhook creates a new webhook.
-        async fn create_webhook(
-            &self,
-            request: tonic::Request<super::CreateWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status>;
-        /// GetWebhook returns a webhook by id.
-        async fn get_webhook(
-            &self,
-            request: tonic::Request<super::GetWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status>;
-        /// ListWebhooks returns a list of webhooks.
+        /// ListWebhooks returns a list of webhooks for a user.
         async fn list_webhooks(
             &self,
             request: tonic::Request<super::ListWebhooksRequest>,
         ) -> std::result::Result<tonic::Response<super::ListWebhooksResponse>, tonic::Status>;
-        /// UpdateWebhook updates a webhook.
+        /// GetWebhook gets a webhook by name.
+        async fn get_webhook(
+            &self,
+            request: tonic::Request<super::GetWebhookRequest>,
+        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status>;
+        /// CreateWebhook creates a new webhook for a user.
+        async fn create_webhook(
+            &self,
+            request: tonic::Request<super::CreateWebhookRequest>,
+        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status>;
+        /// UpdateWebhook updates a webhook for a user.
         async fn update_webhook(
             &self,
             request: tonic::Request<super::UpdateWebhookRequest>,
         ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status>;
-        /// DeleteWebhook deletes a webhook by id.
+        /// DeleteWebhook deletes a webhook for a user.
         async fn delete_webhook(
             &self,
             request: tonic::Request<super::DeleteWebhookRequest>,
@@ -7327,21 +8299,21 @@ pub mod webhook_service_server {
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             match req.uri().path() {
-                "/memos.api.v1.WebhookService/CreateWebhook" => {
+                "/memos.api.v1.WebhookService/ListWebhooks" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateWebhookSvc<T: WebhookService>(pub Arc<T>);
-                    impl<T: WebhookService> tonic::server::UnaryService<super::CreateWebhookRequest>
-                        for CreateWebhookSvc<T>
+                    struct ListWebhooksSvc<T: WebhookService>(pub Arc<T>);
+                    impl<T: WebhookService> tonic::server::UnaryService<super::ListWebhooksRequest>
+                        for ListWebhooksSvc<T>
                     {
-                        type Response = super::Webhook;
+                        type Response = super::ListWebhooksResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::CreateWebhookRequest>,
+                            request: tonic::Request<super::ListWebhooksRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as WebhookService>::create_webhook(&inner, request).await
+                                <T as WebhookService>::list_webhooks(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -7352,7 +8324,7 @@ pub mod webhook_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = CreateWebhookSvc(inner);
+                        let method = ListWebhooksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -7407,21 +8379,21 @@ pub mod webhook_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.WebhookService/ListWebhooks" => {
+                "/memos.api.v1.WebhookService/CreateWebhook" => {
                     #[allow(non_camel_case_types)]
-                    struct ListWebhooksSvc<T: WebhookService>(pub Arc<T>);
-                    impl<T: WebhookService> tonic::server::UnaryService<super::ListWebhooksRequest>
-                        for ListWebhooksSvc<T>
+                    struct CreateWebhookSvc<T: WebhookService>(pub Arc<T>);
+                    impl<T: WebhookService> tonic::server::UnaryService<super::CreateWebhookRequest>
+                        for CreateWebhookSvc<T>
                     {
-                        type Response = super::ListWebhooksResponse;
+                        type Response = super::Webhook;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListWebhooksRequest>,
+                            request: tonic::Request<super::CreateWebhookRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as WebhookService>::list_webhooks(&inner, request).await
+                                <T as WebhookService>::create_webhook(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -7432,7 +8404,7 @@ pub mod webhook_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = ListWebhooksSvc(inner);
+                        let method = CreateWebhookSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -7564,24 +8536,254 @@ pub mod webhook_service_server {
         const NAME: &'static str = SERVICE_NAME;
     }
 }
+/// Workspace profile message containing basic workspace information.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceProfile {
     /// The name of instance owner.
     /// Format: users/{user}
     #[prost(string, tag = "1")]
     pub owner: ::prost::alloc::string::String,
-    /// version is the current version of instance
+    /// Version is the current version of instance.
     #[prost(string, tag = "2")]
     pub version: ::prost::alloc::string::String,
-    /// mode is the instance mode (e.g. "prod", "dev" or "demo").
+    /// Mode is the instance mode (e.g. "prod", "dev" or "demo").
     #[prost(string, tag = "3")]
     pub mode: ::prost::alloc::string::String,
-    /// instance_url is the URL of the instance.
+    /// Instance URL is the URL of the instance.
     #[prost(string, tag = "6")]
     pub instance_url: ::prost::alloc::string::String,
 }
+/// Request for workspace profile.
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct GetWorkspaceProfileRequest {}
+/// A workspace setting resource.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WorkspaceSetting {
+    /// The name of the workspace setting.
+    /// Format: workspace/settings/{setting}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(oneof = "workspace_setting::Value", tags = "2, 3, 4")]
+    pub value: ::core::option::Option<workspace_setting::Value>,
+}
+/// Nested message and enum types in `WorkspaceSetting`.
+pub mod workspace_setting {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Key {
+        Unspecified = 0,
+        /// BASIC is the key for basic settings.
+        Basic = 1,
+        /// GENERAL is the key for general settings.
+        General = 2,
+        /// STORAGE is the key for storage settings.
+        Storage = 3,
+        /// MEMO_RELATED is the key for memo related settings.
+        MemoRelated = 4,
+    }
+    impl Key {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "KEY_UNSPECIFIED",
+                Self::Basic => "BASIC",
+                Self::General => "GENERAL",
+                Self::Storage => "STORAGE",
+                Self::MemoRelated => "MEMO_RELATED",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "KEY_UNSPECIFIED" => Some(Self::Unspecified),
+                "BASIC" => Some(Self::Basic),
+                "GENERAL" => Some(Self::General),
+                "STORAGE" => Some(Self::Storage),
+                "MEMO_RELATED" => Some(Self::MemoRelated),
+                _ => None,
+            }
+        }
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Value {
+        #[prost(message, tag = "2")]
+        GeneralSetting(super::WorkspaceGeneralSetting),
+        #[prost(message, tag = "3")]
+        StorageSetting(super::WorkspaceStorageSetting),
+        #[prost(message, tag = "4")]
+        MemoRelatedSetting(super::WorkspaceMemoRelatedSetting),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WorkspaceGeneralSetting {
+    /// theme is the name of the selected theme.
+    /// This references a CSS file in the web/public/themes/ directory.
+    #[prost(string, tag = "1")]
+    pub theme: ::prost::alloc::string::String,
+    /// disallow_user_registration disallows user registration.
+    #[prost(bool, tag = "2")]
+    pub disallow_user_registration: bool,
+    /// disallow_password_auth disallows password authentication.
+    #[prost(bool, tag = "3")]
+    pub disallow_password_auth: bool,
+    /// additional_script is the additional script.
+    #[prost(string, tag = "4")]
+    pub additional_script: ::prost::alloc::string::String,
+    /// additional_style is the additional style.
+    #[prost(string, tag = "5")]
+    pub additional_style: ::prost::alloc::string::String,
+    /// custom_profile is the custom profile.
+    #[prost(message, optional, tag = "6")]
+    pub custom_profile: ::core::option::Option<WorkspaceCustomProfile>,
+    /// week_start_day_offset is the week start day offset from Sunday.
+    /// 0: Sunday, 1: Monday, 2: Tuesday, 3: Wednesday, 4: Thursday, 5: Friday, 6: Saturday
+    /// Default is Sunday.
+    #[prost(int32, tag = "7")]
+    pub week_start_day_offset: i32,
+    /// disallow_change_username disallows changing username.
+    #[prost(bool, tag = "8")]
+    pub disallow_change_username: bool,
+    /// disallow_change_nickname disallows changing nickname.
+    #[prost(bool, tag = "9")]
+    pub disallow_change_nickname: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WorkspaceCustomProfile {
+    #[prost(string, tag = "1")]
+    pub title: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub description: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub logo_url: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub locale: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub appearance: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WorkspaceStorageSetting {
+    /// storage_type is the storage type.
+    #[prost(enumeration = "workspace_storage_setting::StorageType", tag = "1")]
+    pub storage_type: i32,
+    /// The template of file path.
+    /// e.g. assets/{timestamp}_{filename}
+    #[prost(string, tag = "2")]
+    pub filepath_template: ::prost::alloc::string::String,
+    /// The max upload size in megabytes.
+    #[prost(int64, tag = "3")]
+    pub upload_size_limit_mb: i64,
+    /// The S3 config.
+    #[prost(message, optional, tag = "4")]
+    pub s3_config: ::core::option::Option<workspace_storage_setting::S3Config>,
+}
+/// Nested message and enum types in `WorkspaceStorageSetting`.
+pub mod workspace_storage_setting {
+    /// Reference: <https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/>
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct S3Config {
+        #[prost(string, tag = "1")]
+        pub access_key_id: ::prost::alloc::string::String,
+        #[prost(string, tag = "2")]
+        pub access_key_secret: ::prost::alloc::string::String,
+        #[prost(string, tag = "3")]
+        pub endpoint: ::prost::alloc::string::String,
+        #[prost(string, tag = "4")]
+        pub region: ::prost::alloc::string::String,
+        #[prost(string, tag = "5")]
+        pub bucket: ::prost::alloc::string::String,
+        #[prost(bool, tag = "6")]
+        pub use_path_style: bool,
+    }
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum StorageType {
+        Unspecified = 0,
+        /// DATABASE is the database storage type.
+        Database = 1,
+        /// LOCAL is the local storage type.
+        Local = 2,
+        /// S3 is the S3 storage type.
+        S3 = 3,
+    }
+    impl StorageType {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "STORAGE_TYPE_UNSPECIFIED",
+                Self::Database => "DATABASE",
+                Self::Local => "LOCAL",
+                Self::S3 => "S3",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "STORAGE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                "DATABASE" => Some(Self::Database),
+                "LOCAL" => Some(Self::Local),
+                "S3" => Some(Self::S3),
+                _ => None,
+            }
+        }
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WorkspaceMemoRelatedSetting {
+    /// disallow_public_visibility disallows set memo as public visibility.
+    #[prost(bool, tag = "1")]
+    pub disallow_public_visibility: bool,
+    /// display_with_update_time orders and displays memo with update time.
+    #[prost(bool, tag = "2")]
+    pub display_with_update_time: bool,
+    /// content_length_limit is the limit of content length. Unit is byte.
+    #[prost(int32, tag = "3")]
+    pub content_length_limit: i32,
+    /// enable_double_click_edit enables editing on double click.
+    #[prost(bool, tag = "4")]
+    pub enable_double_click_edit: bool,
+    /// enable_link_preview enables links preview.
+    #[prost(bool, tag = "5")]
+    pub enable_link_preview: bool,
+    /// enable_comment enables comment.
+    #[prost(bool, tag = "6")]
+    pub enable_comment: bool,
+    /// reactions is the list of reactions.
+    #[prost(string, repeated, tag = "7")]
+    pub reactions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// disable_markdown_shortcuts disallow the registration of markdown shortcuts.
+    #[prost(bool, tag = "8")]
+    pub disable_markdown_shortcuts: bool,
+    /// enable_blur_nsfw_content enables blurring of content marked as not safe for work (NSFW).
+    #[prost(bool, tag = "9")]
+    pub enable_blur_nsfw_content: bool,
+    /// nsfw_tags is the list of tags that mark content as NSFW for blurring.
+    #[prost(string, repeated, tag = "10")]
+    pub nsfw_tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+/// Request message for GetWorkspaceSetting method.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetWorkspaceSettingRequest {
+    /// The resource name of the workspace setting.
+    /// Format: workspace/settings/{setting}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// Request message for UpdateWorkspaceSetting method.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateWorkspaceSettingRequest {
+    /// The workspace setting resource which replaces the resource on the server.
+    #[prost(message, optional, tag = "1")]
+    pub setting: ::core::option::Option<WorkspaceSetting>,
+    /// The list of fields to update.
+    #[prost(message, optional, tag = "2")]
+    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+}
 /// Generated client implementations.
 pub mod workspace_service_client {
     #![allow(
@@ -7672,7 +8874,7 @@ pub mod workspace_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// GetWorkspaceProfile returns the workspace profile.
+        /// Gets the workspace profile.
         pub async fn get_workspace_profile(
             &mut self,
             request: impl tonic::IntoRequest<super::GetWorkspaceProfileRequest>,
@@ -7691,6 +8893,44 @@ pub mod workspace_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Gets a workspace setting.
+        pub async fn get_workspace_setting(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetWorkspaceSettingRequest>,
+        ) -> std::result::Result<tonic::Response<super::WorkspaceSetting>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.WorkspaceService/GetWorkspaceSetting",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.WorkspaceService",
+                "GetWorkspaceSetting",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Updates a workspace setting.
+        pub async fn update_workspace_setting(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateWorkspaceSettingRequest>,
+        ) -> std::result::Result<tonic::Response<super::WorkspaceSetting>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/memos.api.v1.WorkspaceService/UpdateWorkspaceSetting",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.WorkspaceService",
+                "UpdateWorkspaceSetting",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -7706,11 +8946,21 @@ pub mod workspace_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with WorkspaceServiceServer.
     #[async_trait]
     pub trait WorkspaceService: std::marker::Send + std::marker::Sync + 'static {
-        /// GetWorkspaceProfile returns the workspace profile.
+        /// Gets the workspace profile.
         async fn get_workspace_profile(
             &self,
             request: tonic::Request<super::GetWorkspaceProfileRequest>,
         ) -> std::result::Result<tonic::Response<super::WorkspaceProfile>, tonic::Status>;
+        /// Gets a workspace setting.
+        async fn get_workspace_setting(
+            &self,
+            request: tonic::Request<super::GetWorkspaceSettingRequest>,
+        ) -> std::result::Result<tonic::Response<super::WorkspaceSetting>, tonic::Status>;
+        /// Updates a workspace setting.
+        async fn update_workspace_setting(
+            &self,
+            request: tonic::Request<super::UpdateWorkspaceSettingRequest>,
+        ) -> std::result::Result<tonic::Response<super::WorkspaceSetting>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct WorkspaceServiceServer<T> {
@@ -7828,6 +9078,92 @@ pub mod workspace_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/memos.api.v1.WorkspaceService/GetWorkspaceSetting" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetWorkspaceSettingSvc<T: WorkspaceService>(pub Arc<T>);
+                    impl<T: WorkspaceService>
+                        tonic::server::UnaryService<super::GetWorkspaceSettingRequest>
+                        for GetWorkspaceSettingSvc<T>
+                    {
+                        type Response = super::WorkspaceSetting;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetWorkspaceSettingRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as WorkspaceService>::get_workspace_setting(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetWorkspaceSettingSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.WorkspaceService/UpdateWorkspaceSetting" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateWorkspaceSettingSvc<T: WorkspaceService>(pub Arc<T>);
+                    impl<T: WorkspaceService>
+                        tonic::server::UnaryService<super::UpdateWorkspaceSettingRequest>
+                        for UpdateWorkspaceSettingSvc<T>
+                    {
+                        type Response = super::WorkspaceSetting;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateWorkspaceSettingRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as WorkspaceService>::update_workspace_setting(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateWorkspaceSettingSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 _ => Box::pin(async move {
                     let mut response = http::Response::new(empty_body());
                     let headers = response.headers_mut();
@@ -7859,539 +9195,6 @@ pub mod workspace_service_server {
     /// Generated gRPC service name
     pub const SERVICE_NAME: &str = "memos.api.v1.WorkspaceService";
     impl<T> tonic::server::NamedService for WorkspaceServiceServer<T> {
-        const NAME: &'static str = SERVICE_NAME;
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WorkspaceSetting {
-    /// name is the name of the setting.
-    /// Format: settings/{setting}
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(oneof = "workspace_setting::Value", tags = "2, 3, 4")]
-    pub value: ::core::option::Option<workspace_setting::Value>,
-}
-/// Nested message and enum types in `WorkspaceSetting`.
-pub mod workspace_setting {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Value {
-        #[prost(message, tag = "2")]
-        GeneralSetting(super::WorkspaceGeneralSetting),
-        #[prost(message, tag = "3")]
-        StorageSetting(super::WorkspaceStorageSetting),
-        #[prost(message, tag = "4")]
-        MemoRelatedSetting(super::WorkspaceMemoRelatedSetting),
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WorkspaceGeneralSetting {
-    /// disallow_user_registration disallows user registration.
-    #[prost(bool, tag = "1")]
-    pub disallow_user_registration: bool,
-    /// disallow_password_auth disallows password authentication.
-    #[prost(bool, tag = "2")]
-    pub disallow_password_auth: bool,
-    /// additional_script is the additional script.
-    #[prost(string, tag = "3")]
-    pub additional_script: ::prost::alloc::string::String,
-    /// additional_style is the additional style.
-    #[prost(string, tag = "4")]
-    pub additional_style: ::prost::alloc::string::String,
-    /// custom_profile is the custom profile.
-    #[prost(message, optional, tag = "5")]
-    pub custom_profile: ::core::option::Option<WorkspaceCustomProfile>,
-    /// week_start_day_offset is the week start day offset from Sunday.
-    /// 0: Sunday, 1: Monday, 2: Tuesday, 3: Wednesday, 4: Thursday, 5: Friday, 6: Saturday
-    /// Default is Sunday.
-    #[prost(int32, tag = "6")]
-    pub week_start_day_offset: i32,
-    /// disallow_change_username disallows changing username.
-    #[prost(bool, tag = "7")]
-    pub disallow_change_username: bool,
-    /// disallow_change_nickname disallows changing nickname.
-    #[prost(bool, tag = "8")]
-    pub disallow_change_nickname: bool,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WorkspaceCustomProfile {
-    #[prost(string, tag = "1")]
-    pub title: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub logo_url: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
-    pub locale: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
-    pub appearance: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WorkspaceStorageSetting {
-    /// storage_type is the storage type.
-    #[prost(enumeration = "workspace_storage_setting::StorageType", tag = "1")]
-    pub storage_type: i32,
-    /// The template of file path.
-    /// e.g. assets/{timestamp}_{filename}
-    #[prost(string, tag = "2")]
-    pub filepath_template: ::prost::alloc::string::String,
-    /// The max upload size in megabytes.
-    #[prost(int64, tag = "3")]
-    pub upload_size_limit_mb: i64,
-    /// The S3 config.
-    #[prost(message, optional, tag = "4")]
-    pub s3_config: ::core::option::Option<workspace_storage_setting::S3Config>,
-}
-/// Nested message and enum types in `WorkspaceStorageSetting`.
-pub mod workspace_storage_setting {
-    /// Reference: <https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/>
-    #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct S3Config {
-        #[prost(string, tag = "1")]
-        pub access_key_id: ::prost::alloc::string::String,
-        #[prost(string, tag = "2")]
-        pub access_key_secret: ::prost::alloc::string::String,
-        #[prost(string, tag = "3")]
-        pub endpoint: ::prost::alloc::string::String,
-        #[prost(string, tag = "4")]
-        pub region: ::prost::alloc::string::String,
-        #[prost(string, tag = "5")]
-        pub bucket: ::prost::alloc::string::String,
-        #[prost(bool, tag = "6")]
-        pub use_path_style: bool,
-    }
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum StorageType {
-        Unspecified = 0,
-        /// DATABASE is the database storage type.
-        Database = 1,
-        /// LOCAL is the local storage type.
-        Local = 2,
-        /// S3 is the S3 storage type.
-        S3 = 3,
-    }
-    impl StorageType {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "STORAGE_TYPE_UNSPECIFIED",
-                Self::Database => "DATABASE",
-                Self::Local => "LOCAL",
-                Self::S3 => "S3",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "STORAGE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-                "DATABASE" => Some(Self::Database),
-                "LOCAL" => Some(Self::Local),
-                "S3" => Some(Self::S3),
-                _ => None,
-            }
-        }
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WorkspaceMemoRelatedSetting {
-    /// disallow_public_visibility disallows set memo as public visibility.
-    #[prost(bool, tag = "1")]
-    pub disallow_public_visibility: bool,
-    /// display_with_update_time orders and displays memo with update time.
-    #[prost(bool, tag = "2")]
-    pub display_with_update_time: bool,
-    /// content_length_limit is the limit of content length. Unit is byte.
-    #[prost(int32, tag = "3")]
-    pub content_length_limit: i32,
-    /// enable_double_click_edit enables editing on double click.
-    #[prost(bool, tag = "5")]
-    pub enable_double_click_edit: bool,
-    /// enable_link_preview enables links preview.
-    #[prost(bool, tag = "6")]
-    pub enable_link_preview: bool,
-    /// enable_comment enables comment.
-    #[prost(bool, tag = "7")]
-    pub enable_comment: bool,
-    /// enable_location enables setting location for memo.
-    #[prost(bool, tag = "8")]
-    pub enable_location: bool,
-    /// reactions is the list of reactions.
-    #[prost(string, repeated, tag = "10")]
-    pub reactions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// disable_markdown_shortcuts disallow the registration of markdown shortcuts.
-    #[prost(bool, tag = "11")]
-    pub disable_markdown_shortcuts: bool,
-    /// enable_blur_nsfw_content enables blurring of content marked as not safe for work (NSFW).
-    #[prost(bool, tag = "12")]
-    pub enable_blur_nsfw_content: bool,
-    /// nsfw_tags is the list of tags that mark content as NSFW for blurring.
-    #[prost(string, repeated, tag = "13")]
-    pub nsfw_tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetWorkspaceSettingRequest {
-    /// The resource name of the workspace setting.
-    /// Format: settings/{setting}
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SetWorkspaceSettingRequest {
-    /// setting is the setting to update.
-    #[prost(message, optional, tag = "1")]
-    pub setting: ::core::option::Option<WorkspaceSetting>,
-}
-/// Generated client implementations.
-pub mod workspace_setting_service_client {
-    #![allow(
-        unused_variables,
-        dead_code,
-        missing_docs,
-        clippy::wildcard_imports,
-        clippy::let_unit_value
-    )]
-    use tonic::codegen::http::Uri;
-    use tonic::codegen::*;
-    #[derive(Debug, Clone)]
-    pub struct WorkspaceSettingServiceClient<T> {
-        inner: tonic::client::Grpc<T>,
-    }
-    impl WorkspaceSettingServiceClient<tonic::transport::Channel> {
-        /// Attempt to create a new client by connecting to a given endpoint.
-        pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
-        where
-            D: TryInto<tonic::transport::Endpoint>,
-            D::Error: Into<StdError>,
-        {
-            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
-            Ok(Self::new(conn))
-        }
-    }
-    impl<T> WorkspaceSettingServiceClient<T>
-    where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
-        T::Error: Into<StdError>,
-        T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
-        <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
-    {
-        pub fn new(inner: T) -> Self {
-            let inner = tonic::client::Grpc::new(inner);
-            Self { inner }
-        }
-        pub fn with_origin(inner: T, origin: Uri) -> Self {
-            let inner = tonic::client::Grpc::with_origin(inner, origin);
-            Self { inner }
-        }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> WorkspaceSettingServiceClient<InterceptedService<T, F>>
-        where
-            F: tonic::service::Interceptor,
-            T::ResponseBody: Default,
-            T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
-                >,
-            >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + std::marker::Send + std::marker::Sync,
-        {
-            WorkspaceSettingServiceClient::new(InterceptedService::new(inner, interceptor))
-        }
-        /// Compress requests with the given encoding.
-        ///
-        /// This requires the server to support it otherwise it might respond with an
-        /// error.
-        #[must_use]
-        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.inner = self.inner.send_compressed(encoding);
-            self
-        }
-        /// Enable decompressing responses.
-        #[must_use]
-        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.inner = self.inner.accept_compressed(encoding);
-            self
-        }
-        /// Limits the maximum size of a decoded message.
-        ///
-        /// Default: `4MB`
-        #[must_use]
-        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
-            self.inner = self.inner.max_decoding_message_size(limit);
-            self
-        }
-        /// Limits the maximum size of an encoded message.
-        ///
-        /// Default: `usize::MAX`
-        #[must_use]
-        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
-            self.inner = self.inner.max_encoding_message_size(limit);
-            self
-        }
-        /// GetWorkspaceSetting returns the setting by name.
-        pub async fn get_workspace_setting(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetWorkspaceSettingRequest>,
-        ) -> std::result::Result<tonic::Response<super::WorkspaceSetting>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.WorkspaceSettingService/GetWorkspaceSetting",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.WorkspaceSettingService",
-                "GetWorkspaceSetting",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// SetWorkspaceSetting updates the setting.
-        pub async fn set_workspace_setting(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SetWorkspaceSettingRequest>,
-        ) -> std::result::Result<tonic::Response<super::WorkspaceSetting>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/memos.api.v1.WorkspaceSettingService/SetWorkspaceSetting",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.WorkspaceSettingService",
-                "SetWorkspaceSetting",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-    }
-}
-/// Generated server implementations.
-pub mod workspace_setting_service_server {
-    #![allow(
-        unused_variables,
-        dead_code,
-        missing_docs,
-        clippy::wildcard_imports,
-        clippy::let_unit_value
-    )]
-    use tonic::codegen::*;
-    /// Generated trait containing gRPC methods that should be implemented for use with WorkspaceSettingServiceServer.
-    #[async_trait]
-    pub trait WorkspaceSettingService: std::marker::Send + std::marker::Sync + 'static {
-        /// GetWorkspaceSetting returns the setting by name.
-        async fn get_workspace_setting(
-            &self,
-            request: tonic::Request<super::GetWorkspaceSettingRequest>,
-        ) -> std::result::Result<tonic::Response<super::WorkspaceSetting>, tonic::Status>;
-        /// SetWorkspaceSetting updates the setting.
-        async fn set_workspace_setting(
-            &self,
-            request: tonic::Request<super::SetWorkspaceSettingRequest>,
-        ) -> std::result::Result<tonic::Response<super::WorkspaceSetting>, tonic::Status>;
-    }
-    #[derive(Debug)]
-    pub struct WorkspaceSettingServiceServer<T> {
-        inner: Arc<T>,
-        accept_compression_encodings: EnabledCompressionEncodings,
-        send_compression_encodings: EnabledCompressionEncodings,
-        max_decoding_message_size: Option<usize>,
-        max_encoding_message_size: Option<usize>,
-    }
-    impl<T> WorkspaceSettingServiceServer<T> {
-        pub fn new(inner: T) -> Self {
-            Self::from_arc(Arc::new(inner))
-        }
-        pub fn from_arc(inner: Arc<T>) -> Self {
-            Self {
-                inner,
-                accept_compression_encodings: Default::default(),
-                send_compression_encodings: Default::default(),
-                max_decoding_message_size: None,
-                max_encoding_message_size: None,
-            }
-        }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
-        where
-            F: tonic::service::Interceptor,
-        {
-            InterceptedService::new(Self::new(inner), interceptor)
-        }
-        /// Enable decompressing requests with the given encoding.
-        #[must_use]
-        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.accept_compression_encodings.enable(encoding);
-            self
-        }
-        /// Compress responses with the given encoding, if the client supports it.
-        #[must_use]
-        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.send_compression_encodings.enable(encoding);
-            self
-        }
-        /// Limits the maximum size of a decoded message.
-        ///
-        /// Default: `4MB`
-        #[must_use]
-        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
-            self.max_decoding_message_size = Some(limit);
-            self
-        }
-        /// Limits the maximum size of an encoded message.
-        ///
-        /// Default: `usize::MAX`
-        #[must_use]
-        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
-            self.max_encoding_message_size = Some(limit);
-            self
-        }
-    }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for WorkspaceSettingServiceServer<T>
-    where
-        T: WorkspaceSettingService,
-        B: Body + std::marker::Send + 'static,
-        B::Error: Into<StdError> + std::marker::Send + 'static,
-    {
-        type Response = http::Response<tonic::body::BoxBody>;
-        type Error = std::convert::Infallible;
-        type Future = BoxFuture<Self::Response, Self::Error>;
-        fn poll_ready(
-            &mut self,
-            _cx: &mut Context<'_>,
-        ) -> Poll<std::result::Result<(), Self::Error>> {
-            Poll::Ready(Ok(()))
-        }
-        fn call(&mut self, req: http::Request<B>) -> Self::Future {
-            match req.uri().path() {
-                "/memos.api.v1.WorkspaceSettingService/GetWorkspaceSetting" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetWorkspaceSettingSvc<T: WorkspaceSettingService>(pub Arc<T>);
-                    impl<T: WorkspaceSettingService>
-                        tonic::server::UnaryService<super::GetWorkspaceSettingRequest>
-                        for GetWorkspaceSettingSvc<T>
-                    {
-                        type Response = super::WorkspaceSetting;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetWorkspaceSettingRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as WorkspaceSettingService>::get_workspace_setting(
-                                    &inner, request,
-                                )
-                                .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetWorkspaceSettingSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.WorkspaceSettingService/SetWorkspaceSetting" => {
-                    #[allow(non_camel_case_types)]
-                    struct SetWorkspaceSettingSvc<T: WorkspaceSettingService>(pub Arc<T>);
-                    impl<T: WorkspaceSettingService>
-                        tonic::server::UnaryService<super::SetWorkspaceSettingRequest>
-                        for SetWorkspaceSettingSvc<T>
-                    {
-                        type Response = super::WorkspaceSetting;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SetWorkspaceSettingRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as WorkspaceSettingService>::set_workspace_setting(
-                                    &inner, request,
-                                )
-                                .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = SetWorkspaceSettingSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                _ => Box::pin(async move {
-                    let mut response = http::Response::new(empty_body());
-                    let headers = response.headers_mut();
-                    headers.insert(
-                        tonic::Status::GRPC_STATUS,
-                        (tonic::Code::Unimplemented as i32).into(),
-                    );
-                    headers.insert(
-                        http::header::CONTENT_TYPE,
-                        tonic::metadata::GRPC_CONTENT_TYPE,
-                    );
-                    Ok(response)
-                }),
-            }
-        }
-    }
-    impl<T> Clone for WorkspaceSettingServiceServer<T> {
-        fn clone(&self) -> Self {
-            let inner = self.inner.clone();
-            Self {
-                inner,
-                accept_compression_encodings: self.accept_compression_encodings,
-                send_compression_encodings: self.send_compression_encodings,
-                max_decoding_message_size: self.max_decoding_message_size,
-                max_encoding_message_size: self.max_encoding_message_size,
-            }
-        }
-    }
-    /// Generated gRPC service name
-    pub const SERVICE_NAME: &str = "memos.api.v1.WorkspaceSettingService";
-    impl<T> tonic::server::NamedService for WorkspaceSettingServiceServer<T> {
         const NAME: &'static str = SERVICE_NAME;
     }
 }

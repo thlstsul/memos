@@ -1,9 +1,10 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::model::r#gen::user_setting::Key as UserSettingKey;
 use crate::{
     api::{prefix, to_timestamp},
     impl_extract_name,
-    model::{gen::UserSettingKey, user::UserSetting},
+    model::user::UserSetting,
 };
 
 use super::v1::r#gen::GetUserStatsRequest;
@@ -39,13 +40,13 @@ impl From<crate::model::user::User> for User {
             role: value.role as i32,
             username: value.username,
             email: value.email,
-            nickname: value.nickname,
             avatar_url: value.avatar_url,
             description: value.description,
             password: value.password_hash,
             state: value.state as i32,
             create_time: to_timestamp(value.created_ts),
             update_time: to_timestamp(value.updated_ts),
+            display_name: value.nickname,
         }
     }
 }

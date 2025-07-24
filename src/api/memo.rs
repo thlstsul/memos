@@ -16,14 +16,14 @@ use super::{
     prefix::{get_id_parent_token, ExtractName, FormatName},
     v1::gen::{
         DeleteMemoRequest, GetMemoRequest, ListMemosRequest, Memo, PageToken,
-        SetMemoResourcesRequest, UpdateMemoRequest, Visibility,
+        SetMemoAttachmentsRequest, UpdateMemoRequest, Visibility,
     },
 };
 
 impl_extract_name!(Memo, prefix::MEMO_NAME_PREFIX);
 impl_extract_name!(GetMemoRequest, prefix::MEMO_NAME_PREFIX);
 impl_extract_name!(DeleteMemoRequest, prefix::MEMO_NAME_PREFIX);
-impl_extract_name!(SetMemoResourcesRequest, prefix::MEMO_NAME_PREFIX);
+impl_extract_name!(SetMemoAttachmentsRequest, prefix::MEMO_NAME_PREFIX);
 
 impl TryInto<CreateMemo> for &CreateMemoRequest {
     type Error = Error;
@@ -119,6 +119,7 @@ impl From<&UpdateMemoRequest> for UpdateMemo {
         if let UpdateMemoRequest {
             memo: Some(memo),
             update_mask: Some(field_mask),
+            allow_missing,
         } = value
         {
             update.id = memo.get_id().unwrap_or_default();
@@ -159,13 +160,13 @@ impl From<crate::model::memo::Memo> for Memo {
             visibility: value.visibility as i32,
             tags: value.payload.tags,
             pinned: value.pinned,
-            resources: vec![],
             relations: vec![],
             reactions: vec![],
             property: value.payload.property.map(|p| p.into()),
             parent: None,
             snippet,
             location: None,
+            attachments: vec![],
         }
     }
 }

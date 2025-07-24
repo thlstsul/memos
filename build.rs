@@ -21,17 +21,16 @@ fn main() {
         .compile_protos(
             &[
                 "proto/api/v1/activity_service.proto",
+                "proto/api/v1/attachment_service.proto",
                 "proto/api/v1/auth_service.proto",
                 "proto/api/v1/idp_service.proto",
                 "proto/api/v1/inbox_service.proto",
                 "proto/api/v1/markdown_service.proto",
                 "proto/api/v1/memo_service.proto",
-                "proto/api/v1/reaction_service.proto",
-                "proto/api/v1/resource_service.proto",
+                "proto/api/v1/shortcut_service.proto",
                 "proto/api/v1/user_service.proto",
                 "proto/api/v1/webhook_service.proto",
                 "proto/api/v1/workspace_service.proto",
-                "proto/api/v1/workspace_setting_service.proto",
             ],
             // https://github.com/googleapis/googleapis.git
             &["proto", "googleapis"],
@@ -42,9 +41,9 @@ fn main() {
         .out_dir("src/model")
         .with_serde(
             &[
-                "memos.store.ResourcePayload",
-                "memos.store.ResourcePayload.payload",
-                "memos.store.ResourcePayload.S3Object",
+                "memos.store.AttachmentPayload",
+                "memos.store.AttachmentPayload.payload",
+                "memos.store.AttachmentPayload.S3Object",
                 "memos.store.StorageS3Config",
                 "memos.store.MemoPayload",
                 "memos.store.MemoPayload.Property",
@@ -68,10 +67,10 @@ fn main() {
         .compile_protos(
             &[
                 "proto/store/activity.proto",
+                "proto/store/attachment.proto",
                 "proto/store/idp.proto",
                 "proto/store/inbox.proto",
                 "proto/store/memo.proto",
-                "proto/store/resource.proto",
                 "proto/store/user_setting.proto",
                 "proto/store/workspace_setting.proto",
             ],

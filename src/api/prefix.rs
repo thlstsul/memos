@@ -4,7 +4,7 @@ pub const INBOX_NAME_PREFIX: &str = "inboxes";
 pub const USER_NAME_PREFIX: &str = "users";
 pub const WORKSPACE_SETTING_NAME_PREFIX: &str = "settings";
 pub const MEMO_NAME_PREFIX: &str = "memos";
-pub const RESOURCE_NAME_PREFIX: &str = "resources";
+pub const ATTACHMENT_NAME_PREFIX: &str = "attachments";
 #[allow(dead_code)]
 pub const STORAGE_NAME_PREFIX: &str = "storages";
 #[allow(dead_code)]

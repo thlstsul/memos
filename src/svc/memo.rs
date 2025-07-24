@@ -12,7 +12,7 @@ use crate::{
         ListMemoReactionsRequest, ListMemoReactionsResponse, ListMemoRelationsRequest,
         ListMemoRelationsResponse, ListMemoResourcesRequest, ListMemoResourcesResponse,
         ListMemosRequest, ListMemosResponse, Memo, Reaction, RenameMemoTagRequest,
-        SetMemoRelationsRequest, SetMemoResourcesRequest, UpdateMemoRequest,
+        SetMemoAttachmentsRequest, SetMemoRelationsRequest, UpdateMemoRequest,
         UpsertMemoReactionRequest,
     },
     dao::{
@@ -258,9 +258,9 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
     }
 
     /// SetMemoResources sets resources for a memo.
-    async fn set_memo_resources(
+    async fn set_memo_attachments(
         &self,
-        request: Request<SetMemoResourcesRequest>,
+        request: Request<SetMemoAttachmentsRequest>,
     ) -> Result<Response<()>, Status> {
         let memo_id = request.get_ref().get_id()?;
         let resources = &request.get_ref().resources;
@@ -278,10 +278,10 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
     }
 
     /// ListMemoResources lists resources for a memo.
-    async fn list_memo_resources(
+    async fn list_memo_attachments(
         &self,
-        request: Request<ListMemoResourcesRequest>,
-    ) -> Result<Response<ListMemoResourcesResponse>, Status> {
+        request: Request<ListMemoAttachmentsRequest>,
+    ) -> Result<Response<ListMemoAttachmentsResponse>, Status> {
         Err(Status::unimplemented("unimplemented"))
     }
     /// SetMemoRelations sets relations for a memo.

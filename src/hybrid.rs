@@ -42,13 +42,8 @@ use tracing::error;
 use crate::{
     ctrl::auth::AuthLayer,
     svc::{
-        auth::AuthService,
-        idp::IDPService,
-        inbox::InboxService,
-        memo::MemoService,
-        resource::ResourceService,
-        webhook::WebhookService,
-        workspace::{WorkspaceService, WorkspaceSettingService},
+        auth::AuthService, idp::IDPService, inbox::InboxService, memo::MemoService,
+        resource::ResourceService, webhook::WebhookService, workspace::WorkspaceService,
     },
 };
 

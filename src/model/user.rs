@@ -2,7 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::api::v1::gen::{user::Role, State};
 
-use super::gen::UserSettingKey;
+use super::gen::user_setting::Key as UserSettingKey;
 
 #[derive(Debug, Default, Deserialize)]
 pub struct UserSetting {

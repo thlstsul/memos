@@ -11,162 +11,6 @@ pub struct ActivityPayload {
     #[prost(message, optional, tag = "1")]
     pub memo_comment: ::core::option::Option<ActivityMemoCommentPayload>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct IdentityProvider {
-    #[prost(int32, tag = "1")]
-    pub id: i32,
-    #[prost(string, tag = "2")]
-    pub name: ::prost::alloc::string::String,
-    #[prost(enumeration = "identity_provider::Type", tag = "3")]
-    pub r#type: i32,
-    #[prost(string, tag = "4")]
-    pub identifier_filter: ::prost::alloc::string::String,
-    #[prost(message, optional, tag = "5")]
-    pub config: ::core::option::Option<IdentityProviderConfig>,
-}
-/// Nested message and enum types in `IdentityProvider`.
-pub mod identity_provider {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Type {
-        Unspecified = 0,
-        Oauth2 = 1,
-    }
-    impl Type {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "TYPE_UNSPECIFIED",
-                Self::Oauth2 => "OAUTH2",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-                "OAUTH2" => Some(Self::Oauth2),
-                _ => None,
-            }
-        }
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct IdentityProviderConfig {
-    #[prost(oneof = "identity_provider_config::Config", tags = "1")]
-    pub config: ::core::option::Option<identity_provider_config::Config>,
-}
-/// Nested message and enum types in `IdentityProviderConfig`.
-pub mod identity_provider_config {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Config {
-        #[prost(message, tag = "1")]
-        Oauth2Config(super::OAuth2Config),
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FieldMapping {
-    #[prost(string, tag = "1")]
-    pub identifier: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub display_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub email: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct OAuth2Config {
-    #[prost(string, tag = "1")]
-    pub client_id: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub client_secret: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub auth_url: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
-    pub token_url: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
-    pub user_info_url: ::prost::alloc::string::String,
-    #[prost(string, repeated, tag = "6")]
-    pub scopes: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    #[prost(message, optional, tag = "7")]
-    pub field_mapping: ::core::option::Option<FieldMapping>,
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct InboxMessage {
-    #[prost(enumeration = "inbox_message::Type", tag = "1")]
-    pub r#type: i32,
-    #[prost(int32, optional, tag = "2")]
-    pub activity_id: ::core::option::Option<i32>,
-}
-/// Nested message and enum types in `InboxMessage`.
-pub mod inbox_message {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Type {
-        Unspecified = 0,
-        MemoComment = 1,
-        VersionUpdate = 2,
-    }
-    impl Type {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "TYPE_UNSPECIFIED",
-                Self::MemoComment => "MEMO_COMMENT",
-                Self::VersionUpdate => "VERSION_UPDATE",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-                "MEMO_COMMENT" => Some(Self::MemoComment),
-                "VERSION_UPDATE" => Some(Self::VersionUpdate),
-                _ => None,
-            }
-        }
-    }
-}
-#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
-pub struct MemoPayload {
-    #[prost(message, optional, tag = "1")]
-    pub property: ::core::option::Option<memo_payload::Property>,
-    #[prost(message, optional, tag = "2")]
-    pub location: ::core::option::Option<memo_payload::Location>,
-    #[prost(string, repeated, tag = "3")]
-    pub tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-}
-/// Nested message and enum types in `MemoPayload`.
-pub mod memo_payload {
-    /// The calculated properties from the memo content.
-    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
-    pub struct Property {
-        #[prost(bool, tag = "1")]
-        pub has_link: bool,
-        #[prost(bool, tag = "2")]
-        pub has_task_list: bool,
-        #[prost(bool, tag = "3")]
-        pub has_code: bool,
-        #[prost(bool, tag = "4")]
-        pub has_incomplete_tasks: bool,
-        /// The references of the memo. Should be a list of uuid.
-        #[prost(string, repeated, tag = "5")]
-        pub references: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    }
-    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
-    pub struct Location {
-        #[prost(string, tag = "1")]
-        pub placeholder: ::prost::alloc::string::String,
-        #[prost(double, tag = "2")]
-        pub latitude: f64,
-        #[prost(double, tag = "3")]
-        pub longitude: f64,
-    }
-}
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceSetting {
     #[prost(enumeration = "WorkspaceSettingKey", tag = "1")]
@@ -199,31 +43,35 @@ pub struct WorkspaceBasicSetting {
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceGeneralSetting {
+    /// theme is the name of the selected theme.
+    /// This references a CSS file in the web/public/themes/ directory.
+    #[prost(string, tag = "1")]
+    pub theme: ::prost::alloc::string::String,
     /// disallow_user_registration disallows user registration.
-    #[prost(bool, tag = "1")]
+    #[prost(bool, tag = "2")]
     pub disallow_user_registration: bool,
     /// disallow_password_auth disallows password authentication.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "3")]
     pub disallow_password_auth: bool,
     /// additional_script is the additional script.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "4")]
     pub additional_script: ::prost::alloc::string::String,
     /// additional_style is the additional style.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "5")]
     pub additional_style: ::prost::alloc::string::String,
     /// custom_profile is the custom profile.
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag = "6")]
     pub custom_profile: ::core::option::Option<WorkspaceCustomProfile>,
     /// week_start_day_offset is the week start day offset from Sunday.
     /// 0: Sunday, 1: Monday, 2: Tuesday, 3: Wednesday, 4: Thursday, 5: Friday, 6: Saturday
     /// Default is Sunday.
-    #[prost(int32, tag = "6")]
+    #[prost(int32, tag = "7")]
     pub week_start_day_offset: i32,
     /// disallow_change_username disallows changing username.
-    #[prost(bool, tag = "7")]
+    #[prost(bool, tag = "8")]
     pub disallow_change_username: bool,
     /// disallow_change_nickname disallows changing nickname.
-    #[prost(bool, tag = "8")]
+    #[prost(bool, tag = "9")]
     pub disallow_change_nickname: bool,
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
@@ -321,28 +169,25 @@ pub struct WorkspaceMemoRelatedSetting {
     #[prost(int32, tag = "3")]
     pub content_length_limit: i32,
     /// enable_double_click_edit enables editing on double click.
-    #[prost(bool, tag = "5")]
+    #[prost(bool, tag = "4")]
     pub enable_double_click_edit: bool,
     /// enable_link_preview enables links preview.
-    #[prost(bool, tag = "6")]
+    #[prost(bool, tag = "5")]
     pub enable_link_preview: bool,
     /// enable_comment enables comment.
-    #[prost(bool, tag = "7")]
+    #[prost(bool, tag = "6")]
     pub enable_comment: bool,
-    /// enable_location enables setting location for memo.
-    #[prost(bool, tag = "8")]
-    pub enable_location: bool,
     /// reactions is the list of reactions.
-    #[prost(string, repeated, tag = "10")]
+    #[prost(string, repeated, tag = "7")]
     pub reactions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// disable markdown shortcuts
-    #[prost(bool, tag = "11")]
+    #[prost(bool, tag = "8")]
     pub disable_markdown_shortcuts: bool,
     /// enable_blur_nsfw_content enables blurring of content marked as not safe for work (NSFW).
-    #[prost(bool, tag = "12")]
+    #[prost(bool, tag = "9")]
     pub enable_blur_nsfw_content: bool,
     /// nsfw_tags is the list of tags that mark content as NSFW for blurring.
-    #[prost(string, repeated, tag = "13")]
+    #[prost(string, repeated, tag = "10")]
     pub nsfw_tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -385,12 +230,12 @@ impl WorkspaceSettingKey {
     }
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
-pub struct ResourcePayload {
-    #[prost(oneof = "resource_payload::Payload", tags = "1")]
-    pub payload: ::core::option::Option<resource_payload::Payload>,
+pub struct AttachmentPayload {
+    #[prost(oneof = "attachment_payload::Payload", tags = "1")]
+    pub payload: ::core::option::Option<attachment_payload::Payload>,
 }
-/// Nested message and enum types in `ResourcePayload`.
-pub mod resource_payload {
+/// Nested message and enum types in `AttachmentPayload`.
+pub mod attachment_payload {
     #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
     pub struct S3Object {
         #[prost(message, optional, tag = "1")]
@@ -401,7 +246,6 @@ pub mod resource_payload {
         /// last_presigned_time is the last time the object was presigned.
         /// This is used to determine if the presigned URL is still valid.
         #[prost(message, optional, tag = "3")]
-        #[serde(with = "crate::model::time_serde")]
         pub last_presigned_time: ::core::option::Option<::prost_types::Timestamp>,
     }
     #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Oneof)]
@@ -412,23 +256,23 @@ pub mod resource_payload {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum ResourceStorageType {
+pub enum AttachmentStorageType {
     Unspecified = 0,
-    /// Resource is stored locally. AKA, local file system.
+    /// Attachment is stored locally. AKA, local file system.
     Local = 1,
-    /// Resource is stored in S3.
+    /// Attachment is stored in S3.
     S3 = 2,
-    /// Resource is stored in an external storage. The reference is a URL.
+    /// Attachment is stored in an external storage. The reference is a URL.
     External = 3,
 }
-impl ResourceStorageType {
+impl AttachmentStorageType {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::Unspecified => "RESOURCE_STORAGE_TYPE_UNSPECIFIED",
+            Self::Unspecified => "ATTACHMENT_STORAGE_TYPE_UNSPECIFIED",
             Self::Local => "LOCAL",
             Self::S3 => "S3",
             Self::External => "EXTERNAL",
@@ -437,7 +281,7 @@ impl ResourceStorageType {
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "RESOURCE_STORAGE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "ATTACHMENT_STORAGE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
             "LOCAL" => Some(Self::Local),
             "S3" => Some(Self::S3),
             "EXTERNAL" => Some(Self::External),
@@ -446,28 +290,287 @@ impl ResourceStorageType {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IdentityProvider {
+    #[prost(int32, tag = "1")]
+    pub id: i32,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(enumeration = "identity_provider::Type", tag = "3")]
+    pub r#type: i32,
+    #[prost(string, tag = "4")]
+    pub identifier_filter: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "5")]
+    pub config: ::core::option::Option<IdentityProviderConfig>,
+}
+/// Nested message and enum types in `IdentityProvider`.
+pub mod identity_provider {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Type {
+        Unspecified = 0,
+        Oauth2 = 1,
+    }
+    impl Type {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "TYPE_UNSPECIFIED",
+                Self::Oauth2 => "OAUTH2",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                "OAUTH2" => Some(Self::Oauth2),
+                _ => None,
+            }
+        }
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IdentityProviderConfig {
+    #[prost(oneof = "identity_provider_config::Config", tags = "1")]
+    pub config: ::core::option::Option<identity_provider_config::Config>,
+}
+/// Nested message and enum types in `IdentityProviderConfig`.
+pub mod identity_provider_config {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Config {
+        #[prost(message, tag = "1")]
+        Oauth2Config(super::OAuth2Config),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FieldMapping {
+    #[prost(string, tag = "1")]
+    pub identifier: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub display_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub email: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub avatar_url: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OAuth2Config {
+    #[prost(string, tag = "1")]
+    pub client_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub client_secret: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub auth_url: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub token_url: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub user_info_url: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "6")]
+    pub scopes: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(message, optional, tag = "7")]
+    pub field_mapping: ::core::option::Option<FieldMapping>,
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct InboxMessage {
+    #[prost(enumeration = "inbox_message::Type", tag = "1")]
+    pub r#type: i32,
+    #[prost(int32, optional, tag = "2")]
+    pub activity_id: ::core::option::Option<i32>,
+}
+/// Nested message and enum types in `InboxMessage`.
+pub mod inbox_message {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Type {
+        Unspecified = 0,
+        MemoComment = 1,
+        VersionUpdate = 2,
+    }
+    impl Type {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "TYPE_UNSPECIFIED",
+                Self::MemoComment => "MEMO_COMMENT",
+                Self::VersionUpdate => "VERSION_UPDATE",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                "MEMO_COMMENT" => Some(Self::MemoComment),
+                "VERSION_UPDATE" => Some(Self::VersionUpdate),
+                _ => None,
+            }
+        }
+    }
+}
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
+pub struct MemoPayload {
+    #[prost(message, optional, tag = "1")]
+    pub property: ::core::option::Option<memo_payload::Property>,
+    #[prost(message, optional, tag = "2")]
+    pub location: ::core::option::Option<memo_payload::Location>,
+    #[prost(string, repeated, tag = "3")]
+    pub tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+/// Nested message and enum types in `MemoPayload`.
+pub mod memo_payload {
+    /// The calculated properties from the memo content.
+    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
+    pub struct Property {
+        #[prost(bool, tag = "1")]
+        pub has_link: bool,
+        #[prost(bool, tag = "2")]
+        pub has_task_list: bool,
+        #[prost(bool, tag = "3")]
+        pub has_code: bool,
+        #[prost(bool, tag = "4")]
+        pub has_incomplete_tasks: bool,
+        /// The references of the memo. Should be a list of uuid.
+        #[prost(string, repeated, tag = "5")]
+        pub references: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    }
+    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
+    pub struct Location {
+        #[prost(string, tag = "1")]
+        pub placeholder: ::prost::alloc::string::String,
+        #[prost(double, tag = "2")]
+        pub latitude: f64,
+        #[prost(double, tag = "3")]
+        pub longitude: f64,
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UserSetting {
     #[prost(int32, tag = "1")]
     pub user_id: i32,
-    #[prost(enumeration = "UserSettingKey", tag = "2")]
+    #[prost(enumeration = "user_setting::Key", tag = "2")]
     pub key: i32,
     #[prost(oneof = "user_setting::Value", tags = "3, 4, 5, 6, 7")]
     pub value: ::core::option::Option<user_setting::Value>,
 }
 /// Nested message and enum types in `UserSetting`.
 pub mod user_setting {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Key {
+        Unspecified = 0,
+        /// General user settings.
+        General = 1,
+        /// User authentication sessions.
+        Sessions = 2,
+        /// Access tokens for the user.
+        AccessTokens = 3,
+        /// The shortcuts of the user.
+        Shortcuts = 4,
+        /// The webhooks of the user.
+        Webhooks = 5,
+    }
+    impl Key {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "KEY_UNSPECIFIED",
+                Self::General => "GENERAL",
+                Self::Sessions => "SESSIONS",
+                Self::AccessTokens => "ACCESS_TOKENS",
+                Self::Shortcuts => "SHORTCUTS",
+                Self::Webhooks => "WEBHOOKS",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "KEY_UNSPECIFIED" => Some(Self::Unspecified),
+                "GENERAL" => Some(Self::General),
+                "SESSIONS" => Some(Self::Sessions),
+                "ACCESS_TOKENS" => Some(Self::AccessTokens),
+                "SHORTCUTS" => Some(Self::Shortcuts),
+                "WEBHOOKS" => Some(Self::Webhooks),
+                _ => None,
+            }
+        }
+    }
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Value {
         #[prost(message, tag = "3")]
+        General(super::GeneralUserSetting),
+        #[prost(message, tag = "4")]
+        Sessions(super::SessionsUserSetting),
+        #[prost(message, tag = "5")]
         AccessTokens(super::AccessTokensUserSetting),
-        #[prost(string, tag = "4")]
-        Locale(::prost::alloc::string::String),
-        #[prost(string, tag = "5")]
-        Appearance(::prost::alloc::string::String),
-        #[prost(string, tag = "6")]
-        MemoVisibility(::prost::alloc::string::String),
-        #[prost(message, tag = "7")]
+        #[prost(message, tag = "6")]
         Shortcuts(super::ShortcutsUserSetting),
+        #[prost(message, tag = "7")]
+        Webhooks(super::WebhooksUserSetting),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GeneralUserSetting {
+    /// The user's locale.
+    #[prost(string, tag = "1")]
+    pub locale: ::prost::alloc::string::String,
+    /// The user's appearance setting.
+    #[prost(string, tag = "2")]
+    pub appearance: ::prost::alloc::string::String,
+    /// The user's memo visibility setting.
+    #[prost(string, tag = "3")]
+    pub memo_visibility: ::prost::alloc::string::String,
+    /// The user's theme preference.
+    /// This references a CSS file in the web/public/themes/ directory.
+    #[prost(string, tag = "4")]
+    pub theme: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SessionsUserSetting {
+    #[prost(message, repeated, tag = "1")]
+    pub sessions: ::prost::alloc::vec::Vec<sessions_user_setting::Session>,
+}
+/// Nested message and enum types in `SessionsUserSetting`.
+pub mod sessions_user_setting {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct Session {
+        /// Unique session identifier.
+        #[prost(string, tag = "1")]
+        pub session_id: ::prost::alloc::string::String,
+        /// Timestamp when the session was created.
+        #[prost(message, optional, tag = "2")]
+        pub create_time: ::core::option::Option<::prost_types::Timestamp>,
+        /// Timestamp when the session was last accessed.
+        /// Used for sliding expiration calculation (last_accessed_time + 2 weeks).
+        #[prost(message, optional, tag = "3")]
+        pub last_accessed_time: ::core::option::Option<::prost_types::Timestamp>,
+        /// Client information associated with this session.
+        #[prost(message, optional, tag = "4")]
+        pub client_info: ::core::option::Option<ClientInfo>,
+    }
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ClientInfo {
+        /// User agent string of the client.
+        #[prost(string, tag = "1")]
+        pub user_agent: ::prost::alloc::string::String,
+        /// IP address of the client.
+        #[prost(string, tag = "2")]
+        pub ip_address: ::prost::alloc::string::String,
+        /// Optional. Device type (e.g., "mobile", "desktop", "tablet").
+        #[prost(string, tag = "3")]
+        pub device_type: ::prost::alloc::string::String,
+        /// Optional. Operating system (e.g., "iOS 17.0", "Windows 11").
+        #[prost(string, tag = "4")]
+        pub os: ::prost::alloc::string::String,
+        /// Optional. Browser name and version (e.g., "Chrome 119.0").
+        #[prost(string, tag = "5")]
+        pub browser: ::prost::alloc::string::String,
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -505,46 +608,23 @@ pub mod shortcuts_user_setting {
         pub filter: ::prost::alloc::string::String,
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum UserSettingKey {
-    Unspecified = 0,
-    /// Access tokens for the user.
-    AccessTokens = 1,
-    /// The locale of the user.
-    Locale = 2,
-    /// The appearance of the user.
-    Appearance = 3,
-    /// The visibility of the memo.
-    MemoVisibility = 4,
-    /// The shortcuts of the user.
-    Shortcuts = 5,
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WebhooksUserSetting {
+    #[prost(message, repeated, tag = "1")]
+    pub webhooks: ::prost::alloc::vec::Vec<webhooks_user_setting::Webhook>,
 }
-impl UserSettingKey {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unspecified => "USER_SETTING_KEY_UNSPECIFIED",
-            Self::AccessTokens => "ACCESS_TOKENS",
-            Self::Locale => "LOCALE",
-            Self::Appearance => "APPEARANCE",
-            Self::MemoVisibility => "MEMO_VISIBILITY",
-            Self::Shortcuts => "SHORTCUTS",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "USER_SETTING_KEY_UNSPECIFIED" => Some(Self::Unspecified),
-            "ACCESS_TOKENS" => Some(Self::AccessTokens),
-            "LOCALE" => Some(Self::Locale),
-            "APPEARANCE" => Some(Self::Appearance),
-            "MEMO_VISIBILITY" => Some(Self::MemoVisibility),
-            "SHORTCUTS" => Some(Self::Shortcuts),
-            _ => None,
-        }
+/// Nested message and enum types in `WebhooksUserSetting`.
+pub mod webhooks_user_setting {
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct Webhook {
+        /// Unique identifier for the webhook
+        #[prost(string, tag = "1")]
+        pub id: ::prost::alloc::string::String,
+        /// Descriptive title for the webhook
+        #[prost(string, tag = "2")]
+        pub title: ::prost::alloc::string::String,
+        /// The webhook URL endpoint
+        #[prost(string, tag = "3")]
+        pub url: ::prost::alloc::string::String,
     }
 }

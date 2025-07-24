@@ -2,7 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::util;
 
-use super::gen::{ResourcePayload, ResourceStorageType};
+use super::gen::{AttachmentPayload, AttachmentStorageType};
 
 #[derive(Debug, Default)]
 pub struct FindResource {
@@ -15,7 +15,7 @@ pub struct FindResource {
     pub limit: Option<isize>,
     pub offset: Option<isize>,
     pub has_relate_memo: bool,
-    pub storage_type: Option<ResourceStorageType>,
+    pub storage_type: Option<AttachmentStorageType>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -33,11 +33,11 @@ pub struct Resource {
     pub r#type: String,
     pub size: usize,
 
-    pub storage_type: ResourceStorageType,
+    pub storage_type: AttachmentStorageType,
     pub reference: String,
 
     #[serde(deserialize_with = "crate::model::resource::payload_serde::deserialize")]
-    pub payload: ResourcePayload,
+    pub payload: AttachmentPayload,
     #[serde(deserialize_with = "crate::model::option_serde::deserialize")]
     pub memo_id: Option<i32>,
 }
@@ -47,8 +47,8 @@ pub struct ResourceQry {
     pub thumbnail: Option<String>,
 }
 
-impl From<crate::api::v1::gen::Resource> for Resource {
-    fn from(value: crate::api::v1::gen::Resource) -> Self {
+impl From<crate::api::v1::gen::Attachment> for Resource {
+    fn from(value: crate::api::v1::gen::Attachment) -> Self {
         let memo_id = value.get_memo();
         let blob = value.content;
         let size = blob.len();
@@ -64,13 +64,13 @@ impl From<crate::api::v1::gen::Resource> for Resource {
     }
 }
 
-impl From<ResourcePayload> for libsql::Value {
-    fn from(val: ResourcePayload) -> Self {
+impl From<AttachmentPayload> for libsql::Value {
+    fn from(val: AttachmentPayload) -> Self {
         libsql::Value::Text(serde_json::to_string(&val).unwrap_or("{}".to_string()))
     }
 }
 
-impl Serialize for ResourceStorageType {
+impl Serialize for AttachmentStorageType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -80,23 +80,23 @@ impl Serialize for ResourceStorageType {
     }
 }
 
-impl<'de> Deserialize<'de> for ResourceStorageType {
-    fn deserialize<D>(deserializer: D) -> Result<ResourceStorageType, D::Error>
+impl<'de> Deserialize<'de> for AttachmentStorageType {
+    fn deserialize<D>(deserializer: D) -> Result<AttachmentStorageType, D::Error>
     where
         D: Deserializer<'de>,
     {
         let storage_type = String::deserialize(deserializer)?;
-        let storage_type = ResourceStorageType::from_str_name(&storage_type).unwrap_or_default();
+        let storage_type = AttachmentStorageType::from_str_name(&storage_type).unwrap_or_default();
         Ok(storage_type)
     }
 }
 
 pub mod payload_serde {
-    use crate::model::gen::ResourcePayload;
+    use crate::model::gen::AttachmentPayload;
     use serde::{self, Deserialize, Deserializer, Serializer};
 
     #[allow(dead_code)]
-    pub fn serialize<S>(payload: &ResourcePayload, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(payload: &AttachmentPayload, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -104,7 +104,7 @@ pub mod payload_serde {
         serializer.serialize_str(&s)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<ResourcePayload, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<AttachmentPayload, D::Error>
     where
         D: Deserializer<'de>,
     {
