@@ -244,6 +244,7 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
         }
         NodeValue::Emph => {
             let mut nodes = Vec::new();
+            let mut items = Vec::new();
             for n in node.children() {
                 if n.data.borrow().value == NodeValue::Strong {
                     for nn in n.children() {
@@ -258,14 +259,22 @@ fn parse_node<'a>(node: &'a AstNode<'a>) -> Vec<Node> {
                         }
                     }
                 } else if let NodeValue::Text(content) = &n.data.borrow().value {
-                    nodes.push(Node {
-                        r#type: NodeType::Italic.into(),
-                        node: Some(node::Node::ItalicNode(ItalicNode {
-                            symbol: Default::default(),
+                    items.push(Node {
+                        r#type: NodeType::Text.into(),
+                        node: Some(node::Node::TextNode(TextNode {
                             content: content.to_owned(),
                         })),
                     });
                 }
+            }
+            if !items.is_empty() {
+                nodes.push(Node {
+                    r#type: NodeType::Italic.into(),
+                    node: Some(node::Node::ItalicNode(ItalicNode {
+                        symbol: Default::default(),
+                        children: items,
+                    })),
+                });
             }
             nodes
         }

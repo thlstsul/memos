@@ -61,7 +61,7 @@ fn main() {
             None,
         )
         .with_field_attributes(
-            &["memos.store.ResourcePayload.S3Object.last_presigned_time"],
+            &["memos.store.AttachmentPayload.S3Object.last_presigned_time"],
             &[r#"#[serde(with = "crate::model::time_serde")]"#],
         )
         .compile_protos(

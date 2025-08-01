@@ -1,5 +1,6 @@
 {
     "editor.formatOnType": true,
     "git.ignoreLimitWarning": true,
-    "rust-analyzer.showUnlinkedFileNotification": false
+    "rust-analyzer.showUnlinkedFileNotification": false,
+    "rust-analyzer.checkOnSave": true
 }

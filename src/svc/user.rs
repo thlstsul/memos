@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
 use crate::api::v1::r#gen::{
-    CreateShortcutRequest, DeleteShortcutRequest, GetUserByUsernameRequest, GetUserStatsRequest,
-    ListAllUserStatsRequest, ListAllUserStatsResponse, ListShortcutsRequest, ListShortcutsResponse,
-    Shortcut, UpdateShortcutRequest, UserStats,
+    GetUserStatsRequest, ListAllUserStatsRequest, ListAllUserStatsResponse, UserStats,
 };
 use crate::dao::memo::MemoRepository;
 use crate::dao::resource::ResourceRepository;
@@ -16,10 +14,11 @@ use crate::{
         v1::gen::{
             user_service_server::{self, UserServiceServer},
             CreateUserAccessTokenRequest, CreateUserRequest, DeleteUserAccessTokenRequest,
-            DeleteUserRequest, GetUserAvatarBinaryRequest, GetUserRequest, GetUserSettingRequest,
-            ListUserAccessTokensRequest, ListUserAccessTokensResponse, ListUsersRequest,
-            ListUsersResponse, UpdateUserRequest, UpdateUserSettingRequest, User, UserAccessToken,
-            UserSetting,
+            DeleteUserRequest, GetUserAvatarRequest, GetUserRequest, GetUserSettingRequest,
+            ListUserAccessTokensRequest, ListUserAccessTokensResponse, ListUserSessionsRequest,
+            ListUserSessionsResponse, ListUsersRequest, ListUsersResponse,
+            RevokeUserSessionRequest, SearchUsersRequest, SearchUsersResponse, UpdateUserRequest,
+            UpdateUserSettingRequest, User, UserAccessToken, UserSetting,
         },
     },
     dao::user::UserRepository,
@@ -123,9 +122,17 @@ impl<R: UserRepository + MemoRepository + ResourceRepository + WorkspaceReposito
         let result = self.get_user_memo_stats(None).await?;
         Ok(Response::new(ListAllUserStatsResponse {
             user_stats: vec![result],
+            next_page_token: "".to_string(),
+            total_size: 1,
         }))
     }
 
+    async fn search_users(
+        &self,
+        request: Request<SearchUsersRequest>,
+    ) -> Result<Response<SearchUsersResponse>, Status> {
+        Err(Status::unimplemented("unimplemented"))
+    }
     async fn list_users(
         &self,
         request: Request<ListUsersRequest>,
@@ -172,47 +179,23 @@ impl<R: UserRepository + MemoRepository + ResourceRepository + WorkspaceReposito
     ) -> Result<Response<()>, Status> {
         Err(Status::unimplemented("unimplemented"))
     }
-    async fn get_user_avatar_binary(
+    async fn get_user_avatar(
         &self,
-        request: Request<GetUserAvatarBinaryRequest>,
+        request: Request<GetUserAvatarRequest>,
     ) -> Result<Response<HttpBody>, Status> {
         todo!()
     }
-    /// GetUserByUsername gets a user by username.
-    async fn get_user_by_username(
+    async fn list_user_sessions(
         &self,
-        request: Request<GetUserByUsernameRequest>,
-    ) -> Result<Response<User>, Status> {
-        todo!()
+        request: Request<ListUserSessionsRequest>,
+    ) -> Result<Response<ListUserSessionsResponse>, Status> {
+        Err(Status::unimplemented("unimplemented"))
     }
-
-    /// ListShortcuts returns a list of shortcuts for a user.
-    async fn list_shortcuts(
+    async fn revoke_user_session(
         &self,
-        request: Request<ListShortcutsRequest>,
-    ) -> Result<Response<ListShortcutsResponse>, Status> {
-        Ok(Response::new(ListShortcutsResponse::default()))
-    }
-    /// CreateShortcut creates a new shortcut for a user.
-    async fn create_shortcut(
-        &self,
-        request: Request<CreateShortcutRequest>,
-    ) -> Result<Response<Shortcut>, Status> {
-        todo!()
-    }
-    /// UpdateShortcut updates a shortcut for a user.
-    async fn update_shortcut(
-        &self,
-        request: Request<UpdateShortcutRequest>,
-    ) -> Result<Response<Shortcut>, Status> {
-        todo!()
-    }
-    /// DeleteShortcut deletes a shortcut for a user.
-    async fn delete_shortcut(
-        &self,
-        request: Request<DeleteShortcutRequest>,
+        request: Request<RevokeUserSessionRequest>,
     ) -> Result<Response<()>, Status> {
-        todo!()
+        Err(Status::unimplemented("unimplemented"))
     }
 }
 

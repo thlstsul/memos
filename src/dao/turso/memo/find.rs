@@ -19,18 +19,12 @@ impl ToCriteria for FindMemo {
             uid,
             state,
             creator_id,
-            created_ts_after,
-            created_ts_before,
-            updated_ts_after,
-            updated_ts_before,
-            content_search,
             visibility_list,
-            payload_find,
             exclude_content,
             page_token,
             only_payload,
-            order_by_pinned,
             order_by_updated_ts,
+            order_by_pinned,
             filter,
             sort,
             direction,
@@ -82,26 +76,6 @@ impl ToCriteria for FindMemo {
             sql = sql.where_and("memo.row_status = ?");
             params.push(Value::from(state.to_string()));
         }
-        if let Some(created_ts_before) = created_ts_before {
-            sql = sql.where_and("memo.created_ts < ?");
-            params.push(Value::from(created_ts_before));
-        }
-        if let Some(created_ts_after) = created_ts_after {
-            sql = sql.where_and("memo.created_ts > ?");
-            params.push(Value::from(created_ts_after));
-        }
-        if let Some(updated_ts_before) = updated_ts_before {
-            sql = sql.where_and("memo.updated_ts < ?");
-            params.push(Value::from(updated_ts_before));
-        }
-        if let Some(updated_ts_after) = updated_ts_after {
-            sql = sql.where_and("memo.updated_ts > ?");
-            params.push(Value::from(updated_ts_after));
-        }
-        for content_search in content_search.iter() {
-            sql = sql.where_and("memo.content LIKE ?");
-            params.push(Value::from(format!("%{content_search}%")));
-        }
 
         let w;
         if !visibility_list.is_empty() {
@@ -114,46 +88,12 @@ impl ToCriteria for FindMemo {
             sql = sql.where_and(w.as_str());
         }
 
-        if let Some(FindMemoPayload {
-            raw,
-            tags,
-            has_link,
-            has_task_list,
-            has_code,
-            has_incomplete_tasks,
-        }) = payload_find
-        {
-            if let Some(raw) = raw {
-                sql = sql.where_and("memo.payload = ?");
-                params.push(Value::from(raw));
+        for filter in filter {
+            let (filter_sql, mut filter_params) = convert_ecl_to_sql(&filter);
+            if !filter_sql.is_empty() {
+                sql = sql.where_and(filter_sql.as_str());
+                params.append(&mut filter_params);
             }
-            if let Some(tags) = tags {
-                for tag in tags {
-                    sql = sql.where_and("JSON_EACH.value = ?");
-                    params.push(Value::from(tag));
-                }
-            }
-            if has_link {
-                sql = sql.where_and("JSON_EXTRACT(memo.payload, '$.property.has_link') IS TRUE");
-            }
-            if has_task_list {
-                sql =
-                    sql.where_and("JSON_EXTRACT(memo.payload, '$.property.has_task_list') IS TRUE");
-            }
-            if has_code {
-                sql = sql.where_and("JSON_EXTRACT(memo.payload, '$.property.has_code') IS TRUE");
-            }
-            if has_incomplete_tasks {
-                sql = sql.where_and(
-                    "JSON_EXTRACT(memo.payload, '$.property.has_incomplete_tasks') IS TRUE",
-                );
-            }
-        }
-
-        let (filter_sql, mut filter_params) = convert_ecl_to_sql(&filter);
-        if !filter_sql.is_empty() {
-            sql = sql.where_and(filter_sql.as_str());
-            params.append(&mut filter_params);
         }
 
         if !only_payload && order_by_pinned {

@@ -35,18 +35,11 @@ pub struct FindMemo {
     // Standard fields
     pub state: Option<State>,
     pub creator_id: Option<i32>,
-    pub created_ts_after: Option<i64>,
-    pub created_ts_before: Option<i64>,
-    pub updated_ts_after: Option<i64>,
-    pub updated_ts_before: Option<i64>,
 
     // Domain specific fields
-    pub content_search: Vec<String>,
     pub visibility_list: Vec<Visibility>,
-    pub payload_find: Option<FindMemoPayload>,
     pub exclude_content: bool,
     pub exclude_comments: bool,
-    pub random: bool,
 
     // Pagination
     pub page_token: Option<PageToken>,
@@ -58,7 +51,7 @@ pub struct FindMemo {
 
     pub sort: String,
     pub direction: Direction,
-    pub filter: String,
+    pub filter: Vec<String>,
 }
 
 #[allow(dead_code)]

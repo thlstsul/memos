@@ -35,14 +35,17 @@ impl auth_service_server::AuthService for EmptyService {
         let user = request.get_current_user()?;
         let mut user: User = user.clone().into();
         user.password = "".to_string();
-        Ok(Response::new(user))
+        Ok(Response::new(GetCurrentSessionResponse {
+            user: Some(user),
+            last_accessed_at: None,
+        }))
     }
 
     async fn create_session(
         &self,
         mut request: Request<CreateSessionRequest>,
     ) -> Result<Response<CreateSessionResponse>, Status> {
-        let Some(Credentials::PasswordCredentials(creds)) = request.credentials else {
+        let Some(Credentials::PasswordCredentials(creds)) = request.get_ref().credentials else {
             return Err(Status::unimplemented("unimplemented"));
         };
 
@@ -58,7 +61,10 @@ impl auth_service_server::AuthService for EmptyService {
             };
 
             session.login(&user).await.context(Login)?;
-            Ok(Response::new(user.into()))
+            Ok(Response::new(CreateSessionResponse {
+                user: Some(user.into()),
+                last_accessed_at: None,
+            }))
         } else {
             Err(Status::internal("Auth layer uninitialized"))
         }

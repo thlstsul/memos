@@ -4,7 +4,7 @@ use snafu::{ResultExt, Snafu};
 use crate::{
     api::{prefix, to_timestamp},
     impl_extract_name,
-    model::memo::{CreateMemo, FindMemo, FindMemoPayload, SearchMemosFilter, UpdateMemo},
+    model::memo::{CreateMemo, FindMemo, FindMemoPayload, UpdateMemo},
     util::{self, md},
 };
 
@@ -47,20 +47,6 @@ impl TryInto<FindMemo> for &ListMemosRequest {
     type Error = Error;
 
     fn try_into(self) -> Result<FindMemo, Self::Error> {
-        let filter = if !self.old_filter.is_empty() {
-            let old_filter = &self.old_filter.replace('\'', "\"");
-            syn::parse_str::<SearchMemosFilter>(old_filter).context(FilterDecode)?
-        } else {
-            SearchMemosFilter::default()
-        };
-
-        let creator_id = filter
-            .creator
-            .map(|s| get_id_parent_token(s, prefix::USER_NAME_PREFIX))
-            .transpose()
-            .context(InvalidUsername)?;
-
-        let owner_id = get_id_parent_token(self.parent.clone(), prefix::USER_NAME_PREFIX).ok();
         let page_token = if !self.page_token.is_empty() {
             serde_json::from_str(&self.page_token).context(PageTokenDecode)?
         } else {
@@ -70,43 +56,17 @@ impl TryInto<FindMemo> for &ListMemosRequest {
             }
         };
 
-        let mut direction = Direction::try_from(self.direction).unwrap_or_default();
-        if direction == Direction::Unspecified {
-            direction = Direction::Desc;
-        }
         Ok(FindMemo {
-            creator_id: creator_id.or(owner_id),
-            state: State::try_from(self.state).ok().or(filter.state),
-            content_search: filter.content_search.unwrap_or_default(),
-            visibility_list: filter.visibilities.unwrap_or_default(),
+            state: State::try_from(self.state).ok(),
             exclude_content: false,
             page_token: Some(page_token),
             //  默认使用更新时间过滤
             order_by_updated_ts: true,
-            updated_ts_after: filter.display_time_after,
-            updated_ts_before: filter.display_time_before,
-            payload_find: if filter.tag_search.is_some()
-                || filter.has_code.is_some()
-                || filter.has_link.is_some()
-                || filter.has_task_list.is_some()
-                || filter.has_incomplete_tasks.is_some()
-            {
-                Some(FindMemoPayload {
-                    raw: None,
-                    tags: filter.tag_search,
-                    has_link: filter.has_link.unwrap_or_default(),
-                    has_task_list: filter.has_task_list.unwrap_or_default(),
-                    has_code: filter.has_code.unwrap_or_default(),
-                    has_incomplete_tasks: filter.has_incomplete_tasks.unwrap_or_default(),
-                })
-            } else {
-                None
-            },
             exclude_comments: true,
             only_payload: false,
-            sort: self.sort.clone(),
-            direction,
-            filter: self.filter.clone(),
+            sort: self.order_by.clone(),
+            direction: Direction::Desc,
+            filter: vec![self.filter.clone()],
             ..Default::default()
         })
     }

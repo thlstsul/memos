@@ -246,6 +246,7 @@ pub mod attachment_payload {
         /// last_presigned_time is the last time the object was presigned.
         /// This is used to determine if the presigned URL is still valid.
         #[prost(message, optional, tag = "3")]
+        #[serde(with = "crate::model::time_serde")]
         pub last_presigned_time: ::core::option::Option<::prost_types::Timestamp>,
     }
     #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Oneof)]

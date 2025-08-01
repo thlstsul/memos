@@ -116,7 +116,6 @@ impl GrpcRestService {
         let user = svc.clone().user_server();
         let memo = svc.clone().memo_server();
         let resource = svc.clone().resource_server();
-        let setting = svc.clone().workspace_setting_server();
         let workspace = svc.clone().workspace_server();
         let state = AppState { res_service: svc };
 
@@ -143,7 +142,6 @@ impl GrpcRestService {
             .add_service(inbox)
             .add_service(webhook)
             .add_service(workspace)
-            .add_service(setting)
             .into_service();
 
         Self {

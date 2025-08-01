@@ -1,37 +1,17 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::model::r#gen::user_setting::Key as UserSettingKey;
 use crate::{
     api::{prefix, to_timestamp},
     impl_extract_name,
-    model::user::UserSetting,
 };
 
-use super::v1::r#gen::GetUserStatsRequest;
 use super::{
     prefix::FormatName,
-    v1::gen::{
-        user::Role, GetUserRequest, UpdateUserSettingRequest, User, UserSetting as UserSettingApi,
-    },
+    v1::r#gen::{user::Role, GetUserRequest, GetUserStatsRequest, User},
 };
 
 impl_extract_name!(GetUserRequest, prefix::USER_NAME_PREFIX);
 impl_extract_name!(GetUserStatsRequest, prefix::USER_NAME_PREFIX);
-
-impl From<Vec<UserSetting>> for UserSettingApi {
-    fn from(value: Vec<UserSetting>) -> Self {
-        let mut setting = UserSettingApi::default();
-        for s in value {
-            match s.key as UserSettingKey {
-                UserSettingKey::Locale => setting.locale = s.value,
-                UserSettingKey::Appearance => setting.appearance = s.value,
-                UserSettingKey::MemoVisibility => setting.memo_visibility = s.value,
-                _ => (),
-            }
-        }
-        setting
-    }
-}
 
 impl From<crate::model::user::User> for User {
     fn from(value: crate::model::user::User) -> Self {
@@ -54,40 +34,6 @@ impl From<crate::model::user::User> for User {
 impl FormatName for crate::model::user::User {
     fn get_name(&self) -> String {
         format!("{}/{}", prefix::USER_NAME_PREFIX, self.id)
-    }
-}
-
-impl UpdateUserSettingRequest {
-    pub fn as_settings(&self, user_id: i32) -> Vec<UserSetting> {
-        let mut rtn = Vec::new();
-        if let UpdateUserSettingRequest {
-            update_mask: Some(field_mask),
-            setting: Some(settings),
-        } = self
-        {
-            for path in &field_mask.paths {
-                let setting = match path.as_str() {
-                    "locale" => UserSetting {
-                        user_id,
-                        key: UserSettingKey::Locale,
-                        value: settings.locale.clone(),
-                    },
-                    "appearance" => UserSetting {
-                        user_id,
-                        key: UserSettingKey::Appearance,
-                        value: settings.appearance.clone(),
-                    },
-                    "memo_visibility" => UserSetting {
-                        user_id,
-                        key: UserSettingKey::MemoVisibility,
-                        value: settings.memo_visibility.clone(),
-                    },
-                    _ => continue,
-                };
-                rtn.push(setting);
-            }
-        }
-        rtn
     }
 }
 

@@ -52,6 +52,7 @@ impl From<crate::model::gen::WorkspaceGeneralSetting> for WorkspaceGeneralSettin
             week_start_day_offset: value.week_start_day_offset,
             disallow_change_username: value.disallow_change_username,
             disallow_change_nickname: value.disallow_change_nickname,
+            theme: value.theme,
         }
     }
 }
@@ -65,7 +66,6 @@ impl From<crate::model::gen::WorkspaceMemoRelatedSetting> for WorkspaceMemoRelat
             enable_double_click_edit: value.enable_double_click_edit,
             enable_link_preview: value.enable_link_preview,
             enable_comment: value.enable_comment,
-            enable_location: value.enable_location,
             reactions: value.reactions,
             disable_markdown_shortcuts: value.disable_markdown_shortcuts,
             enable_blur_nsfw_content: value.enable_blur_nsfw_content,

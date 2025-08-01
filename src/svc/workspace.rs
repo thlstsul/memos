@@ -18,7 +18,7 @@ use tonic::{Request, Response, Status};
 use super::Service;
 
 const OWNER: &str = "users/546";
-const VERSION: &str = "0.22.3";
+const VERSION: &str = "0.25.0";
 const MODE: &str = "prod";
 const DEFAULT_MAX_MIB: usize = 32;
 

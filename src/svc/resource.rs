@@ -16,13 +16,13 @@ use crate::dao::resource::ResourceRepository;
 use crate::dao::workspace::WorkspaceRepository;
 use crate::google::api::HttpBody;
 
-use crate::svc::workspace::WorkspaceSettingService;
 use crate::{
     api::prefix::ExtractName,
     api::v1::gen::{
-        resource_service_server, resource_service_server::ResourceServiceServer,
-        CreateResourceRequest, DeleteResourceRequest, GetResourceBinaryRequest, GetResourceRequest,
-        ListResourcesRequest, ListResourcesResponse, Resource, UpdateResourceRequest,
+        attachment_service_server, attachment_service_server::AttachmentServiceServer, Attachment,
+        CreateAttachmentRequest, DeleteAttachmentRequest, GetAttachmentBinaryRequest,
+        GetAttachmentRequest, ListAttachmentsRequest, ListAttachmentsResponse,
+        UpdateAttachmentRequest,
     },
     model::resource::{FindResource, Resource as ResourceModel},
 };
@@ -35,10 +35,10 @@ const MEBI_BYTE: usize = 1024 * 1024;
 
 #[async_trait]
 pub trait ResourceService:
-    resource_service_server::ResourceService + Clone + Send + Sync + 'static
+    attachment_service_server::AttachmentService + Clone + Send + Sync + 'static
 {
-    fn resource_server(self: Arc<Self>) -> ResourceServiceServer<Self> {
-        ResourceServiceServer::from_arc(self)
+    fn resource_server(self: Arc<Self>) -> AttachmentServiceServer<Self> {
+        AttachmentServiceServer::from_arc(self)
     }
 
     async fn set_resources_memo(
@@ -189,13 +189,13 @@ async fn save_file(path: impl AsRef<path::Path>, blob: &[u8]) -> Result<(), Erro
 }
 
 #[tonic::async_trait]
-impl<R: ResourceRepository + WorkspaceRepository> resource_service_server::ResourceService
+impl<R: ResourceRepository + WorkspaceRepository> attachment_service_server::AttachmentService
     for Service<R>
 {
-    async fn list_resources(
+    async fn list_attachments(
         &self,
-        request: Request<ListResourcesRequest>,
-    ) -> Result<Response<ListResourcesResponse>, Status> {
+        request: Request<ListAttachmentsRequest>,
+    ) -> Result<Response<ListAttachmentsResponse>, Status> {
         let user = request.get_current_user()?;
         let resources = self
             .repo
@@ -206,12 +206,12 @@ impl<R: ResourceRepository + WorkspaceRepository> resource_service_server::Resou
             .await?;
         let resources = resources.into_iter().map(|r| r.into()).collect();
 
-        Ok(Response::new(ListResourcesResponse { resources }))
+        Ok(Response::new(ListAttachmentsResponse { resources }))
     }
 
-    async fn delete_resource(
+    async fn delete_attachment(
         &self,
-        request: Request<DeleteResourceRequest>,
+        request: Request<DeleteAttachmentRequest>,
     ) -> Result<Response<()>, Status> {
         let user = request.get_current_user()?;
         let id = request.get_ref().get_id()?;
@@ -219,26 +219,26 @@ impl<R: ResourceRepository + WorkspaceRepository> resource_service_server::Resou
         Ok(Response::new(()))
     }
 
-    async fn get_resource(
+    async fn get_attachment(
         &self,
-        request: Request<GetResourceRequest>,
-    ) -> Result<Response<Resource>, Status> {
+        request: Request<GetAttachmentRequest>,
+    ) -> Result<Response<Attachment>, Status> {
         let id = request.get_ref().get_id()?;
         let res = self.get_resource_by_id(id).await?;
         Ok(Response::new(res.into()))
     }
 
-    async fn update_resource(
+    async fn update_attachment(
         &self,
-        request: Request<UpdateResourceRequest>,
-    ) -> Result<Response<Resource>, Status> {
+        request: Request<UpdateAttachmentRequest>,
+    ) -> Result<Response<Attachment>, Status> {
         Err(Status::unimplemented("unimplemented"))
     }
 
-    async fn create_resource(
+    async fn create_attachment(
         &self,
-        request: Request<CreateResourceRequest>,
-    ) -> Result<Response<Resource>, Status> {
+        request: Request<CreateAttachmentRequest>,
+    ) -> Result<Response<Attachment>, Status> {
         let user = request.get_current_user()?;
 
         if let Some(resource) = &request.get_ref().resource {
@@ -262,9 +262,9 @@ impl<R: ResourceRepository + WorkspaceRepository> resource_service_server::Resou
         }
     }
 
-    async fn get_resource_binary(
+    async fn get_attachment_binary(
         &self,
-        request: Request<GetResourceBinaryRequest>,
+        request: Request<GetAttachmentBinaryRequest>,
     ) -> Result<Response<HttpBody>, Status> {
         Err(Status::unimplemented("unimplemented"))
     }
