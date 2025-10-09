@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use libsql::params;
 
 use crate::{
-    api::v1::gen::user::Role,
+    api::v1::generate::user::Role,
     dao::user::{
         FindUserError, FindUserSettingError, GetHostUserError, PetchUserError,
         UpsertUserSettingError, UserRepository,

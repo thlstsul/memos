@@ -7,7 +7,7 @@ use crate::{
 
 use super::{
     prefix::FormatName,
-    v1::r#gen::{user::Role, GetUserRequest, GetUserStatsRequest, User},
+    v1::generate::{GetUserRequest, GetUserStatsRequest, User, user::Role},
 };
 
 impl_extract_name!(GetUserRequest, prefix::USER_NAME_PREFIX);

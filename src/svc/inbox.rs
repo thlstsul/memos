@@ -3,9 +3,9 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tonic::{Request, Response, Status};
 
-use crate::api::v1::gen::{
-    inbox_service_server::{self, InboxServiceServer},
+use crate::api::v1::generate::{
     DeleteInboxRequest, Inbox, ListInboxesRequest, ListInboxesResponse, UpdateInboxRequest,
+    inbox_service_server::{self, InboxServiceServer},
 };
 
 use super::EmptyService;

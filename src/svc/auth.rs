@@ -4,12 +4,12 @@ use async_trait::async_trait;
 use snafu::{ResultExt, Snafu};
 use tonic::{Request, Response, Status};
 
-use crate::api::v1::r#gen::create_session_request::Credentials;
-use crate::api::v1::r#gen::{CreateSessionResponse, GetCurrentSessionResponse};
+use crate::api::v1::generate::create_session_request::Credentials;
+use crate::api::v1::generate::{CreateSessionResponse, GetCurrentSessionResponse};
 use crate::{
-    api::v1::gen::{
-        auth_service_server::{self, AuthServiceServer},
+    api::v1::generate::{
         CreateSessionRequest, DeleteSessionRequest, GetCurrentSessionRequest, User,
+        auth_service_server::{self, AuthServiceServer},
     },
     ctrl::AuthSession,
 };
@@ -45,12 +45,13 @@ impl auth_service_server::AuthService for EmptyService {
         &self,
         mut request: Request<CreateSessionRequest>,
     ) -> Result<Response<CreateSessionResponse>, Status> {
-        let Some(Credentials::PasswordCredentials(creds)) = request.get_ref().credentials else {
+        let Some(Credentials::PasswordCredentials(ref creds)) = request.get_ref().credentials
+        else {
             return Err(Status::unimplemented("unimplemented"));
         };
 
         if let Some(session) = request.extensions_mut().get_mut::<AuthSession>() {
-            let user = match session.authenticate(creds).await {
+            let user = match session.authenticate(creds.clone()).await {
                 Ok(Some(user)) => user,
                 Ok(None) => {
                     return Err(Status::unauthenticated(

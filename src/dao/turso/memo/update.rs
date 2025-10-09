@@ -1,4 +1,4 @@
-use libsql::{params::IntoParams, Value};
+use libsql::{Value, params::IntoParams};
 use sql_query_builder::Update;
 
 use crate::{dao::turso::ToCriteria, model::memo::UpdateMemo};

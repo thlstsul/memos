@@ -3,14 +3,14 @@ use std::sync::Arc;
 use crate::{
     api::{
         prefix::{ExtractName, FormatName},
-        v1::gen::{
-            workspace_service_server::{self, WorkspaceServiceServer},
+        v1::generate::{
             GetWorkspaceProfileRequest, GetWorkspaceSettingRequest, UpdateWorkspaceSettingRequest,
             WorkspaceProfile, WorkspaceSetting,
+            workspace_service_server::{self, WorkspaceServiceServer},
         },
     },
-    dao::user::UserRepository,
-    model::gen::WorkspaceSettingKey,
+    dao::{user::UserRepository, workspace::WorkspaceRepository},
+    model::generate::WorkspaceSettingKey,
 };
 use async_trait::async_trait;
 use tonic::{Request, Response, Status};
@@ -18,7 +18,7 @@ use tonic::{Request, Response, Status};
 use super::Service;
 
 const OWNER: &str = "users/546";
-const VERSION: &str = "0.25.0";
+const VERSION: &str = "0.25.1";
 const MODE: &str = "prod";
 const DEFAULT_MAX_MIB: usize = 32;
 
@@ -32,10 +32,12 @@ pub trait WorkspaceService:
 }
 
 #[async_trait]
-impl<U: UserRepository> WorkspaceService for Service<U> {}
+impl<U: UserRepository + WorkspaceRepository> WorkspaceService for Service<U> {}
 
 #[tonic::async_trait]
-impl<U: UserRepository> workspace_service_server::WorkspaceService for Service<U> {
+impl<U: UserRepository + WorkspaceRepository> workspace_service_server::WorkspaceService
+    for Service<U>
+{
     /// GetWorkspaceProfile returns the workspace profile.
     async fn get_workspace_profile(
         &self,

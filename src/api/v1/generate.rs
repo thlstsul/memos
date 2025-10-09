@@ -201,11 +201,11 @@ pub mod activity_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -656,11 +656,11 @@ pub mod attachment_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -1385,12 +1385,8 @@ pub struct ListUsersRequest {
     /// Supported fields: username, email, role, state, create_time, update_time
     #[prost(string, tag = "3")]
     pub filter: ::prost::alloc::string::String,
-    /// Optional. The order to sort results by.
-    /// Example: "create_time desc" or "username asc"
-    #[prost(string, tag = "4")]
-    pub order_by: ::prost::alloc::string::String,
     /// Optional. If true, show deleted users in the response.
-    #[prost(bool, tag = "5")]
+    #[prost(bool, tag = "4")]
     pub show_deleted: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1458,30 +1454,6 @@ pub struct DeleteUserRequest {
     pub force: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SearchUsersRequest {
-    /// Required. The search query.
-    #[prost(string, tag = "1")]
-    pub query: ::prost::alloc::string::String,
-    /// Optional. The maximum number of users to return.
-    #[prost(int32, tag = "2")]
-    pub page_size: i32,
-    /// Optional. A page token for pagination.
-    #[prost(string, tag = "3")]
-    pub page_token: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SearchUsersResponse {
-    /// The list of users matching the search query.
-    #[prost(message, repeated, tag = "1")]
-    pub users: ::prost::alloc::vec::Vec<User>,
-    /// A token for the next page of results.
-    #[prost(string, tag = "2")]
-    pub next_page_token: ::prost::alloc::string::String,
-    /// The total count of matching users.
-    #[prost(int32, tag = "3")]
-    pub total_size: i32,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserAvatarRequest {
     /// Required. The resource name of the user.
     /// Format: users/{user}
@@ -1533,32 +1505,120 @@ pub struct GetUserStatsRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
+/// This endpoint doesn't take any parameters.
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ListAllUserStatsRequest {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListAllUserStatsResponse {
+    /// The list of user statistics.
+    #[prost(message, repeated, tag = "1")]
+    pub stats: ::prost::alloc::vec::Vec<UserStats>,
+}
 /// User settings message
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UserSetting {
-    /// The resource name of the user whose setting this is.
-    /// Format: users/{user}
+    /// The name of the user setting.
+    /// Format: users/{user}/settings/{setting}, {setting} is the key for the setting.
+    /// For example, "users/123/settings/GENERAL" for general settings.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    /// The preferred locale of the user.
-    #[prost(string, tag = "2")]
-    pub locale: ::prost::alloc::string::String,
-    /// The preferred appearance of the user.
-    #[prost(string, tag = "3")]
-    pub appearance: ::prost::alloc::string::String,
-    /// The default visibility of the memo.
-    #[prost(string, tag = "4")]
-    pub memo_visibility: ::prost::alloc::string::String,
-    /// The preferred theme of the user.
-    /// This references a CSS file in the web/public/themes/ directory.
-    /// If not set, the default theme will be used.
-    #[prost(string, tag = "5")]
-    pub theme: ::prost::alloc::string::String,
+    #[prost(oneof = "user_setting::Value", tags = "2, 3, 4, 5")]
+    pub value: ::core::option::Option<user_setting::Value>,
+}
+/// Nested message and enum types in `UserSetting`.
+pub mod user_setting {
+    /// General user settings configuration.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct GeneralSetting {
+        /// The preferred locale of the user.
+        #[prost(string, tag = "1")]
+        pub locale: ::prost::alloc::string::String,
+        /// The default visibility of the memo.
+        #[prost(string, tag = "3")]
+        pub memo_visibility: ::prost::alloc::string::String,
+        /// The preferred theme of the user.
+        /// This references a CSS file in the web/public/themes/ directory.
+        /// If not set, the default theme will be used.
+        #[prost(string, tag = "4")]
+        pub theme: ::prost::alloc::string::String,
+    }
+    /// User authentication sessions configuration.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct SessionsSetting {
+        /// List of active user sessions.
+        #[prost(message, repeated, tag = "1")]
+        pub sessions: ::prost::alloc::vec::Vec<super::UserSession>,
+    }
+    /// User access tokens configuration.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AccessTokensSetting {
+        /// List of user access tokens.
+        #[prost(message, repeated, tag = "1")]
+        pub access_tokens: ::prost::alloc::vec::Vec<super::UserAccessToken>,
+    }
+    /// User webhooks configuration.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct WebhooksSetting {
+        /// List of user webhooks.
+        #[prost(message, repeated, tag = "1")]
+        pub webhooks: ::prost::alloc::vec::Vec<super::UserWebhook>,
+    }
+    /// Enumeration of user setting keys.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Key {
+        Unspecified = 0,
+        /// GENERAL is the key for general user settings.
+        General = 1,
+        /// SESSIONS is the key for user authentication sessions.
+        Sessions = 2,
+        /// ACCESS_TOKENS is the key for access tokens.
+        AccessTokens = 3,
+        /// WEBHOOKS is the key for user webhooks.
+        Webhooks = 4,
+    }
+    impl Key {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "KEY_UNSPECIFIED",
+                Self::General => "GENERAL",
+                Self::Sessions => "SESSIONS",
+                Self::AccessTokens => "ACCESS_TOKENS",
+                Self::Webhooks => "WEBHOOKS",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "KEY_UNSPECIFIED" => Some(Self::Unspecified),
+                "GENERAL" => Some(Self::General),
+                "SESSIONS" => Some(Self::Sessions),
+                "ACCESS_TOKENS" => Some(Self::AccessTokens),
+                "WEBHOOKS" => Some(Self::Webhooks),
+                _ => None,
+            }
+        }
+    }
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Value {
+        #[prost(message, tag = "2")]
+        GeneralSetting(GeneralSetting),
+        #[prost(message, tag = "3")]
+        SessionsSetting(SessionsSetting),
+        #[prost(message, tag = "4")]
+        AccessTokensSetting(AccessTokensSetting),
+        #[prost(message, tag = "5")]
+        WebhooksSetting(WebhooksSetting),
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserSettingRequest {
-    /// Required. The resource name of the user.
-    /// Format: users/{user}
+    /// Required. The resource name of the user setting.
+    /// Format: users/{user}/settings/{setting}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -1570,6 +1630,38 @@ pub struct UpdateUserSettingRequest {
     /// Required. The list of fields to update.
     #[prost(message, optional, tag = "2")]
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+}
+/// Request message for ListUserSettings method.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListUserSettingsRequest {
+    /// Required. The parent resource whose settings will be listed.
+    /// Format: users/{user}
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    /// Optional. The maximum number of settings to return.
+    /// The service may return fewer than this value.
+    /// If unspecified, at most 50 settings will be returned.
+    /// The maximum value is 1000; values above 1000 will be coerced to 1000.
+    #[prost(int32, tag = "2")]
+    pub page_size: i32,
+    /// Optional. A page token, received from a previous `ListUserSettings` call.
+    /// Provide this to retrieve the subsequent page.
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
+}
+/// Response message for ListUserSettings method.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListUserSettingsResponse {
+    /// The list of user settings.
+    #[prost(message, repeated, tag = "1")]
+    pub settings: ::prost::alloc::vec::Vec<UserSetting>,
+    /// A token that can be sent as `page_token` to retrieve the next page.
+    /// If this field is omitted, there are no subsequent pages.
+    #[prost(string, tag = "2")]
+    pub next_page_token: ::prost::alloc::string::String,
+    /// The total count of settings (may be approximate).
+    #[prost(int32, tag = "3")]
+    pub total_size: i32,
 }
 /// User access token message
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1692,31 +1784,69 @@ pub struct ListUserSessionsResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RevokeUserSessionRequest {
-    /// Required. The resource name of the session to revoke.
+    /// The name of the session to revoke.
     /// Format: users/{user}/sessions/{session}
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
+/// UserWebhook represents a webhook owned by a user.
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListAllUserStatsRequest {
-    /// Optional. The maximum number of user stats to return.
-    #[prost(int32, tag = "1")]
-    pub page_size: i32,
-    /// Optional. A page token for pagination.
+pub struct UserWebhook {
+    /// The name of the webhook.
+    /// Format: users/{user}/webhooks/{webhook}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The URL to send the webhook to.
     #[prost(string, tag = "2")]
-    pub page_token: ::prost::alloc::string::String,
+    pub url: ::prost::alloc::string::String,
+    /// Optional. Human-readable name for the webhook.
+    #[prost(string, tag = "3")]
+    pub display_name: ::prost::alloc::string::String,
+    /// The creation time of the webhook.
+    #[prost(message, optional, tag = "4")]
+    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
+    /// The last update time of the webhook.
+    #[prost(message, optional, tag = "5")]
+    pub update_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListAllUserStatsResponse {
-    /// The list of user statistics.
+pub struct ListUserWebhooksRequest {
+    /// The parent user resource.
+    /// Format: users/{user}
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListUserWebhooksResponse {
+    /// The list of webhooks.
     #[prost(message, repeated, tag = "1")]
-    pub user_stats: ::prost::alloc::vec::Vec<UserStats>,
-    /// A token for the next page of results.
-    #[prost(string, tag = "2")]
-    pub next_page_token: ::prost::alloc::string::String,
-    /// The total count of user statistics.
-    #[prost(int32, tag = "3")]
-    pub total_size: i32,
+    pub webhooks: ::prost::alloc::vec::Vec<UserWebhook>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateUserWebhookRequest {
+    /// The parent user resource.
+    /// Format: users/{user}
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    /// The webhook to create.
+    #[prost(message, optional, tag = "2")]
+    pub webhook: ::core::option::Option<UserWebhook>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateUserWebhookRequest {
+    /// The webhook to update.
+    #[prost(message, optional, tag = "1")]
+    pub webhook: ::core::option::Option<UserWebhook>,
+    /// The list of fields to update.
+    #[prost(message, optional, tag = "2")]
+    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteUserWebhookRequest {
+    /// The name of the webhook to delete.
+    /// Format: users/{user}/webhooks/{webhook}
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
 }
 /// Generated client implementations.
 pub mod user_service_client {
@@ -1767,11 +1897,11 @@ pub mod user_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -1883,23 +2013,6 @@ pub mod user_service_client {
                 .insert(GrpcMethod::new("memos.api.v1.UserService", "DeleteUser"));
             self.inner.unary(req, path, codec).await
         }
-        /// SearchUsers searches for users based on query.
-        pub async fn search_users(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SearchUsersRequest>,
-        ) -> std::result::Result<tonic::Response<super::SearchUsersResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/SearchUsers");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.UserService", "SearchUsers"));
-            self.inner.unary(req, path, codec).await
-        }
         /// GetUserAvatar gets the avatar of a user.
         pub async fn get_user_avatar(
             &mut self,
@@ -1987,6 +2100,25 @@ pub mod user_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "memos.api.v1.UserService",
                 "UpdateUserSetting",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// ListUserSettings returns a list of user settings.
+        pub async fn list_user_settings(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListUserSettingsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListUserSettingsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/ListUserSettings");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "ListUserSettings",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -2085,6 +2217,79 @@ pub mod user_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// ListUserWebhooks returns a list of webhooks for a user.
+        pub async fn list_user_webhooks(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListUserWebhooksRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListUserWebhooksResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/ListUserWebhooks");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "ListUserWebhooks",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// CreateUserWebhook creates a new webhook for a user.
+        pub async fn create_user_webhook(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateUserWebhookRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserWebhook>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/CreateUserWebhook");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "CreateUserWebhook",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// UpdateUserWebhook updates an existing webhook for a user.
+        pub async fn update_user_webhook(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateUserWebhookRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserWebhook>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/UpdateUserWebhook");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "UpdateUserWebhook",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// DeleteUserWebhook deletes a webhook for a user.
+        pub async fn delete_user_webhook(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteUserWebhookRequest>,
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/memos.api.v1.UserService/DeleteUserWebhook");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "memos.api.v1.UserService",
+                "DeleteUserWebhook",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -2125,11 +2330,6 @@ pub mod user_service_server {
             &self,
             request: tonic::Request<super::DeleteUserRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
-        /// SearchUsers searches for users based on query.
-        async fn search_users(
-            &self,
-            request: tonic::Request<super::SearchUsersRequest>,
-        ) -> std::result::Result<tonic::Response<super::SearchUsersResponse>, tonic::Status>;
         /// GetUserAvatar gets the avatar of a user.
         async fn get_user_avatar(
             &self,
@@ -2158,6 +2358,11 @@ pub mod user_service_server {
             &self,
             request: tonic::Request<super::UpdateUserSettingRequest>,
         ) -> std::result::Result<tonic::Response<super::UserSetting>, tonic::Status>;
+        /// ListUserSettings returns a list of user settings.
+        async fn list_user_settings(
+            &self,
+            request: tonic::Request<super::ListUserSettingsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListUserSettingsResponse>, tonic::Status>;
         /// ListUserAccessTokens returns a list of access tokens for a user.
         async fn list_user_access_tokens(
             &self,
@@ -2182,6 +2387,26 @@ pub mod user_service_server {
         async fn revoke_user_session(
             &self,
             request: tonic::Request<super::RevokeUserSessionRequest>,
+        ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
+        /// ListUserWebhooks returns a list of webhooks for a user.
+        async fn list_user_webhooks(
+            &self,
+            request: tonic::Request<super::ListUserWebhooksRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListUserWebhooksResponse>, tonic::Status>;
+        /// CreateUserWebhook creates a new webhook for a user.
+        async fn create_user_webhook(
+            &self,
+            request: tonic::Request<super::CreateUserWebhookRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserWebhook>, tonic::Status>;
+        /// UpdateUserWebhook updates an existing webhook for a user.
+        async fn update_user_webhook(
+            &self,
+            request: tonic::Request<super::UpdateUserWebhookRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserWebhook>, tonic::Status>;
+        /// DeleteUserWebhook deletes a webhook for a user.
+        async fn delete_user_webhook(
+            &self,
+            request: tonic::Request<super::DeleteUserWebhookRequest>,
         ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
     }
     #[derive(Debug)]
@@ -2451,45 +2676,6 @@ pub mod user_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/memos.api.v1.UserService/SearchUsers" => {
-                    #[allow(non_camel_case_types)]
-                    struct SearchUsersSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::SearchUsersRequest> for SearchUsersSvc<T> {
-                        type Response = super::SearchUsersResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SearchUsersRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as UserService>::search_users(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = SearchUsersSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/memos.api.v1.UserService/GetUserAvatar" => {
                     #[allow(non_camel_case_types)]
                     struct GetUserAvatarSvc<T: UserService>(pub Arc<T>);
@@ -2681,6 +2867,47 @@ pub mod user_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = UpdateUserSettingSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/ListUserSettings" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListUserSettingsSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::ListUserSettingsRequest>
+                        for ListUserSettingsSvc<T>
+                    {
+                        type Response = super::ListUserSettingsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListUserSettingsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::list_user_settings(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListUserSettingsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2905,6 +3132,173 @@ pub mod user_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/memos.api.v1.UserService/ListUserWebhooks" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListUserWebhooksSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<super::ListUserWebhooksRequest>
+                        for ListUserWebhooksSvc<T>
+                    {
+                        type Response = super::ListUserWebhooksResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListUserWebhooksRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::list_user_webhooks(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListUserWebhooksSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/CreateUserWebhook" => {
+                    #[allow(non_camel_case_types)]
+                    struct CreateUserWebhookSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService>
+                        tonic::server::UnaryService<super::CreateUserWebhookRequest>
+                        for CreateUserWebhookSvc<T>
+                    {
+                        type Response = super::UserWebhook;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CreateUserWebhookRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::create_user_webhook(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CreateUserWebhookSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/UpdateUserWebhook" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateUserWebhookSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService>
+                        tonic::server::UnaryService<super::UpdateUserWebhookRequest>
+                        for UpdateUserWebhookSvc<T>
+                    {
+                        type Response = super::UserWebhook;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateUserWebhookRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::update_user_webhook(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateUserWebhookSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/memos.api.v1.UserService/DeleteUserWebhook" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteUserWebhookSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService>
+                        tonic::server::UnaryService<super::DeleteUserWebhookRequest>
+                        for DeleteUserWebhookSvc<T>
+                    {
+                        type Response = ();
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteUserWebhookRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::delete_user_webhook(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DeleteUserWebhookSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 _ => Box::pin(async move {
                     let mut response = http::Response::new(empty_body());
                     let headers = response.headers_mut();
@@ -3060,11 +3454,11 @@ pub mod auth_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -3602,11 +3996,11 @@ pub mod identity_provider_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -4316,11 +4710,11 @@ pub mod inbox_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -5038,6 +5432,10 @@ pub struct HtmlElementNode {
     #[prost(map = "string, string", tag = "2")]
     pub attributes:
         ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    #[prost(message, repeated, tag = "3")]
+    pub children: ::prost::alloc::vec::Vec<Node>,
+    #[prost(bool, tag = "4")]
+    pub is_self_closing: bool,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -5206,11 +5604,11 @@ pub mod markdown_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -6168,11 +6566,11 @@ pub mod memo_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -7452,11 +7850,11 @@ pub mod shortcut_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -7944,598 +8342,6 @@ pub mod shortcut_service_server {
         const NAME: &'static str = SERVICE_NAME;
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Webhook {
-    /// The resource name of the webhook.
-    /// Format: users/{user}/webhooks/{webhook}
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    /// The display name of the webhook.
-    #[prost(string, tag = "2")]
-    pub display_name: ::prost::alloc::string::String,
-    /// The target URL for the webhook.
-    #[prost(string, tag = "3")]
-    pub url: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListWebhooksRequest {
-    /// Required. The parent resource where webhooks are listed.
-    /// Format: users/{user}
-    #[prost(string, tag = "1")]
-    pub parent: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListWebhooksResponse {
-    /// The list of webhooks.
-    #[prost(message, repeated, tag = "1")]
-    pub webhooks: ::prost::alloc::vec::Vec<Webhook>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetWebhookRequest {
-    /// Required. The resource name of the webhook to retrieve.
-    /// Format: users/{user}/webhooks/{webhook}
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateWebhookRequest {
-    /// Required. The parent resource where this webhook will be created.
-    /// Format: users/{user}
-    #[prost(string, tag = "1")]
-    pub parent: ::prost::alloc::string::String,
-    /// Required. The webhook to create.
-    #[prost(message, optional, tag = "2")]
-    pub webhook: ::core::option::Option<Webhook>,
-    /// Optional. If set, validate the request, but do not actually create the webhook.
-    #[prost(bool, tag = "3")]
-    pub validate_only: bool,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UpdateWebhookRequest {
-    /// Required. The webhook resource which replaces the resource on the server.
-    #[prost(message, optional, tag = "1")]
-    pub webhook: ::core::option::Option<Webhook>,
-    /// Optional. The list of fields to update.
-    #[prost(message, optional, tag = "2")]
-    pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DeleteWebhookRequest {
-    /// Required. The resource name of the webhook to delete.
-    /// Format: users/{user}/webhooks/{webhook}
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-/// Generated client implementations.
-pub mod webhook_service_client {
-    #![allow(
-        unused_variables,
-        dead_code,
-        missing_docs,
-        clippy::wildcard_imports,
-        clippy::let_unit_value
-    )]
-    use tonic::codegen::http::Uri;
-    use tonic::codegen::*;
-    #[derive(Debug, Clone)]
-    pub struct WebhookServiceClient<T> {
-        inner: tonic::client::Grpc<T>,
-    }
-    impl WebhookServiceClient<tonic::transport::Channel> {
-        /// Attempt to create a new client by connecting to a given endpoint.
-        pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
-        where
-            D: TryInto<tonic::transport::Endpoint>,
-            D::Error: Into<StdError>,
-        {
-            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
-            Ok(Self::new(conn))
-        }
-    }
-    impl<T> WebhookServiceClient<T>
-    where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
-        T::Error: Into<StdError>,
-        T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
-        <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
-    {
-        pub fn new(inner: T) -> Self {
-            let inner = tonic::client::Grpc::new(inner);
-            Self { inner }
-        }
-        pub fn with_origin(inner: T, origin: Uri) -> Self {
-            let inner = tonic::client::Grpc::with_origin(inner, origin);
-            Self { inner }
-        }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> WebhookServiceClient<InterceptedService<T, F>>
-        where
-            F: tonic::service::Interceptor,
-            T::ResponseBody: Default,
-            T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
-                >,
-            >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + std::marker::Send + std::marker::Sync,
-        {
-            WebhookServiceClient::new(InterceptedService::new(inner, interceptor))
-        }
-        /// Compress requests with the given encoding.
-        ///
-        /// This requires the server to support it otherwise it might respond with an
-        /// error.
-        #[must_use]
-        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.inner = self.inner.send_compressed(encoding);
-            self
-        }
-        /// Enable decompressing responses.
-        #[must_use]
-        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.inner = self.inner.accept_compressed(encoding);
-            self
-        }
-        /// Limits the maximum size of a decoded message.
-        ///
-        /// Default: `4MB`
-        #[must_use]
-        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
-            self.inner = self.inner.max_decoding_message_size(limit);
-            self
-        }
-        /// Limits the maximum size of an encoded message.
-        ///
-        /// Default: `usize::MAX`
-        #[must_use]
-        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
-            self.inner = self.inner.max_encoding_message_size(limit);
-            self
-        }
-        /// ListWebhooks returns a list of webhooks for a user.
-        pub async fn list_webhooks(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListWebhooksRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListWebhooksResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.WebhookService/ListWebhooks");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.WebhookService",
-                "ListWebhooks",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// GetWebhook gets a webhook by name.
-        pub async fn get_webhook(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.WebhookService/GetWebhook");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("memos.api.v1.WebhookService", "GetWebhook"));
-            self.inner.unary(req, path, codec).await
-        }
-        /// CreateWebhook creates a new webhook for a user.
-        pub async fn create_webhook(
-            &mut self,
-            request: impl tonic::IntoRequest<super::CreateWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.WebhookService/CreateWebhook");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.WebhookService",
-                "CreateWebhook",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// UpdateWebhook updates a webhook for a user.
-        pub async fn update_webhook(
-            &mut self,
-            request: impl tonic::IntoRequest<super::UpdateWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.WebhookService/UpdateWebhook");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.WebhookService",
-                "UpdateWebhook",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// DeleteWebhook deletes a webhook for a user.
-        pub async fn delete_webhook(
-            &mut self,
-            request: impl tonic::IntoRequest<super::DeleteWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<()>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/memos.api.v1.WebhookService/DeleteWebhook");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "memos.api.v1.WebhookService",
-                "DeleteWebhook",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-    }
-}
-/// Generated server implementations.
-pub mod webhook_service_server {
-    #![allow(
-        unused_variables,
-        dead_code,
-        missing_docs,
-        clippy::wildcard_imports,
-        clippy::let_unit_value
-    )]
-    use tonic::codegen::*;
-    /// Generated trait containing gRPC methods that should be implemented for use with WebhookServiceServer.
-    #[async_trait]
-    pub trait WebhookService: std::marker::Send + std::marker::Sync + 'static {
-        /// ListWebhooks returns a list of webhooks for a user.
-        async fn list_webhooks(
-            &self,
-            request: tonic::Request<super::ListWebhooksRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListWebhooksResponse>, tonic::Status>;
-        /// GetWebhook gets a webhook by name.
-        async fn get_webhook(
-            &self,
-            request: tonic::Request<super::GetWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status>;
-        /// CreateWebhook creates a new webhook for a user.
-        async fn create_webhook(
-            &self,
-            request: tonic::Request<super::CreateWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status>;
-        /// UpdateWebhook updates a webhook for a user.
-        async fn update_webhook(
-            &self,
-            request: tonic::Request<super::UpdateWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<super::Webhook>, tonic::Status>;
-        /// DeleteWebhook deletes a webhook for a user.
-        async fn delete_webhook(
-            &self,
-            request: tonic::Request<super::DeleteWebhookRequest>,
-        ) -> std::result::Result<tonic::Response<()>, tonic::Status>;
-    }
-    #[derive(Debug)]
-    pub struct WebhookServiceServer<T> {
-        inner: Arc<T>,
-        accept_compression_encodings: EnabledCompressionEncodings,
-        send_compression_encodings: EnabledCompressionEncodings,
-        max_decoding_message_size: Option<usize>,
-        max_encoding_message_size: Option<usize>,
-    }
-    impl<T> WebhookServiceServer<T> {
-        pub fn new(inner: T) -> Self {
-            Self::from_arc(Arc::new(inner))
-        }
-        pub fn from_arc(inner: Arc<T>) -> Self {
-            Self {
-                inner,
-                accept_compression_encodings: Default::default(),
-                send_compression_encodings: Default::default(),
-                max_decoding_message_size: None,
-                max_encoding_message_size: None,
-            }
-        }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
-        where
-            F: tonic::service::Interceptor,
-        {
-            InterceptedService::new(Self::new(inner), interceptor)
-        }
-        /// Enable decompressing requests with the given encoding.
-        #[must_use]
-        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.accept_compression_encodings.enable(encoding);
-            self
-        }
-        /// Compress responses with the given encoding, if the client supports it.
-        #[must_use]
-        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
-            self.send_compression_encodings.enable(encoding);
-            self
-        }
-        /// Limits the maximum size of a decoded message.
-        ///
-        /// Default: `4MB`
-        #[must_use]
-        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
-            self.max_decoding_message_size = Some(limit);
-            self
-        }
-        /// Limits the maximum size of an encoded message.
-        ///
-        /// Default: `usize::MAX`
-        #[must_use]
-        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
-            self.max_encoding_message_size = Some(limit);
-            self
-        }
-    }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for WebhookServiceServer<T>
-    where
-        T: WebhookService,
-        B: Body + std::marker::Send + 'static,
-        B::Error: Into<StdError> + std::marker::Send + 'static,
-    {
-        type Response = http::Response<tonic::body::BoxBody>;
-        type Error = std::convert::Infallible;
-        type Future = BoxFuture<Self::Response, Self::Error>;
-        fn poll_ready(
-            &mut self,
-            _cx: &mut Context<'_>,
-        ) -> Poll<std::result::Result<(), Self::Error>> {
-            Poll::Ready(Ok(()))
-        }
-        fn call(&mut self, req: http::Request<B>) -> Self::Future {
-            match req.uri().path() {
-                "/memos.api.v1.WebhookService/ListWebhooks" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListWebhooksSvc<T: WebhookService>(pub Arc<T>);
-                    impl<T: WebhookService> tonic::server::UnaryService<super::ListWebhooksRequest>
-                        for ListWebhooksSvc<T>
-                    {
-                        type Response = super::ListWebhooksResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListWebhooksRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as WebhookService>::list_webhooks(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ListWebhooksSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.WebhookService/GetWebhook" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetWebhookSvc<T: WebhookService>(pub Arc<T>);
-                    impl<T: WebhookService> tonic::server::UnaryService<super::GetWebhookRequest> for GetWebhookSvc<T> {
-                        type Response = super::Webhook;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetWebhookRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as WebhookService>::get_webhook(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetWebhookSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.WebhookService/CreateWebhook" => {
-                    #[allow(non_camel_case_types)]
-                    struct CreateWebhookSvc<T: WebhookService>(pub Arc<T>);
-                    impl<T: WebhookService> tonic::server::UnaryService<super::CreateWebhookRequest>
-                        for CreateWebhookSvc<T>
-                    {
-                        type Response = super::Webhook;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::CreateWebhookRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as WebhookService>::create_webhook(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = CreateWebhookSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.WebhookService/UpdateWebhook" => {
-                    #[allow(non_camel_case_types)]
-                    struct UpdateWebhookSvc<T: WebhookService>(pub Arc<T>);
-                    impl<T: WebhookService> tonic::server::UnaryService<super::UpdateWebhookRequest>
-                        for UpdateWebhookSvc<T>
-                    {
-                        type Response = super::Webhook;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::UpdateWebhookRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as WebhookService>::update_webhook(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = UpdateWebhookSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/memos.api.v1.WebhookService/DeleteWebhook" => {
-                    #[allow(non_camel_case_types)]
-                    struct DeleteWebhookSvc<T: WebhookService>(pub Arc<T>);
-                    impl<T: WebhookService> tonic::server::UnaryService<super::DeleteWebhookRequest>
-                        for DeleteWebhookSvc<T>
-                    {
-                        type Response = ();
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::DeleteWebhookRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as WebhookService>::delete_webhook(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = DeleteWebhookSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                _ => Box::pin(async move {
-                    let mut response = http::Response::new(empty_body());
-                    let headers = response.headers_mut();
-                    headers.insert(
-                        tonic::Status::GRPC_STATUS,
-                        (tonic::Code::Unimplemented as i32).into(),
-                    );
-                    headers.insert(
-                        http::header::CONTENT_TYPE,
-                        tonic::metadata::GRPC_CONTENT_TYPE,
-                    );
-                    Ok(response)
-                }),
-            }
-        }
-    }
-    impl<T> Clone for WebhookServiceServer<T> {
-        fn clone(&self) -> Self {
-            let inner = self.inner.clone();
-            Self {
-                inner,
-                accept_compression_encodings: self.accept_compression_encodings,
-                send_compression_encodings: self.send_compression_encodings,
-                max_decoding_message_size: self.max_decoding_message_size,
-                max_encoding_message_size: self.max_encoding_message_size,
-            }
-        }
-    }
-    /// Generated gRPC service name
-    pub const SERVICE_NAME: &str = "memos.api.v1.WebhookService";
-    impl<T> tonic::server::NamedService for WebhookServiceServer<T> {
-        const NAME: &'static str = SERVICE_NAME;
-    }
-}
 /// Workspace profile message containing basic workspace information.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceProfile {
@@ -8568,18 +8374,172 @@ pub struct WorkspaceSetting {
 }
 /// Nested message and enum types in `WorkspaceSetting`.
 pub mod workspace_setting {
+    /// General workspace settings configuration.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct GeneralSetting {
+        /// theme is the name of the selected theme.
+        /// This references a CSS file in the web/public/themes/ directory.
+        #[prost(string, tag = "1")]
+        pub theme: ::prost::alloc::string::String,
+        /// disallow_user_registration disallows user registration.
+        #[prost(bool, tag = "2")]
+        pub disallow_user_registration: bool,
+        /// disallow_password_auth disallows password authentication.
+        #[prost(bool, tag = "3")]
+        pub disallow_password_auth: bool,
+        /// additional_script is the additional script.
+        #[prost(string, tag = "4")]
+        pub additional_script: ::prost::alloc::string::String,
+        /// additional_style is the additional style.
+        #[prost(string, tag = "5")]
+        pub additional_style: ::prost::alloc::string::String,
+        /// custom_profile is the custom profile.
+        #[prost(message, optional, tag = "6")]
+        pub custom_profile: ::core::option::Option<general_setting::CustomProfile>,
+        /// week_start_day_offset is the week start day offset from Sunday.
+        /// 0: Sunday, 1: Monday, 2: Tuesday, 3: Wednesday, 4: Thursday, 5: Friday, 6: Saturday
+        /// Default is Sunday.
+        #[prost(int32, tag = "7")]
+        pub week_start_day_offset: i32,
+        /// disallow_change_username disallows changing username.
+        #[prost(bool, tag = "8")]
+        pub disallow_change_username: bool,
+        /// disallow_change_nickname disallows changing nickname.
+        #[prost(bool, tag = "9")]
+        pub disallow_change_nickname: bool,
+    }
+    /// Nested message and enum types in `GeneralSetting`.
+    pub mod general_setting {
+        /// Custom profile configuration for workspace branding.
+        #[derive(Clone, PartialEq, ::prost::Message)]
+        pub struct CustomProfile {
+            #[prost(string, tag = "1")]
+            pub title: ::prost::alloc::string::String,
+            #[prost(string, tag = "2")]
+            pub description: ::prost::alloc::string::String,
+            #[prost(string, tag = "3")]
+            pub logo_url: ::prost::alloc::string::String,
+            #[prost(string, tag = "4")]
+            pub locale: ::prost::alloc::string::String,
+        }
+    }
+    /// Storage configuration settings for workspace attachments.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct StorageSetting {
+        /// storage_type is the storage type.
+        #[prost(enumeration = "storage_setting::StorageType", tag = "1")]
+        pub storage_type: i32,
+        /// The template of file path.
+        /// e.g. assets/{timestamp}_{filename}
+        #[prost(string, tag = "2")]
+        pub filepath_template: ::prost::alloc::string::String,
+        /// The max upload size in megabytes.
+        #[prost(int64, tag = "3")]
+        pub upload_size_limit_mb: i64,
+        /// The S3 config.
+        #[prost(message, optional, tag = "4")]
+        pub s3_config: ::core::option::Option<storage_setting::S3Config>,
+    }
+    /// Nested message and enum types in `StorageSetting`.
+    pub mod storage_setting {
+        /// S3 configuration for cloud storage backend.
+        /// Reference: <https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/>
+        #[derive(Clone, PartialEq, ::prost::Message)]
+        pub struct S3Config {
+            #[prost(string, tag = "1")]
+            pub access_key_id: ::prost::alloc::string::String,
+            #[prost(string, tag = "2")]
+            pub access_key_secret: ::prost::alloc::string::String,
+            #[prost(string, tag = "3")]
+            pub endpoint: ::prost::alloc::string::String,
+            #[prost(string, tag = "4")]
+            pub region: ::prost::alloc::string::String,
+            #[prost(string, tag = "5")]
+            pub bucket: ::prost::alloc::string::String,
+            #[prost(bool, tag = "6")]
+            pub use_path_style: bool,
+        }
+        /// Storage type enumeration for different storage backends.
+        #[derive(
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
+        )]
+        #[repr(i32)]
+        pub enum StorageType {
+            Unspecified = 0,
+            /// DATABASE is the database storage type.
+            Database = 1,
+            /// LOCAL is the local storage type.
+            Local = 2,
+            /// S3 is the S3 storage type.
+            S3 = 3,
+        }
+        impl StorageType {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    Self::Unspecified => "STORAGE_TYPE_UNSPECIFIED",
+                    Self::Database => "DATABASE",
+                    Self::Local => "LOCAL",
+                    Self::S3 => "S3",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "STORAGE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                    "DATABASE" => Some(Self::Database),
+                    "LOCAL" => Some(Self::Local),
+                    "S3" => Some(Self::S3),
+                    _ => None,
+                }
+            }
+        }
+    }
+    /// Memo-related workspace settings and policies.
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct MemoRelatedSetting {
+        /// disallow_public_visibility disallows set memo as public visibility.
+        #[prost(bool, tag = "1")]
+        pub disallow_public_visibility: bool,
+        /// display_with_update_time orders and displays memo with update time.
+        #[prost(bool, tag = "2")]
+        pub display_with_update_time: bool,
+        /// content_length_limit is the limit of content length. Unit is byte.
+        #[prost(int32, tag = "3")]
+        pub content_length_limit: i32,
+        /// enable_double_click_edit enables editing on double click.
+        #[prost(bool, tag = "4")]
+        pub enable_double_click_edit: bool,
+        /// enable_link_preview enables links preview.
+        #[prost(bool, tag = "5")]
+        pub enable_link_preview: bool,
+        /// reactions is the list of reactions.
+        #[prost(string, repeated, tag = "7")]
+        pub reactions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+        /// disable_markdown_shortcuts disallow the registration of markdown shortcuts.
+        #[prost(bool, tag = "8")]
+        pub disable_markdown_shortcuts: bool,
+        /// enable_blur_nsfw_content enables blurring of content marked as not safe for work (NSFW).
+        #[prost(bool, tag = "9")]
+        pub enable_blur_nsfw_content: bool,
+        /// nsfw_tags is the list of tags that mark content as NSFW for blurring.
+        #[prost(string, repeated, tag = "10")]
+        pub nsfw_tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    }
+    /// Enumeration of workspace setting keys.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Key {
         Unspecified = 0,
-        /// BASIC is the key for basic settings.
-        Basic = 1,
         /// GENERAL is the key for general settings.
-        General = 2,
+        General = 1,
         /// STORAGE is the key for storage settings.
-        Storage = 3,
+        Storage = 2,
         /// MEMO_RELATED is the key for memo related settings.
-        MemoRelated = 4,
+        MemoRelated = 3,
     }
     impl Key {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -8589,7 +8549,6 @@ pub mod workspace_setting {
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 Self::Unspecified => "KEY_UNSPECIFIED",
-                Self::Basic => "BASIC",
                 Self::General => "GENERAL",
                 Self::Storage => "STORAGE",
                 Self::MemoRelated => "MEMO_RELATED",
@@ -8599,7 +8558,6 @@ pub mod workspace_setting {
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "KEY_UNSPECIFIED" => Some(Self::Unspecified),
-                "BASIC" => Some(Self::Basic),
                 "GENERAL" => Some(Self::General),
                 "STORAGE" => Some(Self::Storage),
                 "MEMO_RELATED" => Some(Self::MemoRelated),
@@ -8610,161 +8568,12 @@ pub mod workspace_setting {
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Value {
         #[prost(message, tag = "2")]
-        GeneralSetting(super::WorkspaceGeneralSetting),
+        GeneralSetting(GeneralSetting),
         #[prost(message, tag = "3")]
-        StorageSetting(super::WorkspaceStorageSetting),
+        StorageSetting(StorageSetting),
         #[prost(message, tag = "4")]
-        MemoRelatedSetting(super::WorkspaceMemoRelatedSetting),
+        MemoRelatedSetting(MemoRelatedSetting),
     }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WorkspaceGeneralSetting {
-    /// theme is the name of the selected theme.
-    /// This references a CSS file in the web/public/themes/ directory.
-    #[prost(string, tag = "1")]
-    pub theme: ::prost::alloc::string::String,
-    /// disallow_user_registration disallows user registration.
-    #[prost(bool, tag = "2")]
-    pub disallow_user_registration: bool,
-    /// disallow_password_auth disallows password authentication.
-    #[prost(bool, tag = "3")]
-    pub disallow_password_auth: bool,
-    /// additional_script is the additional script.
-    #[prost(string, tag = "4")]
-    pub additional_script: ::prost::alloc::string::String,
-    /// additional_style is the additional style.
-    #[prost(string, tag = "5")]
-    pub additional_style: ::prost::alloc::string::String,
-    /// custom_profile is the custom profile.
-    #[prost(message, optional, tag = "6")]
-    pub custom_profile: ::core::option::Option<WorkspaceCustomProfile>,
-    /// week_start_day_offset is the week start day offset from Sunday.
-    /// 0: Sunday, 1: Monday, 2: Tuesday, 3: Wednesday, 4: Thursday, 5: Friday, 6: Saturday
-    /// Default is Sunday.
-    #[prost(int32, tag = "7")]
-    pub week_start_day_offset: i32,
-    /// disallow_change_username disallows changing username.
-    #[prost(bool, tag = "8")]
-    pub disallow_change_username: bool,
-    /// disallow_change_nickname disallows changing nickname.
-    #[prost(bool, tag = "9")]
-    pub disallow_change_nickname: bool,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WorkspaceCustomProfile {
-    #[prost(string, tag = "1")]
-    pub title: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub logo_url: ::prost::alloc::string::String,
-    #[prost(string, tag = "4")]
-    pub locale: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
-    pub appearance: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WorkspaceStorageSetting {
-    /// storage_type is the storage type.
-    #[prost(enumeration = "workspace_storage_setting::StorageType", tag = "1")]
-    pub storage_type: i32,
-    /// The template of file path.
-    /// e.g. assets/{timestamp}_{filename}
-    #[prost(string, tag = "2")]
-    pub filepath_template: ::prost::alloc::string::String,
-    /// The max upload size in megabytes.
-    #[prost(int64, tag = "3")]
-    pub upload_size_limit_mb: i64,
-    /// The S3 config.
-    #[prost(message, optional, tag = "4")]
-    pub s3_config: ::core::option::Option<workspace_storage_setting::S3Config>,
-}
-/// Nested message and enum types in `WorkspaceStorageSetting`.
-pub mod workspace_storage_setting {
-    /// Reference: <https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/>
-    #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct S3Config {
-        #[prost(string, tag = "1")]
-        pub access_key_id: ::prost::alloc::string::String,
-        #[prost(string, tag = "2")]
-        pub access_key_secret: ::prost::alloc::string::String,
-        #[prost(string, tag = "3")]
-        pub endpoint: ::prost::alloc::string::String,
-        #[prost(string, tag = "4")]
-        pub region: ::prost::alloc::string::String,
-        #[prost(string, tag = "5")]
-        pub bucket: ::prost::alloc::string::String,
-        #[prost(bool, tag = "6")]
-        pub use_path_style: bool,
-    }
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum StorageType {
-        Unspecified = 0,
-        /// DATABASE is the database storage type.
-        Database = 1,
-        /// LOCAL is the local storage type.
-        Local = 2,
-        /// S3 is the S3 storage type.
-        S3 = 3,
-    }
-    impl StorageType {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "STORAGE_TYPE_UNSPECIFIED",
-                Self::Database => "DATABASE",
-                Self::Local => "LOCAL",
-                Self::S3 => "S3",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "STORAGE_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
-                "DATABASE" => Some(Self::Database),
-                "LOCAL" => Some(Self::Local),
-                "S3" => Some(Self::S3),
-                _ => None,
-            }
-        }
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WorkspaceMemoRelatedSetting {
-    /// disallow_public_visibility disallows set memo as public visibility.
-    #[prost(bool, tag = "1")]
-    pub disallow_public_visibility: bool,
-    /// display_with_update_time orders and displays memo with update time.
-    #[prost(bool, tag = "2")]
-    pub display_with_update_time: bool,
-    /// content_length_limit is the limit of content length. Unit is byte.
-    #[prost(int32, tag = "3")]
-    pub content_length_limit: i32,
-    /// enable_double_click_edit enables editing on double click.
-    #[prost(bool, tag = "4")]
-    pub enable_double_click_edit: bool,
-    /// enable_link_preview enables links preview.
-    #[prost(bool, tag = "5")]
-    pub enable_link_preview: bool,
-    /// enable_comment enables comment.
-    #[prost(bool, tag = "6")]
-    pub enable_comment: bool,
-    /// reactions is the list of reactions.
-    #[prost(string, repeated, tag = "7")]
-    pub reactions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// disable_markdown_shortcuts disallow the registration of markdown shortcuts.
-    #[prost(bool, tag = "8")]
-    pub disable_markdown_shortcuts: bool,
-    /// enable_blur_nsfw_content enables blurring of content marked as not safe for work (NSFW).
-    #[prost(bool, tag = "9")]
-    pub enable_blur_nsfw_content: bool,
-    /// nsfw_tags is the list of tags that mark content as NSFW for blurring.
-    #[prost(string, repeated, tag = "10")]
-    pub nsfw_tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Request message for GetWorkspaceSetting method.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -8833,11 +8642,11 @@ pub mod workspace_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {

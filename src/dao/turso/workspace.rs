@@ -2,9 +2,9 @@ use async_trait::async_trait;
 use tracing::error;
 
 use crate::dao::workspace::{FindWorkspaceSettingError, WorkspaceRepository};
-use crate::model::gen::{
-    workspace_setting::Value as WorkspaceSettingValue, WorkspaceGeneralSetting,
-    WorkspaceMemoRelatedSetting, WorkspaceSettingKey, WorkspaceStorageSetting,
+use crate::model::generate::{
+    WorkspaceGeneralSetting, WorkspaceMemoRelatedSetting, WorkspaceSettingKey,
+    WorkspaceStorageSetting, workspace_setting::Value as WorkspaceSettingValue,
 };
 use crate::model::system::SystemSetting;
 

@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use axum_login::tower_sessions::session::{Id, Record};
 use axum_login::tower_sessions::{
-    self, session_store::Error as StoreError, ExpiredDeletion, MemoryStore,
+    self, ExpiredDeletion, MemoryStore, session_store::Error as StoreError,
 };
-use snafu::{ensure, Snafu};
+use snafu::{Snafu, ensure};
 use tracing::info;
 
 use crate::dao::session::SessionRepository;

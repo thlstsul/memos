@@ -1,4 +1,4 @@
-use snafu::{ensure, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu, ensure};
 
 pub const INBOX_NAME_PREFIX: &str = "inboxes";
 pub const USER_NAME_PREFIX: &str = "users";

@@ -3,11 +3,11 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tonic::{Request, Response, Status};
 
-use crate::api::v1::gen::{
-    markdown_service_server::{self, MarkdownServiceServer},
+use crate::api::v1::generate::{
     GetLinkMetadataRequest, LinkMetadata, ParseMarkdownRequest, ParseMarkdownResponse,
     RestoreMarkdownNodesRequest, RestoreMarkdownNodesResponse, StringifyMarkdownNodesRequest,
     StringifyMarkdownNodesResponse,
+    markdown_service_server::{self, MarkdownServiceServer},
 };
 
 use super::EmptyService;

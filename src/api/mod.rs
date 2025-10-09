@@ -12,7 +12,7 @@ use std::{fmt::Display, str::FromStr};
 use prost_types::Timestamp;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::api::v1::gen::State;
+use crate::api::v1::generate::State;
 
 pub fn to_timestamp(value: i64) -> Option<Timestamp> {
     if value == 0 {

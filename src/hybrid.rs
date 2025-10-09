@@ -7,20 +7,20 @@ use std::task::Poll;
 use std::{future::Future, sync::Arc};
 
 use crate::ctrl::auth::Backend;
+use crate::svc::EmptyService;
 use crate::svc::markdown::MarkdownService;
 use crate::svc::user::UserService;
-use crate::svc::EmptyService;
 use axum::{BoxError, Router};
-use axum_login::tower_sessions::SessionManager;
 use axum_login::AuthManager;
+use axum_login::tower_sessions::SessionManager;
 use axum_login::{
-    tower_sessions::{cookie::time::Duration, Expiry, SessionManagerLayer},
     AuthManagerLayerBuilder,
+    tower_sessions::{Expiry, SessionManagerLayer, cookie::time::Duration},
 };
 use http_body::Body;
 use http_body_util::BodyExt;
 use hyper::server::conn::http1::Builder;
-use hyper::{body::Incoming, header::CONTENT_TYPE, Request, Response};
+use hyper::{Request, Response, body::Incoming, header::CONTENT_TYPE};
 use hyper_util::rt::TokioIo;
 use hyper_util::service::TowerToHyperService;
 use pin_project::pin_project;
@@ -28,7 +28,7 @@ use shuttle_runtime::Error;
 use tokio::net::TcpListener;
 use tonic::service::Routes;
 use tonic::transport::Server;
-use tonic::{body::BoxBody, Status};
+use tonic::{Status, body::BoxBody};
 use tonic_web::{GrpcWebLayer, GrpcWebService};
 use tower::Service;
 use tower_cookies::CookieManager;
@@ -43,7 +43,7 @@ use crate::{
     ctrl::auth::AuthLayer,
     svc::{
         auth::AuthService, idp::IDPService, inbox::InboxService, memo::MemoService,
-        resource::ResourceService, webhook::WebhookService, workspace::WorkspaceService,
+        resource::ResourceService, workspace::WorkspaceService,
     },
 };
 
@@ -122,7 +122,6 @@ impl GrpcRestService {
         let empty_svc = Arc::new(EmptyService);
         let idp = empty_svc.clone().idp_server();
         let inbox = empty_svc.clone().inbox_server();
-        let webhook = empty_svc.clone().webhook_server();
         let markdown = empty_svc.clone().markdown_server();
         let auth = empty_svc.auth_server();
 
@@ -140,7 +139,6 @@ impl GrpcRestService {
             .add_service(resource)
             .add_service(idp)
             .add_service(inbox)
-            .add_service(webhook)
             .add_service(workspace)
             .into_service();
 

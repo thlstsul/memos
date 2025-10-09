@@ -4,7 +4,7 @@ use std::{collections::HashMap, io::Cursor};
 
 use async_trait::async_trait;
 use image::{ImageFormat, ImageReader};
-use snafu::{ensure, OptionExt, ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu, ensure};
 use tokio::{
     fs::{self, File, OpenOptions},
     io::AsyncWriteExt,
@@ -18,11 +18,11 @@ use crate::google::api::HttpBody;
 
 use crate::{
     api::prefix::ExtractName,
-    api::v1::gen::{
-        attachment_service_server, attachment_service_server::AttachmentServiceServer, Attachment,
-        CreateAttachmentRequest, DeleteAttachmentRequest, GetAttachmentBinaryRequest,
+    api::v1::generate::{
+        Attachment, CreateAttachmentRequest, DeleteAttachmentRequest, GetAttachmentBinaryRequest,
         GetAttachmentRequest, ListAttachmentsRequest, ListAttachmentsResponse,
-        UpdateAttachmentRequest,
+        UpdateAttachmentRequest, attachment_service_server,
+        attachment_service_server::AttachmentServiceServer,
     },
     model::resource::{FindResource, Resource as ResourceModel},
 };
@@ -206,7 +206,11 @@ impl<R: ResourceRepository + WorkspaceRepository> attachment_service_server::Att
             .await?;
         let resources = resources.into_iter().map(|r| r.into()).collect();
 
-        Ok(Response::new(ListAttachmentsResponse { resources }))
+        Ok(Response::new(ListAttachmentsResponse {
+            attachments: resources,
+            next_page_token: todo!(),
+            total_size: todo!(),
+        }))
     }
 
     async fn delete_attachment(
@@ -241,7 +245,7 @@ impl<R: ResourceRepository + WorkspaceRepository> attachment_service_server::Att
     ) -> Result<Response<Attachment>, Status> {
         let user = request.get_current_user()?;
 
-        if let Some(resource) = &request.get_ref().resource {
+        if let Some(resource) = &request.get_ref().attachment {
             let mut create: ResourceModel = resource.clone().into();
             create.creator_id = user.id;
 

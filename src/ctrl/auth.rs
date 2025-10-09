@@ -13,7 +13,7 @@ use tower::{Layer, Service};
 use tower_cookies::CookieManager;
 use tracing::info;
 
-use crate::api::v1::gen::create_session_request::PasswordCredentials;
+use crate::api::v1::generate::create_session_request::PasswordCredentials;
 use crate::model::user::User;
 use crate::svc::user::{Error, UserService};
 

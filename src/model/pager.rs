@@ -1,4 +1,4 @@
-use crate::api::v1::gen::PageToken;
+use crate::api::v1::generate::PageToken;
 
 pub trait Paginator: Sized {
     fn limit(&self) -> i32;

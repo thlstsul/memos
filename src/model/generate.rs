@@ -84,8 +84,6 @@ pub struct WorkspaceCustomProfile {
     pub logo_url: ::prost::alloc::string::String,
     #[prost(string, tag = "4")]
     pub locale: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
-    pub appearance: ::prost::alloc::string::String,
 }
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct WorkspaceStorageSetting {
@@ -174,9 +172,6 @@ pub struct WorkspaceMemoRelatedSetting {
     /// enable_link_preview enables links preview.
     #[prost(bool, tag = "5")]
     pub enable_link_preview: bool,
-    /// enable_comment enables comment.
-    #[prost(bool, tag = "6")]
-    pub enable_comment: bool,
     /// reactions is the list of reactions.
     #[prost(string, repeated, tag = "7")]
     pub reactions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -521,15 +516,12 @@ pub struct GeneralUserSetting {
     /// The user's locale.
     #[prost(string, tag = "1")]
     pub locale: ::prost::alloc::string::String,
-    /// The user's appearance setting.
-    #[prost(string, tag = "2")]
-    pub appearance: ::prost::alloc::string::String,
     /// The user's memo visibility setting.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub memo_visibility: ::prost::alloc::string::String,
     /// The user's theme preference.
     /// This references a CSS file in the web/public/themes/ directory.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub theme: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

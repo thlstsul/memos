@@ -1,19 +1,17 @@
 use crate::api::prefix::{self, ExtractName};
-use crate::api::v1::gen::UserStats;
-use crate::api::v1::r#gen::user_stats::MemoTypeStats;
-use crate::api::v1::r#gen::State;
 use crate::model::memo::CreateMemo;
 use crate::model::user::User;
 use crate::{
-    api::v1::gen::{
-        memo_service_server::{self, MemoServiceServer},
+    api::v1::generate::{
         CreateMemoCommentRequest, CreateMemoRequest, DeleteMemoReactionRequest, DeleteMemoRequest,
-        DeleteMemoTagRequest, GetMemoRequest, ListMemoCommentsRequest, ListMemoCommentsResponse,
+        DeleteMemoTagRequest, GetMemoRequest, ListMemoAttachmentsRequest,
+        ListMemoAttachmentsResponse, ListMemoCommentsRequest, ListMemoCommentsResponse,
         ListMemoReactionsRequest, ListMemoReactionsResponse, ListMemoRelationsRequest,
-        ListMemoRelationsResponse, ListMemoResourcesRequest, ListMemoResourcesResponse,
-        ListMemosRequest, ListMemosResponse, Memo, Reaction, RenameMemoTagRequest,
-        SetMemoAttachmentsRequest, SetMemoRelationsRequest, UpdateMemoRequest,
-        UpsertMemoReactionRequest,
+        ListMemoRelationsResponse, ListMemosRequest, ListMemosResponse, Memo, Reaction,
+        RenameMemoTagRequest, SetMemoAttachmentsRequest, SetMemoRelationsRequest, State,
+        UpdateMemoRequest, UpsertMemoReactionRequest, UserStats,
+        memo_service_server::{self, MemoServiceServer},
+        user_stats::MemoTypeStats,
     },
     dao::{
         memo::MemoRepository, resource::ResourceRepository, user::UserRepository,
@@ -31,7 +29,6 @@ use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
 use super::resource::ResourceService;
-use super::workspace::WorkspaceSettingService;
 use super::{RequestExt, Service};
 
 #[async_trait]
@@ -160,7 +157,7 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
         let mut memo: Memo = memos.pop().context(MemoNotFound)?.into();
 
         let relate_resources = self.relate_resource(id).await?;
-        memo.resources = relate_resources.into_iter().map(|r| r.into()).collect();
+        memo.attachments = relate_resources.into_iter().map(|r| r.into()).collect();
         // TODO relate/reaction
 
         Ok(Response::new(memo))
@@ -194,7 +191,7 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
             let resources = relate_resources.remove(&memo.id);
             let mut memo: Memo = memo.into();
             if let Some(resources) = resources {
-                memo.resources = resources.into_iter().map(|r| r.into()).collect();
+                memo.attachments = resources.into_iter().map(|r| r.into()).collect();
             }
             memo_list.push(memo);
         }
@@ -202,6 +199,7 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
         Ok(Response::new(ListMemosResponse {
             memos: memo_list,
             next_page_token,
+            total_size: todo!(),
         }))
     }
 
@@ -228,7 +226,7 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
 
         let resources = self.relate_resource(memo.id).await?;
         let mut memo: Memo = memo.into();
-        memo.resources = resources.into_iter().map(|r| r.into()).collect();
+        memo.attachments = resources.into_iter().map(|r| r.into()).collect();
         // TODO relate/reaction
 
         Ok(Response::new(memo))
@@ -263,7 +261,7 @@ impl<T: MemoRepository + UserRepository + ResourceRepository + WorkspaceReposito
         request: Request<SetMemoAttachmentsRequest>,
     ) -> Result<Response<()>, Status> {
         let memo_id = request.get_ref().get_id()?;
-        let resources = &request.get_ref().resources;
+        let resources = &request.get_ref().attachments;
         let relate_resources = self.relate_resource(memo_id).await?;
 
         let new_res_ids = resources

@@ -3,11 +3,11 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tonic::{Request, Response, Status};
 
-use crate::api::v1::gen::{
-    identity_provider_service_server::{self, IdentityProviderServiceServer},
+use crate::api::v1::generate::{
     CreateIdentityProviderRequest, DeleteIdentityProviderRequest, GetIdentityProviderRequest,
     IdentityProvider, ListIdentityProvidersRequest, ListIdentityProvidersResponse,
     UpdateIdentityProviderRequest,
+    identity_provider_service_server::{self, IdentityProviderServiceServer},
 };
 
 use super::EmptyService;

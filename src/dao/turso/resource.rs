@@ -9,12 +9,12 @@ use crate::{
         RelateResourceError, ResourceRepository, SetResourceError,
     },
     model::{
-        gen::AttachmentStorageType,
+        generate::AttachmentStorageType,
         resource::{FindResource, Resource},
     },
 };
 
-use super::{de, Turso};
+use super::{Turso, de};
 
 #[async_trait]
 impl ResourceRepository for Turso {

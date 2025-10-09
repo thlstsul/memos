@@ -1,11 +1,11 @@
 use axum::{
+    Router,
     body::Body,
     extract::{Path, Query, State},
     response::{IntoResponse, Response, Result},
     routing::get,
-    Router,
 };
-use hyper::{header::CONTENT_TYPE, StatusCode};
+use hyper::{StatusCode, header::CONTENT_TYPE};
 use tracing::error;
 
 use crate::{model::resource::ResourceQry, svc::resource::ResourceService};

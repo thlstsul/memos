@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     prefix::FormatName,
-    v1::gen::{Attachment, DeleteAttachmentRequest, GetAttachmentRequest},
+    v1::generate::{Attachment, DeleteAttachmentRequest, GetAttachmentRequest},
 };
 
 impl_extract_name!(GetAttachmentRequest, prefix::ATTACHMENT_NAME_PREFIX);

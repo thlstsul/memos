@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
-use crate::api::v1::r#gen::{
-    GetUserStatsRequest, ListAllUserStatsRequest, ListAllUserStatsResponse, UserStats,
+use crate::api::v1::generate::{
+    CreateUserWebhookRequest, DeleteUserWebhookRequest, GetUserStatsRequest,
+    ListAllUserStatsRequest, ListAllUserStatsResponse, ListUserSettingsRequest,
+    ListUserSettingsResponse, ListUserWebhooksRequest, ListUserWebhooksResponse,
+    UpdateUserWebhookRequest, UserStats, UserWebhook,
 };
 use crate::dao::memo::MemoRepository;
 use crate::dao::resource::ResourceRepository;
@@ -11,14 +14,14 @@ use crate::model::user::User as UserModel;
 use crate::{
     api::{
         prefix::ExtractName,
-        v1::gen::{
-            user_service_server::{self, UserServiceServer},
+        v1::generate::{
             CreateUserAccessTokenRequest, CreateUserRequest, DeleteUserAccessTokenRequest,
             DeleteUserRequest, GetUserAvatarRequest, GetUserRequest, GetUserSettingRequest,
             ListUserAccessTokensRequest, ListUserAccessTokensResponse, ListUserSessionsRequest,
             ListUserSessionsResponse, ListUsersRequest, ListUsersResponse,
-            RevokeUserSessionRequest, SearchUsersRequest, SearchUsersResponse, UpdateUserRequest,
-            UpdateUserSettingRequest, User, UserAccessToken, UserSetting,
+            RevokeUserSessionRequest, UpdateUserRequest, UpdateUserSettingRequest, User,
+            UserAccessToken, UserSetting,
+            user_service_server::{self, UserServiceServer},
         },
     },
     dao::user::UserRepository,
@@ -99,7 +102,6 @@ impl<R: UserRepository + MemoRepository + ResourceRepository + WorkspaceReposito
         self.repo.upsert_user_setting(settings).await?;
 
         let settings = self.repo.find_user_setting(user.id).await?;
-
         Ok(Response::new(settings.into()))
     }
 
@@ -121,16 +123,15 @@ impl<R: UserRepository + MemoRepository + ResourceRepository + WorkspaceReposito
         // TODO
         let result = self.get_user_memo_stats(None).await?;
         Ok(Response::new(ListAllUserStatsResponse {
-            user_stats: vec![result],
-            next_page_token: "".to_string(),
-            total_size: 1,
+            stats: vec![result],
         }))
     }
 
-    async fn search_users(
+    /// ListUserSettings returns a list of user settings.
+    async fn list_user_settings(
         &self,
-        request: Request<SearchUsersRequest>,
-    ) -> Result<Response<SearchUsersResponse>, Status> {
+        request: Request<ListUserSettingsRequest>,
+    ) -> Result<Response<ListUserSettingsResponse>, Status> {
         Err(Status::unimplemented("unimplemented"))
     }
     async fn list_users(
@@ -194,6 +195,34 @@ impl<R: UserRepository + MemoRepository + ResourceRepository + WorkspaceReposito
     async fn revoke_user_session(
         &self,
         request: Request<RevokeUserSessionRequest>,
+    ) -> Result<Response<()>, Status> {
+        Err(Status::unimplemented("unimplemented"))
+    }
+    /// ListUserWebhooks returns a list of webhooks for a user.
+    async fn list_user_webhooks(
+        &self,
+        request: Request<ListUserWebhooksRequest>,
+    ) -> Result<Response<ListUserWebhooksResponse>, Status> {
+        Err(Status::unimplemented("unimplemented"))
+    }
+    /// CreateUserWebhook creates a new webhook for a user.
+    async fn create_user_webhook(
+        &self,
+        request: Request<CreateUserWebhookRequest>,
+    ) -> Result<Response<UserWebhook>, Status> {
+        Err(Status::unimplemented("unimplemented"))
+    }
+    /// UpdateUserWebhook updates an existing webhook for a user.
+    async fn update_user_webhook(
+        &self,
+        request: Request<UpdateUserWebhookRequest>,
+    ) -> Result<Response<UserWebhook>, Status> {
+        Err(Status::unimplemented("unimplemented"))
+    }
+    /// DeleteUserWebhook deletes a webhook for a user.
+    async fn delete_user_webhook(
+        &self,
+        request: Request<DeleteUserWebhookRequest>,
     ) -> Result<Response<()>, Status> {
         Err(Status::unimplemented("unimplemented"))
     }

@@ -29,7 +29,6 @@ fn main() {
                 "proto/api/v1/memo_service.proto",
                 "proto/api/v1/shortcut_service.proto",
                 "proto/api/v1/user_service.proto",
-                "proto/api/v1/webhook_service.proto",
                 "proto/api/v1/workspace_service.proto",
             ],
             // https://github.com/googleapis/googleapis.git
@@ -79,8 +78,8 @@ fn main() {
         )
         .unwrap();
 
-    fs::rename("src/api/v1/memos.api.v1.rs", "src/api/v1/gen.rs").unwrap();
-    fs::rename("src/model/memos.store.rs", "src/model/gen.rs").unwrap();
+    fs::rename("src/api/v1/memos.api.v1.rs", "src/api/v1/generate.rs").unwrap();
+    fs::rename("src/model/memos.store.rs", "src/model/generate.rs").unwrap();
 
     Command::new("cargo").args(["fmt"]).output().unwrap();
 }

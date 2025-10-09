@@ -1,19 +1,19 @@
 use std::sync::OnceLock;
 
 use comrak::{
-    nodes::{AstNode, ListType, NodeValue},
     Arena,
+    nodes::{AstNode, ListType, NodeValue},
 };
 use regex::Regex;
 
 use crate::{
-    api::v1::gen::{
-        node, BlockquoteNode, BoldItalicNode, BoldNode, CodeBlockNode, CodeNode, HeadingNode,
+    api::v1::generate::{
+        BlockquoteNode, BoldItalicNode, BoldNode, CodeBlockNode, CodeNode, HeadingNode,
         HorizontalRuleNode, ImageNode, ItalicNode, LineBreakNode, LinkNode, Node, NodeType,
         OrderedListItemNode, ParagraphNode, StrikethroughNode, TagNode, TaskListItemNode, TextNode,
-        UnorderedListItemNode,
+        UnorderedListItemNode, node,
     },
-    model::gen::MemoPayload,
+    model::generate::MemoPayload,
 };
 
 static TAG_REGEX: OnceLock<Regex> = OnceLock::new();
@@ -328,10 +328,10 @@ mod test {
 
     #[test]
     fn parse_ast() {
-        use crate::model::gen::MemoPayload;
-        use crate::util::md::node::Node;
+        use crate::model::generate::MemoPayload;
         use crate::util::md::ParagraphNode;
         use crate::util::md::TagNode;
+        use crate::util::md::node::Node;
 
         let buffer = r#"#LINK [](https://memo.shuttleapp.rs)"#;
         let nodes = super::parse_document(buffer);

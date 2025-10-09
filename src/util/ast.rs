@@ -2,7 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use syn::{Expr, ExprArray, ExprLit, Lit};
 
-use crate::api::v1::gen::{State, Visibility};
+use crate::api::v1::generate::{State, Visibility};
 
 pub fn get_string(lit: Expr) -> Option<String> {
     if let Expr::Lit(ExprLit {

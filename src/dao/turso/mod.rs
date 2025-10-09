@@ -8,7 +8,7 @@ use anyhow::Result;
 use std::sync::Arc;
 use tracing::info;
 
-use libsql::{de, params::IntoParams, Database, Rows, Statement, Transaction, TransactionBehavior};
+use libsql::{Database, Rows, Statement, Transaction, TransactionBehavior, de, params::IntoParams};
 use serde::de::DeserializeOwned;
 
 pub trait ToCriteria {

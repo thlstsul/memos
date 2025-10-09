@@ -4,17 +4,17 @@ use snafu::{ResultExt, Snafu};
 use crate::{
     api::{prefix, to_timestamp},
     impl_extract_name,
-    model::memo::{CreateMemo, FindMemo, FindMemoPayload, UpdateMemo},
+    model::memo::{CreateMemo, FindMemo, UpdateMemo},
     util::{self, md},
 };
 
 use super::v1::{
-    gen::Direction,
-    r#gen::{memo::Property, CreateMemoRequest, State},
+    generate::Direction,
+    generate::{CreateMemoRequest, State, memo::Property},
 };
 use super::{
-    prefix::{get_id_parent_token, ExtractName, FormatName},
-    v1::gen::{
+    prefix::{ExtractName, FormatName},
+    v1::generate::{
         DeleteMemoRequest, GetMemoRequest, ListMemosRequest, Memo, PageToken,
         SetMemoAttachmentsRequest, UpdateMemoRequest, Visibility,
     },
@@ -137,8 +137,8 @@ impl FormatName for crate::model::memo::Memo {
     }
 }
 
-impl From<crate::model::gen::memo_payload::Property> for Property {
-    fn from(value: crate::model::gen::memo_payload::Property) -> Self {
+impl From<crate::model::generate::memo_payload::Property> for Property {
+    fn from(value: crate::model::generate::memo_payload::Property) -> Self {
         Self {
             has_link: value.has_link,
             has_task_list: value.has_task_list,

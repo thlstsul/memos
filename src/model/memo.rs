@@ -1,14 +1,15 @@
 use crate::util::ast;
 
-use crate::api::v1::gen::{Direction, PageToken, State, Visibility};
+use crate::api::v1::generate::{Direction, PageToken, State, Visibility};
 
 use syn::{
+    BinOp, Expr,
     parse::{Parse, ParseStream},
-    parse_quote, BinOp, Expr,
+    parse_quote,
 };
 
-use super::gen::memo_payload::Property;
-use super::gen::MemoPayload;
+use super::generate::MemoPayload;
+use super::generate::memo_payload::Property;
 
 #[derive(Debug, Default, serde::Deserialize)]
 #[serde(default)]
@@ -185,9 +186,9 @@ impl FindMemo {
 
 impl MemoPayload {
     pub fn merge(&mut self, payload: MemoPayload) {
-        let MemoPayload {
-            tags: ref mut tags1,
-            property: ref mut property1,
+        let &mut MemoPayload {
+            tags: tags1,
+            property: property1,
             ..
         } = self;
         let MemoPayload {
@@ -277,7 +278,7 @@ impl From<MemoPayload> for libsql::Value {
 }
 
 pub mod payload_serde {
-    use crate::model::gen::MemoPayload;
+    use crate::model::generate::MemoPayload;
     use serde::{self, Deserialize, Deserializer, Serializer};
 
     #[allow(dead_code)]
@@ -301,7 +302,7 @@ pub mod payload_serde {
 mod test {
     #[test]
     fn parse_filter() {
-        use crate::api::v1::gen::{State, Visibility};
+        use crate::api::v1::generate::{State, Visibility};
         use crate::model::memo::SearchMemosFilter;
 
         let filter =

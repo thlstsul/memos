@@ -1,4 +1,4 @@
-pub mod gen;
+pub mod generate; // Ensure 'gen' is a valid module name
 pub mod memo;
 pub mod pager;
 pub mod resource;
@@ -28,7 +28,7 @@ pub mod bool_serde {
 }
 
 pub mod option_serde {
-    use serde::{self, de::DeserializeOwned, Deserializer};
+    use serde::{self, Deserializer, de::DeserializeOwned};
 
     pub fn deserialize<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
     where

@@ -6,7 +6,6 @@ pub mod memo;
 pub mod resource;
 pub mod session;
 pub mod user;
-pub mod webhook;
 pub mod workspace;
 
 use snafu::Snafu;

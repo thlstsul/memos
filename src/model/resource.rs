@@ -2,7 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::util;
 
-use super::gen::{AttachmentPayload, AttachmentStorageType};
+use super::generate::{AttachmentPayload, AttachmentStorageType};
 
 #[derive(Debug, Default)]
 pub struct FindResource {
@@ -47,8 +47,8 @@ pub struct ResourceQry {
     pub thumbnail: Option<String>,
 }
 
-impl From<crate::api::v1::gen::Attachment> for Resource {
-    fn from(value: crate::api::v1::gen::Attachment) -> Self {
+impl From<crate::api::v1::generate::Attachment> for Resource {
+    fn from(value: crate::api::v1::generate::Attachment) -> Self {
         let memo_id = value.get_memo();
         let blob = value.content;
         let size = blob.len();
@@ -92,7 +92,7 @@ impl<'de> Deserialize<'de> for AttachmentStorageType {
 }
 
 pub mod payload_serde {
-    use crate::model::gen::AttachmentPayload;
+    use crate::model::generate::AttachmentPayload;
     use serde::{self, Deserialize, Deserializer, Serializer};
 
     #[allow(dead_code)]
